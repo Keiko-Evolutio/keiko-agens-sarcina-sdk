@@ -1,0 +1,386 @@
+# .github/actions/retry-with-backoff/action.yml
+name: 'Retry with Exponential Backoff'
+description: 'Advanced retry mechanism with exponential backoff, circuit breaker, and intelligent error handling'
+author: 'KEI-Agent Development Team'
+
+inputs:
+  command:
+    description: 'Command to execute with retry logic'
+    required: true
+  max-attempts:
+    description: 'Maximum number of retry attempts'
+    required: false
+    default: '3'
+  initial-delay:
+    description: 'Initial delay in seconds'
+    required: false
+    default: '5'
+  max-delay:
+    description: 'Maximum delay in seconds'
+    required: false
+    default: '300'
+  backoff-multiplier:
+    description: 'Backoff multiplier for exponential backoff'
+    required: false
+    default: '2'
+  retry-on-exit-codes:
+    description: 'Comma-separated list of exit codes to retry on'
+    required: false
+    default: '1,2,130'
+  retry-on-errors:
+    description: 'Comma-separated list of error patterns to retry on'
+    required: false
+    default: 'timeout,connection,network,temporary'
+  circuit-breaker:
+    description: 'Enable circuit breaker pattern'
+    required: false
+    default: 'true'
+  failure-threshold:
+    description: 'Circuit breaker failure threshold'
+    required: false
+    default: '5'
+  recovery-timeout:
+    description: 'Circuit breaker recovery timeout in seconds'
+    required: false
+    default: '60'
+  working-directory:
+    description: 'Working directory for command execution'
+    required: false
+    default: '.'
+  timeout-per-attempt:
+    description: 'Timeout per attempt in seconds'
+    required: false
+    default: '300'
+
+outputs:
+  success:
+    description: 'Whether the command succeeded'
+    value: ${{ steps.execute.outputs.success }}
+  attempts-made:
+    description: 'Number of attempts made'
+    value: ${{ steps.execute.outputs.attempts-made }}
+  total-time:
+    description: 'Total execution time in seconds'
+    value: ${{ steps.execute.outputs.total-time }}
+  final-exit-code:
+    description: 'Final exit code of the command'
+    value: ${{ steps.execute.outputs.final-exit-code }}
+  error-pattern:
+    description: 'Detected error pattern'
+    value: ${{ steps.execute.outputs.error-pattern }}
+  circuit-breaker-state:
+    description: 'Circuit breaker state (closed, open, half-open)'
+    value: ${{ steps.execute.outputs.circuit-breaker-state }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🔧 Initialize retry mechanism
+      id: init
+      shell: bash
+      run: |
+        echo "🔧 Initializing retry mechanism..."
+        
+        # Parse retry exit codes
+        IFS=',' read -ra EXIT_CODES <<< "${{ inputs.retry-on-exit-codes }}"
+        echo "retry-exit-codes=${EXIT_CODES[*]}" >> $GITHUB_OUTPUT
+        
+        # Parse retry error patterns
+        IFS=',' read -ra ERROR_PATTERNS <<< "${{ inputs.retry-on-errors }}"
+        echo "retry-error-patterns=${ERROR_PATTERNS[*]}" >> $GITHUB_OUTPUT
+        
+        # Initialize circuit breaker state file
+        if [[ "${{ inputs.circuit-breaker }}" == "true" ]]; then
+          echo "closed" > circuit-breaker-state.txt
+          echo "0" > failure-count.txt
+          echo "0" > last-failure-time.txt
+        fi
+        
+        echo "📋 Retry configuration:"
+        echo "  Max attempts: ${{ inputs.max-attempts }}"
+        echo "  Initial delay: ${{ inputs.initial-delay }}s"
+        echo "  Max delay: ${{ inputs.max-delay }}s"
+        echo "  Backoff multiplier: ${{ inputs.backoff-multiplier }}"
+        echo "  Circuit breaker: ${{ inputs.circuit-breaker }}"
+        echo "  Retry on exit codes: ${EXIT_CODES[*]}"
+        echo "  Retry on error patterns: ${ERROR_PATTERNS[*]}"
+
+    - name: 🔄 Execute with retry logic
+      id: execute
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🔄 Executing command with retry logic..."
+        
+        COMMAND="${{ inputs.command }}"
+        MAX_ATTEMPTS="${{ inputs.max-attempts }}"
+        INITIAL_DELAY="${{ inputs.initial-delay }}"
+        MAX_DELAY="${{ inputs.max-delay }}"
+        BACKOFF_MULTIPLIER="${{ inputs.backoff-multiplier }}"
+        TIMEOUT_PER_ATTEMPT="${{ inputs.timeout-per-attempt }}"
+        
+        # Parse retry conditions
+        IFS=' ' read -ra RETRY_EXIT_CODES <<< "${{ steps.init.outputs.retry-exit-codes }}"
+        IFS=' ' read -ra RETRY_ERROR_PATTERNS <<< "${{ steps.init.outputs.retry-error-patterns }}"
+        
+        START_TIME=$(date +%s)
+        ATTEMPT=1
+        SUCCESS=false
+        FINAL_EXIT_CODE=0
+        ERROR_PATTERN=""
+        CURRENT_DELAY=$INITIAL_DELAY
+        
+        # Circuit breaker check
+        check_circuit_breaker() {
+          if [[ "${{ inputs.circuit-breaker }}" != "true" ]]; then
+            return 0  # Circuit breaker disabled
+          fi
+          
+          local state=$(cat circuit-breaker-state.txt 2>/dev/null || echo "closed")
+          local failure_count=$(cat failure-count.txt 2>/dev/null || echo "0")
+          local last_failure=$(cat last-failure-time.txt 2>/dev/null || echo "0")
+          local current_time=$(date +%s)
+          
+          case "$state" in
+            "open")
+              local time_since_failure=$((current_time - last_failure))
+              if [[ $time_since_failure -gt ${{ inputs.recovery-timeout }} ]]; then
+                echo "half-open" > circuit-breaker-state.txt
+                echo "🔄 Circuit breaker: open -> half-open (recovery timeout reached)"
+                return 0
+              else
+                echo "❌ Circuit breaker is OPEN ($((${{ inputs.recovery-timeout }} - time_since_failure))s until recovery)"
+                return 1
+              fi
+              ;;
+            "half-open")
+              echo "🔍 Circuit breaker: half-open (testing)"
+              return 0
+              ;;
+            *)
+              return 0
+              ;;
+          esac
+        }
+        
+        # Update circuit breaker on failure
+        update_circuit_breaker_failure() {
+          if [[ "${{ inputs.circuit-breaker }}" != "true" ]]; then
+            return
+          fi
+          
+          local state=$(cat circuit-breaker-state.txt 2>/dev/null || echo "closed")
+          local failure_count=$(cat failure-count.txt 2>/dev/null || echo "0")
+          
+          failure_count=$((failure_count + 1))
+          echo "$failure_count" > failure-count.txt
+          echo "$(date +%s)" > last-failure-time.txt
+          
+          if [[ $failure_count -ge ${{ inputs.failure-threshold }} ]]; then
+            echo "open" > circuit-breaker-state.txt
+            echo "🚨 Circuit breaker: $state -> open (failure threshold reached)"
+          elif [[ "$state" == "half-open" ]]; then
+            echo "open" > circuit-breaker-state.txt
+            echo "🚨 Circuit breaker: half-open -> open (test failed)"
+          fi
+        }
+        
+        # Update circuit breaker on success
+        update_circuit_breaker_success() {
+          if [[ "${{ inputs.circuit-breaker }}" != "true" ]]; then
+            return
+          fi
+          
+          local state=$(cat circuit-breaker-state.txt 2>/dev/null || echo "closed")
+          
+          echo "0" > failure-count.txt
+          echo "closed" > circuit-breaker-state.txt
+          
+          if [[ "$state" != "closed" ]]; then
+            echo "✅ Circuit breaker: $state -> closed (success)"
+          fi
+        }
+        
+        # Check if exit code should trigger retry
+        should_retry_exit_code() {
+          local exit_code=$1
+          for code in "${RETRY_EXIT_CODES[@]}"; do
+            if [[ "$exit_code" == "$code" ]]; then
+              return 0
+            fi
+          done
+          return 1
+        }
+        
+        # Check if error output contains retry patterns
+        should_retry_error() {
+          local error_output="$1"
+          for pattern in "${RETRY_ERROR_PATTERNS[@]}"; do
+            if echo "$error_output" | grep -qi "$pattern"; then
+              ERROR_PATTERN="$pattern"
+              return 0
+            fi
+          done
+          return 1
+        }
+        
+        # Main retry loop
+        while [[ $ATTEMPT -le $MAX_ATTEMPTS ]]; do
+          echo "🔄 Attempt $ATTEMPT/$MAX_ATTEMPTS"
+          
+          # Check circuit breaker
+          if ! check_circuit_breaker; then
+            FINAL_EXIT_CODE=1
+            break
+          fi
+          
+          # Execute command with timeout
+          set +e
+          if command -v timeout >/dev/null 2>&1; then
+            # Linux/macOS with timeout command
+            timeout $TIMEOUT_PER_ATTEMPT bash -c "$COMMAND" 2>&1 | tee attempt-$ATTEMPT.log
+            EXIT_CODE=${PIPESTATUS[0]}
+          else
+            # Fallback without timeout
+            bash -c "$COMMAND" 2>&1 | tee attempt-$ATTEMPT.log
+            EXIT_CODE=$?
+          fi
+          set -e
+          
+          FINAL_EXIT_CODE=$EXIT_CODE
+          
+          if [[ $EXIT_CODE -eq 0 ]]; then
+            echo "✅ Command succeeded on attempt $ATTEMPT"
+            SUCCESS=true
+            update_circuit_breaker_success
+            break
+          fi
+          
+          # Analyze failure
+          ERROR_OUTPUT=$(cat attempt-$ATTEMPT.log)
+          
+          echo "❌ Command failed with exit code $EXIT_CODE"
+          
+          # Check if we should retry
+          SHOULD_RETRY=false
+          
+          if should_retry_exit_code $EXIT_CODE; then
+            echo "🔄 Exit code $EXIT_CODE is retryable"
+            SHOULD_RETRY=true
+          fi
+          
+          if should_retry_error "$ERROR_OUTPUT"; then
+            echo "🔄 Error pattern '$ERROR_PATTERN' detected, retrying"
+            SHOULD_RETRY=true
+          fi
+          
+          if [[ $SHOULD_RETRY == false ]]; then
+            echo "🛑 Non-retryable error, stopping"
+            update_circuit_breaker_failure
+            break
+          fi
+          
+          if [[ $ATTEMPT -eq $MAX_ATTEMPTS ]]; then
+            echo "🛑 Maximum attempts reached"
+            update_circuit_breaker_failure
+            break
+          fi
+          
+          # Calculate delay with exponential backoff
+          if [[ $CURRENT_DELAY -gt $MAX_DELAY ]]; then
+            CURRENT_DELAY=$MAX_DELAY
+          fi
+          
+          echo "⏳ Waiting ${CURRENT_DELAY}s before retry..."
+          sleep $CURRENT_DELAY
+          
+          # Increase delay for next attempt
+          CURRENT_DELAY=$((CURRENT_DELAY * BACKOFF_MULTIPLIER))
+          ATTEMPT=$((ATTEMPT + 1))
+          
+          update_circuit_breaker_failure
+        done
+        
+        END_TIME=$(date +%s)
+        TOTAL_TIME=$((END_TIME - START_TIME))
+        
+        # Get final circuit breaker state
+        CIRCUIT_STATE=$(cat circuit-breaker-state.txt 2>/dev/null || echo "unknown")
+        
+        # Set outputs
+        echo "success=$SUCCESS" >> $GITHUB_OUTPUT
+        echo "attempts-made=$ATTEMPT" >> $GITHUB_OUTPUT
+        echo "total-time=$TOTAL_TIME" >> $GITHUB_OUTPUT
+        echo "final-exit-code=$FINAL_EXIT_CODE" >> $GITHUB_OUTPUT
+        echo "error-pattern=$ERROR_PATTERN" >> $GITHUB_OUTPUT
+        echo "circuit-breaker-state=$CIRCUIT_STATE" >> $GITHUB_OUTPUT
+        
+        echo "📊 Execution summary:"
+        echo "  Success: $SUCCESS"
+        echo "  Attempts made: $ATTEMPT"
+        echo "  Total time: ${TOTAL_TIME}s"
+        echo "  Final exit code: $FINAL_EXIT_CODE"
+        echo "  Error pattern: $ERROR_PATTERN"
+        echo "  Circuit breaker state: $CIRCUIT_STATE"
+        
+        # Exit with final exit code if failed
+        if [[ $SUCCESS == false ]]; then
+          exit $FINAL_EXIT_CODE
+        fi
+
+    - name: 📊 Generate retry report
+      if: always()
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📊 Generating retry execution report..."
+        
+        # Sammle alle Attempt-Logs
+        ATTEMPT_LOGS=()
+        for log in attempt-*.log; do
+          if [[ -f "$log" ]]; then
+            ATTEMPT_LOGS+=("$log")
+          fi
+        done
+        
+        # Erstelle Retry-Report
+        cat > retry-report.json << EOF
+        {
+          "command": "${{ inputs.command }}",
+          "configuration": {
+            "max_attempts": ${{ inputs.max-attempts }},
+            "initial_delay": ${{ inputs.initial-delay }},
+            "max_delay": ${{ inputs.max-delay }},
+            "backoff_multiplier": ${{ inputs.backoff-multiplier }},
+            "circuit_breaker": ${{ inputs.circuit-breaker }},
+            "timeout_per_attempt": ${{ inputs.timeout-per-attempt }}
+          },
+          "execution": {
+            "success": ${{ steps.execute.outputs.success }},
+            "attempts_made": ${{ steps.execute.outputs.attempts-made }},
+            "total_time": ${{ steps.execute.outputs.total-time }},
+            "final_exit_code": ${{ steps.execute.outputs.final-exit-code }},
+            "error_pattern": "${{ steps.execute.outputs.error-pattern }}",
+            "circuit_breaker_state": "${{ steps.execute.outputs.circuit-breaker-state }}"
+          },
+          "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        }
+        EOF
+        
+        echo "📊 Retry report:"
+        cat retry-report.json | jq .
+
+    - name: 🧹 Cleanup
+      if: always()
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🧹 Cleaning up retry artifacts..."
+        
+        # Entferne temporäre Dateien
+        rm -f attempt-*.log
+        rm -f circuit-breaker-state.txt
+        rm -f failure-count.txt
+        rm -f last-failure-time.txt
+        
+        echo "🧹 Cleanup completed"

@@ -1,0 +1,321 @@
+# .github/actions/matrix-build/action.yml
+name: 'Matrix Build Optimization'
+description: 'Optimized matrix builds with intelligent test selection and conditional execution'
+author: 'KEI-Agent Development Team'
+
+inputs:
+  matrix-config:
+    description: 'Matrix configuration as JSON string'
+    required: true
+  test-selection-strategy:
+    description: 'Test selection strategy (all, changed, fast, critical)'
+    required: false
+    default: 'all'
+  fail-fast:
+    description: 'Whether to fail fast on first failure'
+    required: false
+    default: 'false'
+  max-parallel:
+    description: 'Maximum parallel jobs'
+    required: false
+    default: '5'
+  timeout-minutes:
+    description: 'Timeout for each matrix job in minutes'
+    required: false
+    default: '30'
+  cache-strategy:
+    description: 'Cache strategy (aggressive, conservative, disabled)'
+    required: false
+    default: 'aggressive'
+  artifact-strategy:
+    description: 'Artifact upload strategy (all, failures-only, critical-only)'
+    required: false
+    default: 'failures-only'
+  retry-failed:
+    description: 'Whether to retry failed jobs'
+    required: false
+    default: 'true'
+  retry-count:
+    description: 'Number of retries for failed jobs'
+    required: false
+    default: '2'
+
+outputs:
+  matrix-jobs:
+    description: 'Generated matrix jobs as JSON'
+    value: ${{ steps.generate-matrix.outputs.matrix-jobs }}
+  total-jobs:
+    description: 'Total number of matrix jobs'
+    value: ${{ steps.generate-matrix.outputs.total-jobs }}
+  estimated-time:
+    description: 'Estimated total execution time in minutes'
+    value: ${{ steps.generate-matrix.outputs.estimated-time }}
+  cache-keys:
+    description: 'Generated cache keys for matrix jobs'
+    value: ${{ steps.generate-matrix.outputs.cache-keys }}
+  optimization-applied:
+    description: 'List of optimizations applied'
+    value: ${{ steps.optimize.outputs.optimizations }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🔍 Analyze repository changes
+      id: analyze-changes
+      shell: bash
+      run: |
+        echo "🔍 Analyzing repository changes for test selection..."
+        
+        # Bestimme geänderte Dateien
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          # PR: Vergleiche mit base branch
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.sha }})
+        elif [[ "${{ github.event_name }}" == "push" ]]; then
+          # Push: Vergleiche mit vorherigem Commit
+          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
+        else
+          # Andere Events: Alle Dateien als geändert betrachten
+          CHANGED_FILES="all"
+        fi
+        
+        echo "changed-files<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        # Kategorisiere Änderungen
+        CORE_CHANGED=false
+        TESTS_CHANGED=false
+        DOCS_CHANGED=false
+        CI_CHANGED=false
+        
+        if [[ "$CHANGED_FILES" == "all" ]]; then
+          CORE_CHANGED=true
+          TESTS_CHANGED=true
+        else
+          while IFS= read -r file; do
+            if [[ "$file" =~ ^kei_agent/ ]]; then
+              CORE_CHANGED=true
+            elif [[ "$file" =~ ^tests/ ]]; then
+              TESTS_CHANGED=true
+            elif [[ "$file" =~ ^docs/ || "$file" =~ \.md$ ]]; then
+              DOCS_CHANGED=true
+            elif [[ "$file" =~ ^\.github/ ]]; then
+              CI_CHANGED=true
+            fi
+          done <<< "$CHANGED_FILES"
+        fi
+        
+        echo "core-changed=$CORE_CHANGED" >> $GITHUB_OUTPUT
+        echo "tests-changed=$TESTS_CHANGED" >> $GITHUB_OUTPUT
+        echo "docs-changed=$DOCS_CHANGED" >> $GITHUB_OUTPUT
+        echo "ci-changed=$CI_CHANGED" >> $GITHUB_OUTPUT
+        
+        echo "📊 Change analysis:"
+        echo "  Core code: $CORE_CHANGED"
+        echo "  Tests: $TESTS_CHANGED"
+        echo "  Documentation: $DOCS_CHANGED"
+        echo "  CI/CD: $CI_CHANGED"
+
+    - name: 🎯 Generate optimized matrix
+      id: generate-matrix
+      shell: bash
+      run: |
+        echo "🎯 Generating optimized matrix configuration..."
+        
+        # Parse input matrix config
+        MATRIX_CONFIG='${{ inputs.matrix-config }}'
+        
+        # Bestimme Test-Selection basierend auf Änderungen und Strategie
+        STRATEGY="${{ inputs.test-selection-strategy }}"
+        CORE_CHANGED="${{ steps.analyze-changes.outputs.core-changed }}"
+        TESTS_CHANGED="${{ steps.analyze-changes.outputs.tests-changed }}"
+        
+        # Intelligente Matrix-Reduktion
+        python3 << 'EOF'
+        import json
+        import os
+        
+        # Parse Matrix-Konfiguration
+        matrix_config = json.loads(os.environ['MATRIX_CONFIG'])
+        strategy = os.environ['STRATEGY']
+        core_changed = os.environ['CORE_CHANGED'] == 'true'
+        tests_changed = os.environ['TESTS_CHANGED'] == 'true'
+        
+        # Standard Matrix
+        base_matrix = matrix_config.get('include', [])
+        if not base_matrix:
+            # Generiere aus os/python-version Kombinationen
+            os_list = matrix_config.get('os', ['ubuntu-latest'])
+            python_versions = matrix_config.get('python-version', ['3.11'])
+            base_matrix = [
+                {'os': os, 'python-version': py} 
+                for os in os_list 
+                for py in python_versions
+            ]
+        
+        optimized_matrix = []
+        
+        if strategy == 'fast' or (strategy == 'changed' and not core_changed):
+            # Nur Ubuntu + neueste Python-Version für schnelle Tests
+            optimized_matrix = [
+                job for job in base_matrix 
+                if job.get('os') == 'ubuntu-latest' and 
+                   job.get('python-version') in ['3.11', '3.12']
+            ][:2]  # Maximal 2 Jobs
+            
+        elif strategy == 'critical':
+            # Nur LTS-Versionen und Ubuntu
+            optimized_matrix = [
+                job for job in base_matrix 
+                if job.get('os') == 'ubuntu-latest' and 
+                   job.get('python-version') in ['3.9', '3.11']
+            ]
+            
+        elif strategy == 'changed' and core_changed:
+            # Vollständige Matrix bei Core-Änderungen
+            optimized_matrix = base_matrix
+            
+        else:  # strategy == 'all'
+            optimized_matrix = base_matrix
+        
+        # Füge Test-Marker basierend auf Strategie hinzu
+        for job in optimized_matrix:
+            if strategy == 'fast':
+                job['test-markers'] = 'not slow and not integration'
+            elif strategy == 'critical':
+                job['test-markers'] = 'critical or smoke'
+            elif strategy == 'changed':
+                if core_changed:
+                    job['test-markers'] = ''  # Alle Tests
+                else:
+                    job['test-markers'] = 'not slow'
+            else:
+                job['test-markers'] = ''
+        
+        # Ausgabe
+        result = {
+            'include': optimized_matrix
+        }
+        
+        print(f"Generated {len(optimized_matrix)} matrix jobs")
+        
+        # Schreibe zu GitHub Output
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f"matrix-jobs={json.dumps(result)}\n")
+            f.write(f"total-jobs={len(optimized_matrix)}\n")
+            f.write(f"estimated-time={len(optimized_matrix) * 15}\n")  # 15 min pro Job geschätzt
+        EOF
+
+    - name: 🚀 Apply optimizations
+      id: optimize
+      shell: bash
+      run: |
+        echo "🚀 Applying matrix optimizations..."
+        
+        OPTIMIZATIONS=[]
+        
+        # Cache-Optimierung
+        CACHE_STRATEGY="${{ inputs.cache-strategy }}"
+        if [[ "$CACHE_STRATEGY" == "aggressive" ]]; then
+          OPTIMIZATIONS+=("aggressive-caching")
+        fi
+        
+        # Parallelisierung
+        MAX_PARALLEL="${{ inputs.max-parallel }}"
+        TOTAL_JOBS="${{ steps.generate-matrix.outputs.total-jobs }}"
+        if [[ "$TOTAL_JOBS" -gt "$MAX_PARALLEL" ]]; then
+          OPTIMIZATIONS+=("parallel-limiting")
+        fi
+        
+        # Retry-Mechanismus
+        if [[ "${{ inputs.retry-failed }}" == "true" ]]; then
+          OPTIMIZATIONS+=("auto-retry")
+        fi
+        
+        # Test-Selection
+        STRATEGY="${{ inputs.test-selection-strategy }}"
+        if [[ "$STRATEGY" != "all" ]]; then
+          OPTIMIZATIONS+=("intelligent-test-selection")
+        fi
+        
+        # Artifact-Optimierung
+        ARTIFACT_STRATEGY="${{ inputs.artifact-strategy }}"
+        if [[ "$ARTIFACT_STRATEGY" != "all" ]]; then
+          OPTIMIZATIONS+=("selective-artifacts")
+        fi
+        
+        # Generiere Cache-Keys
+        python3 << 'EOF'
+        import json
+        import hashlib
+        import os
+        
+        matrix_jobs = json.loads('${{ steps.generate-matrix.outputs.matrix-jobs }}')
+        cache_keys = {}
+        
+        for i, job in enumerate(matrix_jobs.get('include', [])):
+            # Generiere eindeutigen Cache-Key für jeden Job
+            job_str = json.dumps(job, sort_keys=True)
+            job_hash = hashlib.md5(job_str.encode()).hexdigest()[:8]
+            
+            cache_key = f"matrix-{job.get('os', 'unknown')}-py{job.get('python-version', 'unknown')}-{job_hash}"
+            cache_keys[f"job-{i}"] = cache_key
+        
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f"cache-keys={json.dumps(cache_keys)}\n")
+        EOF
+        
+        # Konvertiere Array zu JSON
+        OPTIMIZATIONS_JSON=$(printf '%s\n' "${OPTIMIZATIONS[@]}" | jq -R . | jq -s .)
+        echo "optimizations=$OPTIMIZATIONS_JSON" >> $GITHUB_OUTPUT
+        
+        echo "🚀 Applied optimizations:"
+        printf '%s\n' "${OPTIMIZATIONS[@]}" | sed 's/^/  - /'
+
+    - name: 📊 Generate execution plan
+      shell: bash
+      run: |
+        echo "📊 Matrix execution plan:"
+        echo "  Total jobs: ${{ steps.generate-matrix.outputs.total-jobs }}"
+        echo "  Estimated time: ${{ steps.generate-matrix.outputs.estimated-time }} minutes"
+        echo "  Max parallel: ${{ inputs.max-parallel }}"
+        echo "  Fail fast: ${{ inputs.fail-fast }}"
+        echo "  Retry enabled: ${{ inputs.retry-failed }}"
+        echo "  Cache strategy: ${{ inputs.cache-strategy }}"
+        echo "  Artifact strategy: ${{ inputs.artifact-strategy }}"
+        
+        echo ""
+        echo "🎯 Matrix jobs:"
+        echo '${{ steps.generate-matrix.outputs.matrix-jobs }}' | jq -r '.include[] | "  - OS: \(.os), Python: \(.["python-version"]), Tests: \(.["test-markers"] // "all")"'
+        
+        echo ""
+        echo "🚀 Optimizations applied:"
+        echo '${{ steps.optimize.outputs.optimizations }}' | jq -r '.[] | "  - \(.)"'
+
+    - name: ⚠️ Validate matrix configuration
+      shell: bash
+      run: |
+        echo "⚠️ Validating matrix configuration..."
+        
+        TOTAL_JOBS="${{ steps.generate-matrix.outputs.total-jobs }}"
+        MAX_PARALLEL="${{ inputs.max-parallel }}"
+        ESTIMATED_TIME="${{ steps.generate-matrix.outputs.estimated-time }}"
+        
+        # Validierungen
+        if [[ "$TOTAL_JOBS" -eq 0 ]]; then
+          echo "❌ Error: No matrix jobs generated"
+          exit 1
+        fi
+        
+        if [[ "$TOTAL_JOBS" -gt 20 ]]; then
+          echo "⚠️ Warning: Large matrix ($TOTAL_JOBS jobs) may consume significant resources"
+        fi
+        
+        if [[ "$ESTIMATED_TIME" -gt 120 ]]; then
+          echo "⚠️ Warning: Long estimated execution time ($ESTIMATED_TIME minutes)"
+        fi
+        
+        # Prüfe Matrix-JSON Syntax
+        echo '${{ steps.generate-matrix.outputs.matrix-jobs }}' | jq . > /dev/null
+        
+        echo "✅ Matrix configuration validated successfully"

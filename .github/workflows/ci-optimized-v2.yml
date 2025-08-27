@@ -1,0 +1,329 @@
+# .github/workflows/ci-optimized-v2.yml
+name: 🚀 CI/CD Pipeline - Optimized V2
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      test_strategy:
+        description: 'Test execution strategy'
+        required: false
+        default: 'changed'
+        type: choice
+        options:
+          - all
+          - changed
+          - fast
+          - critical
+
+env:
+  PYTHON_DEFAULT_VERSION: '3.11'
+
+jobs:
+  # ============================================================================
+  # INTELLIGENT CHANGE DETECTION
+  # ============================================================================
+  detect-changes:
+    name: 🔍 Intelligent Change Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      core-changed: ${{ steps.changes.outputs.core-changed }}
+      tests-changed: ${{ steps.changes.outputs.tests-changed }}
+      docs-changed: ${{ steps.changes.outputs.docs-changed }}
+      ci-changed: ${{ steps.changes.outputs.ci-changed }}
+      dependencies-changed: ${{ steps.changes.outputs.dependencies-changed }}
+      impact-level: ${{ steps.changes.outputs.impact-level }}
+      skip-tests: ${{ steps.changes.outputs.skip-tests }}
+      skip-security: ${{ steps.changes.outputs.skip-security }}
+      skip-docs: ${{ steps.changes.outputs.skip-docs }}
+      fast-mode: ${{ steps.changes.outputs.fast-mode }}
+      deployment-required: ${{ steps.changes.outputs.deployment-required }}
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Für Change-Detection
+
+      - name: 🔍 Detect Changes with Impact Analysis
+        id: changes
+        uses: ./.github/actions/detect-changes
+        with:
+          impact-analysis: 'true'
+          dependency-tracking: 'true'
+          test-mapping: 'true'
+
+  # ============================================================================
+  # MATRIX BUILD OPTIMIZATION
+  # ============================================================================
+  optimize-matrix:
+    name: 🎯 Optimize Test Matrix
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    timeout-minutes: 5
+    outputs:
+      matrix-jobs: ${{ steps.matrix.outputs.matrix-jobs }}
+      total-jobs: ${{ steps.matrix.outputs.total-jobs }}
+      estimated-time: ${{ steps.matrix.outputs.estimated-time }}
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🎯 Generate Optimized Matrix
+        id: matrix
+        uses: ./.github/actions/matrix-build
+        with:
+          matrix-config: |
+            {
+              "os": ["ubuntu-latest", "windows-latest", "macos-latest"],
+              "python-version": ["3.9", "3.10", "3.11", "3.12"]
+            }
+          test-selection-strategy: ${{ inputs.test_strategy || (needs.detect-changes.outputs.fast-mode == 'true' && 'fast' || 'changed') }}
+          fail-fast: 'false'
+          max-parallel: '8'
+          cache-strategy: 'aggressive'
+          retry-failed: 'true'
+
+  # ============================================================================
+  # OPTIMIZED MATRIX TESTING
+  # ============================================================================
+  matrix-tests:
+    name: 🧪 Matrix Tests (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    needs: [detect-changes, optimize-matrix]
+    if: needs.detect-changes.outputs.skip-tests != 'true'
+    timeout-minutes: 45
+    
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.optimize-matrix.outputs.matrix-jobs) }}
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📊 Start Performance Monitoring
+        id: perf-start
+        uses: ./.github/actions/performance-monitor
+        with:
+          monitor-type: 'job'
+          performance-baseline: '.github/performance-baseline.json'
+
+      - name: 🐍 Setup Python Environment
+        uses: ./.github/actions/setup-python-env
+        with:
+          python-version: ${{ matrix.python-version }}
+          install-dev-dependencies: 'true'
+          install-test-dependencies: 'true'
+
+      - name: 🧪 Run Tests with Retry
+        uses: ./.github/actions/retry-with-backoff
+        with:
+          command: |
+            python -m pytest ${{ matrix.test-markers && format('-m "{0}"', matrix.test-markers) || '' }} \
+              --cov=kei_agent \
+              --cov-report=xml \
+              --cov-report=html \
+              --junit-xml=test-results.xml \
+              -v
+          max-attempts: '2'
+          initial-delay: '10'
+          retry-on-exit-codes: '1,2'
+          retry-on-errors: 'timeout,connection,flaky'
+
+      - name: 📊 Upload Test Results
+        if: always()
+        uses: ./.github/actions/upload-artifacts
+        with:
+          artifact-name: 'test-results-${{ matrix.os }}-py${{ matrix.python-version }}'
+          artifact-path: |
+            test-results.xml
+            coverage.xml
+            htmlcov/
+          retention-days: 'auto'
+          compression-level: '6'
+
+  # ============================================================================
+  # SECURITY SCANNING (CONDITIONAL)
+  # ============================================================================
+  security-scan:
+    name: 🛡️ Security Analysis
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.skip-security != 'true'
+    timeout-minutes: 20
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python Environment
+        uses: ./.github/actions/setup-python-env
+        with:
+          python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+          install-dev-dependencies: 'false'
+          extra-dependencies: 'bandit safety pip-audit'
+
+      - name: 🛡️ Comprehensive Security Scan
+        uses: ./.github/actions/security-scan
+        with:
+          bandit-enabled: 'true'
+          safety-enabled: 'true'
+          pip-audit-enabled: 'true'
+          bandit-severity: 'medium'
+          fail-on-error: ${{ needs.detect-changes.outputs.impact-level == 'high' }}
+          upload-reports: 'true'
+
+  # ============================================================================
+  # DOCUMENTATION BUILD (CONDITIONAL)
+  # ============================================================================
+  docs-build:
+    name: 📚 Documentation Build
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.skip-docs != 'true' || needs.detect-changes.outputs.docs-changed == 'true'
+    timeout-minutes: 15
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python Environment
+        uses: ./.github/actions/setup-python-env
+        with:
+          python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+          install-dev-dependencies: 'false'
+          extra-dependencies: 'mkdocs mkdocs-material mkdocs-mermaid2-plugin'
+
+      - name: 📚 Build Documentation
+        uses: ./.github/actions/retry-with-backoff
+        with:
+          command: 'mkdocs build --strict'
+          max-attempts: '2'
+          initial-delay: '5'
+
+      - name: 📤 Upload Documentation
+        uses: ./.github/actions/upload-artifacts
+        with:
+          artifact-name: 'documentation'
+          artifact-path: 'site/'
+          retention-days: 'auto'
+
+  # ============================================================================
+  # CI SUMMARY WITH PERFORMANCE ANALYSIS
+  # ============================================================================
+  ci-summary:
+    name: 📋 CI Summary & Performance Analysis
+    runs-on: ubuntu-latest
+    needs: [detect-changes, optimize-matrix, matrix-tests, security-scan, docs-build]
+    if: always()
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📊 Comprehensive Performance Analysis
+        id: performance
+        uses: ./.github/actions/performance-monitor
+        with:
+          monitor-type: 'workflow'
+          performance-baseline: '.github/performance-baseline.json'
+          alert-thresholds: '{"duration_increase": 30, "memory_increase": 25}'
+          comparison-enabled: 'true'
+
+      - name: 📋 Generate CI Summary
+        shell: bash
+        run: |
+          echo "📋 Generating comprehensive CI summary..."
+          
+          # Sammle Job-Status
+          MATRIX_STATUS="${{ needs.matrix-tests.result }}"
+          SECURITY_STATUS="${{ needs.security-scan.result }}"
+          DOCS_STATUS="${{ needs.docs-build.result }}"
+          
+          # Sammle Change-Detection Ergebnisse
+          IMPACT_LEVEL="${{ needs.detect-changes.outputs.impact-level }}"
+          DEPLOYMENT_REQUIRED="${{ needs.detect-changes.outputs.deployment-required }}"
+          TOTAL_JOBS="${{ needs.optimize-matrix.outputs.total-jobs }}"
+          ESTIMATED_TIME="${{ needs.optimize-matrix.outputs.estimated-time }}"
+          
+          # Erstelle Summary
+          cat > ci-summary.md << EOF
+          # 🚀 CI/CD Pipeline Summary
+          
+          **Workflow:** ${{ github.workflow }}  
+          **Run ID:** ${{ github.run_id }}  
+          **Event:** ${{ github.event_name }}  
+          **Branch:** ${{ github.ref_name }}  
+          **Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          ## 🔍 Change Analysis
+          
+          - **Impact Level:** $IMPACT_LEVEL
+          - **Core Changed:** ${{ needs.detect-changes.outputs.core-changed }}
+          - **Tests Changed:** ${{ needs.detect-changes.outputs.tests-changed }}
+          - **Dependencies Changed:** ${{ needs.detect-changes.outputs.dependencies-changed }}
+          - **Deployment Required:** $DEPLOYMENT_REQUIRED
+          
+          ## 🎯 Matrix Optimization
+          
+          - **Total Jobs:** $TOTAL_JOBS
+          - **Estimated Time:** ${ESTIMATED_TIME} minutes
+          - **Strategy:** ${{ inputs.test_strategy || 'auto-detected' }}
+          
+          ## 📊 Job Results
+          
+          | Job | Status | Skipped |
+          |-----|--------|---------|
+          | Matrix Tests | $MATRIX_STATUS | ${{ needs.detect-changes.outputs.skip-tests }} |
+          | Security Scan | $SECURITY_STATUS | ${{ needs.detect-changes.outputs.skip-security }} |
+          | Documentation | $DOCS_STATUS | ${{ needs.detect-changes.outputs.skip-docs }} |
+          
+          ## 📈 Performance Metrics
+          
+          - **Performance Score:** ${{ steps.performance.outputs.performance-score }}/100
+          - **Baseline Comparison:** ${{ steps.performance.outputs.baseline-comparison }}
+          - **Alerts Triggered:** ${{ steps.performance.outputs.alerts-triggered }}
+          
+          ## 💡 Recommendations
+          
+          $(echo '${{ steps.performance.outputs.recommendations }}' | jq -r '.[] | "- " + .' 2>/dev/null || echo "- No specific recommendations")
+          
+          EOF
+          
+          echo "📋 CI Summary generated:"
+          cat ci-summary.md
+
+      - name: 📤 Upload CI Summary
+        uses: ./.github/actions/upload-artifacts
+        with:
+          artifact-name: 'ci-summary'
+          artifact-path: 'ci-summary.md'
+          retention-days: 'auto'
+
+      - name: 📢 Notify on Critical Issues
+        if: needs.detect-changes.outputs.impact-level == 'critical' || steps.performance.outputs.alerts-triggered > '2'
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow_name: ${{ github.workflow }}
+          job_name: ${{ github.job }}
+          failure_reason: "Critical issues detected: Impact level ${{ needs.detect-changes.outputs.impact-level }}, Performance alerts: ${{ steps.performance.outputs.alerts-triggered }}"
+          severity: "high"
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          teams_webhook_url: ${{ secrets.TEAMS_WEBHOOK_URL }}
+
+      - name: ✅ CI Pipeline Completed
+        shell: bash
+        run: |
+          echo "✅ CI Pipeline completed successfully!"
+          echo "📊 Summary:"
+          echo "  - Impact Level: ${{ needs.detect-changes.outputs.impact-level }}"
+          echo "  - Matrix Jobs: ${{ needs.optimize-matrix.outputs.total-jobs }}"
+          echo "  - Performance Score: ${{ steps.performance.outputs.performance-score }}/100"
+          echo "  - Deployment Required: ${{ needs.detect-changes.outputs.deployment-required }}"
