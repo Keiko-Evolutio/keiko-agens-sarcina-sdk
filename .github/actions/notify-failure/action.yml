@@ -1,0 +1,413 @@
+# .github/actions/notify-failure/action.yml
+name: 'Notify on Workflow Failure'
+description: 'Sends notifications to Slack/Teams when critical workflows fail'
+author: 'KEI-Agent Development Team'
+
+inputs:
+  workflow_name:
+    description: 'Name of the workflow that failed'
+    required: true
+  job_name:
+    description: 'Name of the job that failed'
+    required: true
+  failure_reason:
+    description: 'Reason for the failure'
+    required: false
+    default: 'Unknown failure'
+  severity:
+    description: 'Severity level (low, medium, high, critical)'
+    required: false
+    default: 'medium'
+  slack_webhook_url:
+    description: 'Slack webhook URL for notifications'
+    required: false
+  teams_webhook_url:
+    description: 'Microsoft Teams webhook URL for notifications'
+    required: false
+  github_token:
+    description: 'GitHub token for creating issues'
+    required: false
+    default: ${{ github.token }}
+  create_issue:
+    description: 'Whether to create a GitHub issue for the failure'
+    required: false
+    default: 'true'
+  notify_on_schedule:
+    description: 'Whether to notify on scheduled workflow failures'
+    required: false
+    default: 'true'
+  notify_on_push:
+    description: 'Whether to notify on push workflow failures'
+    required: false
+    default: 'false'
+  notify_on_pr:
+    description: 'Whether to notify on PR workflow failures'
+    required: false
+    default: 'false'
+
+outputs:
+  notification_sent:
+    description: 'Whether notification was successfully sent'
+    value: ${{ steps.notify.outputs.notification_sent }}
+  issue_created:
+    description: 'Whether GitHub issue was created'
+    value: ${{ steps.create_issue.outputs.issue_created }}
+  issue_number:
+    description: 'Number of created GitHub issue'
+    value: ${{ steps.create_issue.outputs.issue_number }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🔍 Determine notification requirements
+      id: check_requirements
+      shell: bash
+      run: |
+        # Bestimme ob Benachrichtigung gesendet werden soll
+        SHOULD_NOTIFY="false"
+        
+        case "${{ github.event_name }}" in
+          "schedule")
+            if [[ "${{ inputs.notify_on_schedule }}" == "true" ]]; then
+              SHOULD_NOTIFY="true"
+            fi
+            ;;
+          "push")
+            if [[ "${{ inputs.notify_on_push }}" == "true" ]]; then
+              SHOULD_NOTIFY="true"
+            fi
+            ;;
+          "pull_request")
+            if [[ "${{ inputs.notify_on_pr }}" == "true" ]]; then
+              SHOULD_NOTIFY="true"
+            fi
+            ;;
+          "workflow_dispatch")
+            SHOULD_NOTIFY="true"
+            ;;
+        esac
+        
+        # Immer benachrichtigen bei kritischen Fehlern
+        if [[ "${{ inputs.severity }}" == "critical" ]]; then
+          SHOULD_NOTIFY="true"
+        fi
+        
+        echo "should_notify=$SHOULD_NOTIFY" >> $GITHUB_OUTPUT
+        echo "📋 Notification required: $SHOULD_NOTIFY"
+
+    - name: 📊 Prepare notification data
+      id: prepare_data
+      if: steps.check_requirements.outputs.should_notify == 'true'
+      shell: bash
+      run: |
+        # Erstelle Notification-Daten
+        TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        
+        # Severity-spezifische Emojis und Farben
+        case "${{ inputs.severity }}" in
+          "critical")
+            EMOJI="🚨"
+            COLOR="#FF0000"
+            PRIORITY="CRITICAL"
+            ;;
+          "high")
+            EMOJI="🔥"
+            COLOR="#FF6600"
+            PRIORITY="HIGH"
+            ;;
+          "medium")
+            EMOJI="⚠️"
+            COLOR="#FFAA00"
+            PRIORITY="MEDIUM"
+            ;;
+          "low")
+            EMOJI="ℹ️"
+            COLOR="#0099FF"
+            PRIORITY="LOW"
+            ;;
+          *)
+            EMOJI="❌"
+            COLOR="#666666"
+            PRIORITY="UNKNOWN"
+            ;;
+        esac
+        
+        # Erstelle Slack-Nachricht
+        SLACK_MESSAGE=$(cat << EOF
+        {
+          "attachments": [
+            {
+              "color": "$COLOR",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "$EMOJI Workflow Failure - $PRIORITY Priority"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Workflow:*\n${{ inputs.workflow_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Job:*\n${{ inputs.job_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n${{ github.ref_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Triggered by:*\n${{ github.event_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Time:*\n$TIMESTAMP"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Failure Reason:*\n${{ inputs.failure_reason }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Workflow Run"
+                      },
+                      "url": "$WORKFLOW_URL",
+                      "style": "danger"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        EOF
+        )
+        
+        # Erstelle Teams-Nachricht
+        TEAMS_MESSAGE=$(cat << EOF
+        {
+          "@type": "MessageCard",
+          "@context": "http://schema.org/extensions",
+          "themeColor": "$COLOR",
+          "summary": "Workflow Failure: ${{ inputs.workflow_name }}",
+          "sections": [
+            {
+              "activityTitle": "$EMOJI Workflow Failure - $PRIORITY Priority",
+              "activitySubtitle": "${{ github.repository }}",
+              "facts": [
+                {
+                  "name": "Workflow",
+                  "value": "${{ inputs.workflow_name }}"
+                },
+                {
+                  "name": "Job",
+                  "value": "${{ inputs.job_name }}"
+                },
+                {
+                  "name": "Branch",
+                  "value": "${{ github.ref_name }}"
+                },
+                {
+                  "name": "Triggered by",
+                  "value": "${{ github.event_name }}"
+                },
+                {
+                  "name": "Time",
+                  "value": "$TIMESTAMP"
+                },
+                {
+                  "name": "Failure Reason",
+                  "value": "${{ inputs.failure_reason }}"
+                }
+              ],
+              "markdown": true
+            }
+          ],
+          "potentialAction": [
+            {
+              "@type": "OpenUri",
+              "name": "View Workflow Run",
+              "targets": [
+                {
+                  "os": "default",
+                  "uri": "$WORKFLOW_URL"
+                }
+              ]
+            }
+          ]
+        }
+        EOF
+        )
+        
+        # Speichere Nachrichten in Dateien
+        echo "$SLACK_MESSAGE" > slack_message.json
+        echo "$TEAMS_MESSAGE" > teams_message.json
+        
+        # Setze Outputs
+        echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+        echo "workflow_url=$WORKFLOW_URL" >> $GITHUB_OUTPUT
+        echo "emoji=$EMOJI" >> $GITHUB_OUTPUT
+        echo "priority=$PRIORITY" >> $GITHUB_OUTPUT
+
+    - name: 📢 Send Slack notification
+      id: slack_notify
+      if: steps.check_requirements.outputs.should_notify == 'true' && inputs.slack_webhook_url != ''
+      shell: bash
+      run: |
+        echo "📢 Sending Slack notification..."
+        
+        RESPONSE=$(curl -s -w "%{http_code}" -o response.txt \
+          -X POST \
+          -H "Content-Type: application/json" \
+          -d @slack_message.json \
+          "${{ inputs.slack_webhook_url }}")
+        
+        HTTP_CODE="${RESPONSE: -3}"
+        
+        if [[ "$HTTP_CODE" == "200" ]]; then
+          echo "✅ Slack notification sent successfully"
+          echo "slack_sent=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Failed to send Slack notification (HTTP $HTTP_CODE)"
+          cat response.txt
+          echo "slack_sent=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: 📢 Send Teams notification
+      id: teams_notify
+      if: steps.check_requirements.outputs.should_notify == 'true' && inputs.teams_webhook_url != ''
+      shell: bash
+      run: |
+        echo "📢 Sending Teams notification..."
+        
+        RESPONSE=$(curl -s -w "%{http_code}" -o response.txt \
+          -X POST \
+          -H "Content-Type: application/json" \
+          -d @teams_message.json \
+          "${{ inputs.teams_webhook_url }}")
+        
+        HTTP_CODE="${RESPONSE: -3}"
+        
+        if [[ "$HTTP_CODE" == "200" ]]; then
+          echo "✅ Teams notification sent successfully"
+          echo "teams_sent=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Failed to send Teams notification (HTTP $HTTP_CODE)"
+          cat response.txt
+          echo "teams_sent=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: 🐛 Create GitHub issue
+      id: create_issue
+      if: steps.check_requirements.outputs.should_notify == 'true' && inputs.create_issue == 'true' && inputs.severity != 'low'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github_token }}
+        script: |
+          const { emoji, priority, timestamp, workflow_url } = ${{ toJSON(steps.prepare_data.outputs) }};
+          
+          const issueTitle = `${emoji} Workflow Failure: ${{ inputs.workflow_name }} - ${priority} Priority`;
+          
+          const issueBody = `
+          ## ${emoji} Workflow Failure Report
+          
+          **Priority:** ${priority}  
+          **Time:** ${timestamp}
+          
+          ### Failure Details
+          - **Repository:** ${{ github.repository }}
+          - **Workflow:** ${{ inputs.workflow_name }}
+          - **Job:** ${{ inputs.job_name }}
+          - **Branch:** ${{ github.ref_name }}
+          - **Triggered by:** ${{ github.event_name }}
+          - **Run ID:** ${{ github.run_id }}
+          
+          ### Failure Reason
+          \`\`\`
+          ${{ inputs.failure_reason }}
+          \`\`\`
+          
+          ### Actions Required
+          - [ ] Investigate the failure cause
+          - [ ] Fix the underlying issue
+          - [ ] Verify the fix with a test run
+          - [ ] Close this issue when resolved
+          
+          ### Links
+          - [View Workflow Run](${workflow_url})
+          - [View Repository](${{ github.server_url }}/${{ github.repository }})
+          
+          ---
+          *This issue was automatically created by the workflow failure notification system.*
+          `;
+          
+          try {
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: [
+                'workflow-failure',
+                'automated-issue',
+                `priority-${priority.toLowerCase()}`,
+                `severity-${{ inputs.severity }}`
+              ]
+            });
+            
+            console.log(`✅ Created issue #${issue.data.number}`);
+            core.setOutput('issue_created', 'true');
+            core.setOutput('issue_number', issue.data.number.toString());
+            
+            return issue.data.number;
+          } catch (error) {
+            console.error('❌ Failed to create issue:', error);
+            core.setOutput('issue_created', 'false');
+            throw error;
+          }
+
+    - name: 📋 Set final outputs
+      id: notify
+      if: always()
+      shell: bash
+      run: |
+        SLACK_SENT="${{ steps.slack_notify.outputs.slack_sent || 'false' }}"
+        TEAMS_SENT="${{ steps.teams_notify.outputs.teams_sent || 'false' }}"
+        SHOULD_NOTIFY="${{ steps.check_requirements.outputs.should_notify }}"
+        
+        if [[ "$SHOULD_NOTIFY" == "true" ]] && ([[ "$SLACK_SENT" == "true" ]] || [[ "$TEAMS_SENT" == "true" ]]); then
+          echo "notification_sent=true" >> $GITHUB_OUTPUT
+          echo "✅ Notification process completed successfully"
+        else
+          echo "notification_sent=false" >> $GITHUB_OUTPUT
+          echo "ℹ️ No notifications sent (should_notify: $SHOULD_NOTIFY, slack: $SLACK_SENT, teams: $TEAMS_SENT)"
+        fi
+
+    - name: 🧹 Cleanup
+      if: always()
+      shell: bash
+      run: |
+        # Entferne temporäre Dateien
+        rm -f slack_message.json teams_message.json response.txt
+        echo "🧹 Cleanup completed"

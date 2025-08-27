@@ -163,6 +163,21 @@ jobs:
           semgrep-report.json
         retention-days: 30
 
+    # Notify on security scan failure
+    - name: 📢 Notify on security scan failure
+      if: failure()
+      uses: ./.github/actions/notify-failure
+      with:
+        workflow_name: ${{ github.workflow }}
+        job_name: ${{ github.job }}
+        failure_reason: "Security scan failed - potential security vulnerabilities detected"
+        severity: "critical"
+        slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        teams_webhook_url: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        notify_on_push: "true"
+        notify_on_schedule: "true"
+        notify_on_pr: "true"
+
   sbom-generation:
     name: 📦 Generate SBOM
     runs-on: ubuntu-latest
