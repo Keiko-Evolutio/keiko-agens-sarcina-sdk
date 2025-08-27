@@ -92,26 +92,18 @@ jobs:
       - name: 📦 Install Dependencies
         shell: bash
         run: |
-          set -x
-          python -m pip install --upgrade pip
-          echo "📋 Installiere ALLE Dependencies DIREKT..."
-          pip install "httpx>=0.24.0,<1.0.0" "aiohttp>=3.8.0,<4.0.0" "websockets>=11.0.0,<12.0.0" "pydantic>=2.0.0,<3.0.0" "tenacity>=8.2.0,<9.0.0" "msgpack>=1.0.0,<2.0.0" "packaging>=21.0" "python-dateutil>=2.8.0" "psutil>=5.9.0,<8.0.0" "structlog>=23.1.0,<26.0.0" "typing-extensions>=4.0.0"
-          pip install "opentelemetry-api>=1.20.0,<2.0.0" "opentelemetry-sdk>=1.20.0,<2.0.0" "opentelemetry-exporter-jaeger>=1.20.0,<2.0.0" "opentelemetry-exporter-zipkin-json>=1.20.0,<2.0.0" "opentelemetry-propagator-b3>=1.20.0,<2.0.0"
-          pip install "jsonschema>=4.17.0,<5.0.0" "pytest-cov>=4.1.0,<5.0.0"
-          pip install "pytest>=7.4.0,<8.0.0" "pytest-asyncio>=0.21.0,<1.0.0" "pytest-mock>=3.11.0,<4.0.0" "pytest-benchmark>=4.0.0,<6.0.0" "pytest-cov>=4.1.0,<5.0.0" "ruff>=0.1.0,<1.0.0" "mypy>=1.5.0,<2.0.0" "bandit>=1.7.0,<2.0.0" "pre-commit>=3.4.0,<4.0.0" "twine>=4.0.0,<5.0.0" "build>=0.10.0,<2.0.0"
-          pip install -e "." || echo "WARNING: Editable install fehlgeschlagen, aber Dependencies sind installiert"
+          set -e
+          python -m pip install --upgrade pip setuptools wheel
+          echo "📋 Installiere Dependencies über pyproject.toml..."
+          pip install -e ".[dev]"
           echo "SUCCESS: Dependencies erfolgreich installiert"
-          echo "INFO: Installierte Haupt-Dependencies:"
-          pip list | grep -E "(httpx|aiohttp|websockets|pydantic|tenacity)" || true
-          echo "INFO: Installierte Dev-Dependencies:"
-          pip list | grep -E "(ruff|mypy|bandit|pytest)" || true
+
+          # Validiere kritische Dependencies
+          python -c "import httpx, aiohttp, websockets, pydantic; print('✅ Kritische Dependencies verfügbar')"
+          python -c "import pytest, ruff; print('✅ Dev-Dependencies verfügbar')"
 
           # Test basic import
-          python -c "import kei_agent; print(f'SUCCESS: KEI-Agent SDK importiert: {kei_agent.__version__ if hasattr(kei_agent, \"__version__\") else \"unknown\"}')" || echo "WARNING: Import-Test fehlgeschlagen"
-
-          # Test kritische Dependencies
-          python -c "import httpx; print('SUCCESS: httpx verfügbar')" || echo "ERROR: httpx fehlt"
-          python -c "import aiohttp; print('SUCCESS: aiohttp verfügbar')" || echo "ERROR: aiohttp fehlt"
+          python -c "import kei_agent; print(f'✅ KEI-Agent SDK importiert: {getattr(kei_agent, \"__version__\", \"unknown\")}')"
 
       # Ruff Linting
       - name: 🔍 Ruff Linting
@@ -186,13 +178,12 @@ jobs:
       - name: 📦 Install Dependencies
         shell: bash
         run: |
-          set -x
-          python -m pip install --upgrade pip
-          echo "📋 Installiere ALLE Dependencies DIREKT..."
-          pip install "httpx>=0.24.0,<1.0.0" "aiohttp>=3.8.0,<4.0.0" "websockets>=11.0.0,<12.0.0" "pydantic>=2.0.0,<3.0.0" "tenacity>=8.2.0,<9.0.0" "pytest>=7.4.0,<8.0.0" "pytest-asyncio>=0.21.0,<1.0.0" "pytest-mock>=3.11.0,<4.0.0" "pytest-benchmark>=4.0.0,<6.0.0" "pytest-cov>=4.1.0,<5.0.0" "jsonschema>=4.17.0,<5.0.0"
-          pip install -e "." || echo "WARNING: Editable install fehlgeschlagen, aber Dependencies sind installiert"
+          set -e
+          python -m pip install --upgrade pip setuptools wheel
+          echo "📋 Installiere Dependencies über pyproject.toml..."
+          pip install -e ".[dev]"
           echo "SUCCESS: Dependencies installiert"
-          python -c "import httpx, aiohttp; print('SUCCESS: Kritische Dependencies verfügbar')"
+          python -c "import httpx, aiohttp; print('✅ Kritische Dependencies verfügbar')"
 
       # Schnelle Tests (Unit Tests)
       - name: 🚀 Fast Tests
@@ -234,19 +225,14 @@ jobs:
       - name: 📦 Install Dependencies
         shell: bash
         run: |
-          set -x
-          python -m pip install --upgrade pip
-          echo "📋 Installiere ALLE Dependencies DIREKT (pyproject.toml funktioniert nicht)..."
-          pip install "httpx>=0.24.0,<1.0.0" "aiohttp>=3.8.0,<4.0.0" "websockets>=11.0.0,<12.0.0" "pydantic>=2.0.0,<3.0.0" "tenacity>=8.2.0,<9.0.0" "msgpack>=1.0.0,<2.0.0" "packaging>=21.0" "python-dateutil>=2.8.0" "psutil>=5.9.0,<8.0.0" "structlog>=23.1.0,<26.0.0" "typing-extensions>=4.0.0"
-          pip install "opentelemetry-api>=1.20.0,<2.0.0" "opentelemetry-sdk>=1.20.0,<2.0.0" "opentelemetry-exporter-jaeger>=1.20.0,<2.0.0" "opentelemetry-exporter-zipkin-json>=1.20.0,<2.0.0" "opentelemetry-propagator-b3>=1.20.0,<2.0.0"
-          pip install "jsonschema>=4.17.0,<5.0.0"
-          pip install "pytest>=7.4.0,<8.0.0" "pytest-asyncio>=0.21.0,<1.0.0" "pytest-mock>=3.11.0,<4.0.0" "pytest-benchmark>=4.0.0,<6.0.0" "pytest-cov>=4.1.0,<5.0.0" "ruff>=0.1.0,<1.0.0" "mypy>=1.5.0,<2.0.0" "bandit>=1.7.0,<2.0.0" "pre-commit>=3.4.0,<4.0.0" "twine>=4.0.0,<5.0.0" "build>=0.10.0,<2.0.0"
-          pip install "authlib>=1.2.0,<2.0.0" "cryptography>=41.0.0,<42.0.0" "pyopenssl>=23.0.0,<26.0.0"
-          pip install -e "." || echo "WARNING: Editable install fehlgeschlagen, aber Dependencies sind installiert"
+          set -e
+          python -m pip install --upgrade pip setuptools wheel
+          echo "📋 Installiere Dependencies über pyproject.toml..."
+          pip install -e ".[dev,security]"
           echo "SUCCESS: Dependencies installiert"
           echo "INFO: Teste kritische Dependencies:"
-          python -c "import httpx; print('SUCCESS: httpx verfügbar:', httpx.__version__)"
-          python -c "import aiohttp; print('SUCCESS: aiohttp verfügbar:', aiohttp.__version__)"
+          python -c "import httpx; print('✅ httpx verfügbar:', httpx.__version__)"
+          python -c "import aiohttp; print('✅ aiohttp verfügbar:', aiohttp.__version__)"
 
       # Unit Tests mit Coverage
       - name: 🧪 Unit Tests
@@ -393,7 +379,7 @@ jobs:
     steps:
       # Repository auschecken
       - name: 📥 Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       # Python Setup
       - name: 🐍 Setup Python
@@ -406,11 +392,10 @@ jobs:
       - name: 📦 Install Dependencies
         shell: bash
         run: |
-          set -x
-          python -m pip install --upgrade pip
-          echo "📋 Installiere ALLE Dependencies DIREKT..."
-          pip install "httpx>=0.24.0,<1.0.0" "aiohttp>=3.8.0,<4.0.0" "websockets>=11.0.0,<12.0.0" "pydantic>=2.0.0,<3.0.0" "tenacity>=8.2.0,<9.0.0" "pytest>=7.4.0,<8.0.0" "pytest-asyncio>=0.21.0,<1.0.0" "pytest-mock>=3.11.0,<4.0.0" "pytest-benchmark>=4.0.0,<6.0.0" "pytest-cov>=4.1.0,<5.0.0" "ruff>=0.1.0,<1.0.0" "mypy>=1.5.0,<2.0.0" "bandit>=1.7.0,<2.0.0" "pre-commit>=3.4.0,<4.0.0" "twine>=4.0.0,<5.0.0" "build>=0.10.0,<2.0.0" "jsonschema>=4.17.0,<5.0.0"
-          pip install -e "." || echo "WARNING: Editable install fehlgeschlagen, aber Dependencies sind installiert"
+          set -e
+          python -m pip install --upgrade pip setuptools wheel
+          echo "📋 Installiere Dependencies über pyproject.toml..."
+          pip install -e ".[dev]"
           echo "SUCCESS: Dependencies installiert"
 
       # Package Build testen

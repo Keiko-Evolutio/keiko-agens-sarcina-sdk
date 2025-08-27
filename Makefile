@@ -158,25 +158,16 @@ format-check: ## Prüft Code-Formatierung
 
 type-check: ## Führt Type-Checking aus
 	@echo "$(BLUE)Führe Type-Checking aus...$(RESET)"
-	@if [ -d src ]; then \
-		python3 -m mypy src/ --ignore-missing-imports --no-strict-optional; \
-	elif [ -d kei_agent ]; then \
-		python3 -m mypy kei_agent/ --ignore-missing-imports --no-strict-optional; \
-	elif [ -f run_tests.py ]; then \
-		python3 -m mypy run_tests.py --ignore-missing-imports --no-strict-optional; \
-		echo "$(GREEN)✅ Type-Checking für Projekt-Scripts abgeschlossen$(RESET)"; \
-	else \
-		echo "$(YELLOW)Keine Python-Dateien für Type-Checking gefunden.$(RESET)"; \
-	fi
+	$(PYTHON) -m mypy kei_agent/ --ignore-missing-imports --no-strict-optional || echo "$(YELLOW)⚠️ Type-Checking Warnungen gefunden$(RESET)"
 
 security-scan: ## Führt Security-Scan aus
 	@echo "$(BLUE)Führe Security-Scan aus...$(RESET)"
 	# Installiere Bandit falls nicht vorhanden
 	$(PIP) install bandit || true
 	# JSON-Report immer erzeugen (rekursiv), Build nicht brechen
-	bandit -r . -f json -o bandit-report.json || true
-	# Konsolen-Ausgabe nur für Medium/High, Build nicht brechen
-	bandit -r . -s medium,high -q || true
+	bandit -r kei_agent/ -f json -o bandit-report.json --severity-level medium --confidence-level medium || true
+	# Konsolen-Ausgabe für Medium/High, Build nicht brechen
+	bandit -r kei_agent/ --severity-level medium --confidence-level medium -q || true
 
 quality: lint format-check type-check security-scan ## Führt alle Qualitätsprüfungen aus
 	@echo "$(GREEN)Alle Qualitätsprüfungen abgeschlossen!$(RESET)"

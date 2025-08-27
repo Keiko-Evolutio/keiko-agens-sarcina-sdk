@@ -1,0 +1,120 @@
+# Ruff Konfiguration für KEI-Agent Python SDK
+# https://docs.astral.sh/ruff/configuration/
+
+# Basis-Konfiguration
+line-length = 100
+target-version = "py38"
+
+# Verzeichnisse ausschließen
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "htmlcov",
+    "tests",  # Tests haben eigene Regeln
+]
+
+[lint]
+# Aktivierte Regel-Kategorien
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "S",   # flake8-bandit (security)
+    "T20", # flake8-print
+    "PT",  # flake8-pytest-style
+    "Q",   # flake8-quotes
+    "RET", # flake8-return
+    "SIM", # flake8-simplify
+    "TID", # flake8-tidy-imports
+    "ARG", # flake8-unused-arguments
+    "DTZ", # flake8-datetimez
+    "ERA", # eradicate
+    "PD",  # pandas-vet
+    "PGH", # pygrep-hooks
+    "PIE", # flake8-pie
+    "PL",  # pylint
+    "RSE", # flake8-raise
+    "RUF", # ruff-specific rules
+]
+
+# Ignorierte Regeln
+ignore = [
+    "E501",   # line too long, handled by formatter
+    "B008",   # do not perform function calls in argument defaults
+    "C901",   # too complex
+    "PLR0913", # too many arguments
+    "PLR0912", # too many branches
+    "PLR0915", # too many statements
+    "S101",   # use of assert detected (OK in tests)
+    "S603",   # subprocess call: check for execution of untrusted input
+    "S607",   # starting a process with a partial executable path
+    "T201",   # print found (OK for CLI tools)
+    "ERA001", # found commented-out code
+    "PD901",  # avoid using the generic variable name df for DataFrames
+]
+
+# Regeln pro Datei-Pattern
+[lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S101",   # asserts are OK in tests
+    "S106",   # hardcoded password in tests is OK
+    "S108",   # hardcoded temp file is OK in tests
+    "ARG001", # unused function arguments are OK in tests
+    "PLR2004", # magic values are OK in tests
+]
+"kei_agent/cli.py" = [
+    "T201",   # print statements are OK in CLI
+]
+"scripts/**/*.py" = [
+    "T201",   # print statements are OK in scripts
+    "S603",   # subprocess calls are OK in scripts
+    "S607",   # partial executable paths are OK in scripts
+]
+
+[lint.isort]
+known-first-party = ["kei_agent"]
+force-single-line = false
+force-sort-within-sections = true
+single-line-exclusions = ["typing"]
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.pylint]
+max-args = 8
+max-branches = 15
+max-returns = 8
+max-statements = 60
+
+[format]
+# Formatierung-Optionen
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = 80

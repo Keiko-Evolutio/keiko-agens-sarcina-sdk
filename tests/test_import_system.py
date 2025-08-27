@@ -11,6 +11,7 @@ import sys
 from typing import Any
 
 
+@pytest.mark.unit
 class TestImportSystem:
     """Tests for the Import-System."""
 

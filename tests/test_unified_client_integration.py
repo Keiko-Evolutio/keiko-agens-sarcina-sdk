@@ -16,6 +16,9 @@ from kei_agent import (
     KeiSDKError
 )
 
+# Markiere als Integration Test
+pytestmark = pytest.mark.integration
+
 
 class TestUnifiedclientIntegration:
     """Integration Tests for UnifiedKeiAgentClient."""
