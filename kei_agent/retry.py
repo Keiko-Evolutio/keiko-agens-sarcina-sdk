@@ -255,8 +255,7 @@ class CircuitBreaker:
             # Erlaube begrenzte Atzahl from Calls
             return self._half_open_calls < self.config.half_open_max_calls
 
-        return False
-        return None
+        return False  # type: ignore[unreachable]
 
     async def _on_success(self) -> None:
         """Behatdelt successfulen Call."""

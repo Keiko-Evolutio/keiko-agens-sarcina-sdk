@@ -220,7 +220,7 @@ def run_refactored_tests(verbose: bool = False) -> bool:
     return run_command(cmd, "Refactored Component Tests")
 
 
-def main():
+def main() -> None:
     """Hauptfunktion des Test-Runners."""
     parser = argparse.ArgumentParser(description="KEI-Agent SDK Test Runner")
     parser.add_argument("--unit", action="store_true", help="Führe Unit Tests aus")

@@ -125,9 +125,9 @@ def __getattr__(name: str) -> object:
 
         return DiscoveryError
     if name == "retryExhaustedError":
-        from .exceptions import retryExhaustedError
+        from .exceptions import RetryExhaustedError
 
-        return retryExhaustedError
+        return RetryExhaustedError
     if name == "CircuitBreakerOpenError":
         from .exceptions import CircuitBreakerOpenError
 
@@ -213,9 +213,9 @@ def __getattr__(name: str) -> object:
 
         return ConnectionConfig
     if name == "RetryConfig":
-        from .client import retryConfig
+        from .client import RetryConfig
 
-        return retryConfig
+        return RetryConfig
     if name == "TracingConfig":
         from .client import TracingConfig
 
