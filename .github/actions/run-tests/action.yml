@@ -1,0 +1,336 @@
+# .github/actions/run-tests/action.yml
+name: 'Run Tests with Coverage'
+description: 'Executes tests with coverage reporting and artifact upload'
+author: 'KEI-Agent Development Team'
+
+inputs:
+  test-path:
+    description: 'Path to test directory'
+    required: false
+    default: 'tests/'
+  coverage-enabled:
+    description: 'Whether to collect coverage data'
+    required: false
+    default: 'true'
+  coverage-threshold:
+    description: 'Minimum coverage percentage required'
+    required: false
+    default: '80'
+  test-markers:
+    description: 'Pytest markers to run (e.g., "not slow")'
+    required: false
+    default: ''
+  parallel-tests:
+    description: 'Whether to run tests in parallel'
+    required: false
+    default: 'true'
+  max-workers:
+    description: 'Maximum number of parallel workers'
+    required: false
+    default: 'auto'
+  junit-xml:
+    description: 'Whether to generate JUnit XML report'
+    required: false
+    default: 'true'
+  html-report:
+    description: 'Whether to generate HTML coverage report'
+    required: false
+    default: 'true'
+  upload-artifacts:
+    description: 'Whether to upload test artifacts'
+    required: false
+    default: 'true'
+  working-directory:
+    description: 'Working directory for tests'
+    required: false
+    default: '.'
+  extra-pytest-args:
+    description: 'Additional pytest arguments'
+    required: false
+    default: ''
+  timeout:
+    description: 'Test timeout in seconds'
+    required: false
+    default: '1800'
+
+outputs:
+  tests-passed:
+    description: 'Number of tests that passed'
+    value: ${{ steps.run-tests.outputs.passed }}
+  tests-failed:
+    description: 'Number of tests that failed'
+    value: ${{ steps.run-tests.outputs.failed }}
+  tests-skipped:
+    description: 'Number of tests that were skipped'
+    value: ${{ steps.run-tests.outputs.skipped }}
+  coverage-percentage:
+    description: 'Overall coverage percentage'
+    value: ${{ steps.coverage-report.outputs.percentage }}
+  coverage-passed:
+    description: 'Whether coverage threshold was met'
+    value: ${{ steps.coverage-report.outputs.passed }}
+  test-status:
+    description: 'Overall test status (passed, failed, warnings)'
+    value: ${{ steps.summary.outputs.status }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🔧 Install test dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🔧 Installing test dependencies..."
+        pip install pytest pytest-cov pytest-xdist pytest-timeout pytest-mock pytest-asyncio
+
+    - name: 🧪 Run tests
+      id: run-tests
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      timeout-minutes: ${{ fromJSON(inputs.timeout) / 60 }}
+      run: |
+        echo "🧪 Running tests..."
+        
+        # Baue pytest Kommando
+        PYTEST_CMD="pytest"
+        
+        # Test-Pfad
+        PYTEST_CMD="$PYTEST_CMD ${{ inputs.test-path }}"
+        
+        # Parallel execution
+        if [[ "${{ inputs.parallel-tests }}" == "true" ]]; then
+          if [[ "${{ inputs.max-workers }}" == "auto" ]]; then
+            PYTEST_CMD="$PYTEST_CMD -n auto"
+          else
+            PYTEST_CMD="$PYTEST_CMD -n ${{ inputs.max-workers }}"
+          fi
+        fi
+        
+        # Coverage
+        if [[ "${{ inputs.coverage-enabled }}" == "true" ]]; then
+          PYTEST_CMD="$PYTEST_CMD --cov=kei_agent --cov-report=term-missing --cov-report=xml"
+          if [[ "${{ inputs.html-report }}" == "true" ]]; then
+            PYTEST_CMD="$PYTEST_CMD --cov-report=html"
+          fi
+        fi
+        
+        # JUnit XML
+        if [[ "${{ inputs.junit-xml }}" == "true" ]]; then
+          PYTEST_CMD="$PYTEST_CMD --junit-xml=test-results.xml"
+        fi
+        
+        # Markers
+        if [[ -n "${{ inputs.test-markers }}" ]]; then
+          PYTEST_CMD="$PYTEST_CMD -m '${{ inputs.test-markers }}'"
+        fi
+        
+        # Extra args
+        if [[ -n "${{ inputs.extra-pytest-args }}" ]]; then
+          PYTEST_CMD="$PYTEST_CMD ${{ inputs.extra-pytest-args }}"
+        fi
+        
+        # Verbose output
+        PYTEST_CMD="$PYTEST_CMD -v --tb=short"
+        
+        echo "Executing: $PYTEST_CMD"
+        
+        # Führe Tests aus und capture Ergebnisse
+        set +e
+        eval $PYTEST_CMD
+        TEST_EXIT_CODE=$?
+        set -e
+        
+        # Parse Testergebnisse aus JUnit XML falls verfügbar
+        if [[ -f "test-results.xml" ]]; then
+          PASSED=$(python -c "
+          import xml.etree.ElementTree as ET
+          try:
+              tree = ET.parse('test-results.xml')
+              root = tree.getroot()
+              testsuite = root.find('.//testsuite')
+              if testsuite is not None:
+                  tests = int(testsuite.get('tests', 0))
+                  failures = int(testsuite.get('failures', 0))
+                  errors = int(testsuite.get('errors', 0))
+                  skipped = int(testsuite.get('skipped', 0))
+                  passed = tests - failures - errors - skipped
+                  print(f'{passed}')
+              else:
+                  print('0')
+          except:
+              print('0')
+          ")
+          
+          FAILED=$(python -c "
+          import xml.etree.ElementTree as ET
+          try:
+              tree = ET.parse('test-results.xml')
+              root = tree.getroot()
+              testsuite = root.find('.//testsuite')
+              if testsuite is not None:
+                  failures = int(testsuite.get('failures', 0))
+                  errors = int(testsuite.get('errors', 0))
+                  print(f'{failures + errors}')
+              else:
+                  print('0')
+          except:
+              print('0')
+          ")
+          
+          SKIPPED=$(python -c "
+          import xml.etree.ElementTree as ET
+          try:
+              tree = ET.parse('test-results.xml')
+              root = tree.getroot()
+              testsuite = root.find('.//testsuite')
+              if testsuite is not None:
+                  print(testsuite.get('skipped', '0'))
+              else:
+                  print('0')
+          except:
+              print('0')
+          ")
+        else
+          # Fallback values
+          PASSED="unknown"
+          FAILED="unknown"
+          SKIPPED="unknown"
+        fi
+        
+        echo "passed=$PASSED" >> $GITHUB_OUTPUT
+        echo "failed=$FAILED" >> $GITHUB_OUTPUT
+        echo "skipped=$SKIPPED" >> $GITHUB_OUTPUT
+        echo "exit-code=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
+        
+        echo "🧪 Test execution completed (exit code: $TEST_EXIT_CODE)"
+        echo "📊 Results: $PASSED passed, $FAILED failed, $SKIPPED skipped"
+
+    - name: 📊 Process coverage report
+      id: coverage-report
+      if: inputs.coverage-enabled == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📊 Processing coverage report..."
+        
+        COVERAGE_PERCENTAGE="0"
+        COVERAGE_PASSED="false"
+        
+        if [[ -f "coverage.xml" ]]; then
+          # Parse Coverage aus XML
+          COVERAGE_PERCENTAGE=$(python -c "
+          import xml.etree.ElementTree as ET
+          try:
+              tree = ET.parse('coverage.xml')
+              root = tree.getroot()
+              coverage_elem = root.find('.//coverage')
+              if coverage_elem is not None:
+                  line_rate = float(coverage_elem.get('line-rate', 0))
+                  percentage = round(line_rate * 100, 2)
+                  print(f'{percentage}')
+              else:
+                  print('0')
+          except Exception as e:
+              print('0')
+          ")
+          
+          # Prüfe Threshold
+          THRESHOLD="${{ inputs.coverage-threshold }}"
+          if (( $(echo "$COVERAGE_PERCENTAGE >= $THRESHOLD" | bc -l) )); then
+            COVERAGE_PASSED="true"
+          fi
+          
+          echo "📊 Coverage: $COVERAGE_PERCENTAGE% (threshold: $THRESHOLD%)"
+          if [[ "$COVERAGE_PASSED" == "true" ]]; then
+            echo "✅ Coverage threshold met"
+          else
+            echo "❌ Coverage below threshold"
+          fi
+        else
+          echo "⚠️ No coverage.xml found"
+        fi
+        
+        echo "percentage=$COVERAGE_PERCENTAGE" >> $GITHUB_OUTPUT
+        echo "passed=$COVERAGE_PASSED" >> $GITHUB_OUTPUT
+
+    - name: 📋 Generate test summary
+      id: summary
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📋 Generating test summary..."
+        
+        TEST_EXIT_CODE="${{ steps.run-tests.outputs.exit-code }}"
+        PASSED="${{ steps.run-tests.outputs.passed }}"
+        FAILED="${{ steps.run-tests.outputs.failed }}"
+        SKIPPED="${{ steps.run-tests.outputs.skipped }}"
+        COVERAGE_PERCENTAGE="${{ steps.coverage-report.outputs.percentage || 'N/A' }}"
+        COVERAGE_PASSED="${{ steps.coverage-report.outputs.passed || 'N/A' }}"
+        
+        # Bestimme Overall Status
+        if [[ "$TEST_EXIT_CODE" == "0" ]]; then
+          if [[ "${{ inputs.coverage-enabled }}" == "true" && "$COVERAGE_PASSED" == "false" ]]; then
+            STATUS="warnings"
+            EMOJI="⚠️"
+          else
+            STATUS="passed"
+            EMOJI="✅"
+          fi
+        else
+          STATUS="failed"
+          EMOJI="❌"
+        fi
+        
+        echo "status=$STATUS" >> $GITHUB_OUTPUT
+        
+        # Erstelle Summary Report
+        cat > test-summary.md << EOF
+        # $EMOJI Test Summary
+        
+        **Overall Status:** $STATUS
+        **Test Results:** $PASSED passed, $FAILED failed, $SKIPPED skipped
+        **Coverage:** $COVERAGE_PERCENTAGE%
+        
+        ## Test Execution
+        
+        | Metric | Value | Status |
+        |--------|-------|--------|
+        | Tests Passed | $PASSED | $([[ "$FAILED" == "0" ]] && echo "✅" || echo "❌") |
+        | Tests Failed | $FAILED | $([[ "$FAILED" == "0" ]] && echo "✅" || echo "❌") |
+        | Tests Skipped | $SKIPPED | ℹ️ |
+        | Coverage | $COVERAGE_PERCENTAGE% | $([[ "$COVERAGE_PASSED" == "true" ]] && echo "✅" || echo "❌") |
+        
+        EOF
+        
+        if [[ "$STATUS" == "passed" ]]; then
+          echo "🎉 All tests passed successfully!" >> test-summary.md
+        elif [[ "$STATUS" == "warnings" ]]; then
+          echo "⚠️ Tests passed but coverage is below threshold." >> test-summary.md
+        else
+          echo "❌ Some tests failed. Please review the test results." >> test-summary.md
+        fi
+        
+        echo ""
+        echo "$EMOJI Test Summary: $STATUS"
+        cat test-summary.md
+
+    - name: 📦 Upload test artifacts
+      if: inputs.upload-artifacts == 'true' && always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          ${{ inputs.working-directory }}/test-results.xml
+          ${{ inputs.working-directory }}/coverage.xml
+          ${{ inputs.working-directory }}/htmlcov/
+          ${{ inputs.working-directory }}/test-summary.md
+          ${{ inputs.working-directory }}/.coverage
+        retention-days: 30
+
+    - name: ❌ Fail on test failures
+      if: steps.run-tests.outputs.exit-code != '0'
+      shell: bash
+      run: |
+        echo "❌ Tests failed with exit code ${{ steps.run-tests.outputs.exit-code }}"
+        echo "Failed tests: ${{ steps.run-tests.outputs.failed }}"
+        exit ${{ steps.run-tests.outputs.exit-code }}
