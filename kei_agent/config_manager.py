@@ -185,7 +185,7 @@ if WATCHDOG_AVAILABLE:
             file_path = Path(event.src_path)
             if file_path in self.config_manager.watched_files:
                 logger.info(f"Configuration file modified: {file_path}")
-                asyncio.create_task(self.config_manager._reload_config_file(file_path))
+                self._reload_task = asyncio.create_task(self.config_manager._reload_config_file(file_path))
 else:
     # Fallback class when watchdog is not available
     class ConfigFileHandler:
@@ -257,7 +257,7 @@ class ConfigManager:
         self.watched_files.append(file_path)
 
         # Load initial configuration
-        asyncio.create_task(self._load_config_file(file_path))
+        self._load_task = asyncio.create_task(self._load_config_file(file_path))
 
         # Start watching the file's directory
         if self.observer and file_path.parent.exists():

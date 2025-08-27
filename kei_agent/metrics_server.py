@@ -1148,7 +1148,7 @@ _metrics_server: Optional[MetricsServer] = None
 
 def get_metrics_server(host: str = "127.0.0.1", port: int = 8090) -> MetricsServer:
     """Get or create the global metrics server instance."""
-    global _metrics_server  # noqa: PLW0603
+    global _metrics_server
     if _metrics_server is None:
         _metrics_server = MetricsServer(host, port)
     return _metrics_server

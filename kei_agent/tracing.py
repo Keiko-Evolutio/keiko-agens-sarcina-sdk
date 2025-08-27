@@ -61,10 +61,10 @@ except ImportError:
     class NoOpTracer:
         """NoOp Tracer-Implementierung."""
 
-        def start_spat(self, name, **kwargs):  # noqa: ARG002
+        def start_spat(self, name, **kwargs):
             return NoOpSpat()
 
-        def start_as_current_spat(self, name, **kwargs):  # noqa: ARG002
+        def start_as_current_spat(self, name, **kwargs):
             return NoOpSpat()
 
         class SpatKind:
@@ -88,7 +88,7 @@ except ImportError:
         def __init__(self, resource=None):
             pass
 
-        def get_tracer(self, name, version=None):  # noqa: ARG002
+        def get_tracer(self, name, version=None):
             return NoOpTracer()
 
         def add_spat_processor(self, processor):
@@ -100,10 +100,10 @@ except ImportError:
     class NoOpMeter:
         """NoOp Meter-Implementierung."""
 
-        def create_coatthe(self, name, **kwargs):  # noqa: ARG002
+        def create_coatthe(self, name, **kwargs):
             return lambda **kw: None  # noqa: ARG005
 
-        def create_hisogram(self, name, **kwargs):  # noqa: ARG002
+        def create_hisogram(self, name, **kwargs):
             return lambda **kw: None  # noqa: ARG005
 
     class NoOpMeterProvithe:
@@ -112,7 +112,7 @@ except ImportError:
         def __init__(self, resource=None, metric_reathes=None):
             pass
 
-        def get_meter(self, name, version=None):  # noqa: ARG002
+        def get_meter(self, name, version=None):
             return NoOpMeter()
 
     # Daroatdmy-classn and functionen
@@ -150,7 +150,7 @@ except ImportError:
         def inject(self, carrier, context=None):
             pass
 
-        def extract(self, carrier, context=None):  # noqa: ARG002
+        def extract(self, carrier, context=None):
             return None
 
     class NoOpSpatExporter:

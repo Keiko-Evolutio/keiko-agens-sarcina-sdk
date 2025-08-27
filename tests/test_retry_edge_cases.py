@@ -12,7 +12,7 @@ from kei_agent.client import (
     AgentClientConfig,
     TracingConfig,
 )
-from kei_agent.protocol_types import ProtocolConfig, RetryConfig, RetryStrategy
+from kei_agent.protocol_types import RetryConfig, RetryStrategy
 from kei_agent.unified_client import UnifiedKeiAgentClient
 
 

@@ -418,7 +418,7 @@ class SecurityManager:
             and not self._token_refresh_task.done(),
         }
 
-    def check_permission(self, user_id: str, resource: str, action: str) -> bool:  # noqa: ARG002
+    def check_permission(self, user_id: str, resource: str, action: str) -> bool:
         """Checks user permissions for RBAC (stub for backward compatibility).
 
         Args:
@@ -570,7 +570,7 @@ class SecurityManager:
         """
         # Stub implementation for backward compatibility
         # In a real implementation, this would make an API call to refresh the token
-        logger.debug("Bearer token refresh requested (stub implementation)")
+        # logger.debug("Bearer token refresh requested (stub implementation)")
 
     async def _refresh_oidc_token(self) -> None:
         """Refreshes the OIDC token using the refresh token.
@@ -580,7 +580,7 @@ class SecurityManager:
         """
         # Stub implementation for backward compatibility
         # In a real implementation, this would use the refresh token to get a new access token
-        logger.debug("OIDC token refresh requested (stub implementation)")
+        # logger.debug("OIDC token refresh requested (stub implementation)")
 
 
 __all__ = ["SecurityManager"]

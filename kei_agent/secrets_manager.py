@@ -290,7 +290,7 @@ def get_secrets_manager(config: Optional[SecretConfig] = None) -> SecretsManager
     Returns:
         SecretsManager instance
     """
-    global _secrets_manager  # noqa: PLW0603
+    global _secrets_manager
 
     if _secrets_manager is None:
         _secrets_manager = SecretsManager(config)
@@ -307,6 +307,6 @@ def configure_secrets(config: SecretConfig) -> SecretsManager:
     Returns:
         Configured SecretsManager instance
     """
-    global _secrets_manager  # noqa: PLW0603
+    global _secrets_manager
     _secrets_manager = SecretsManager(config)
     return _secrets_manager
