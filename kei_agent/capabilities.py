@@ -1,19 +1,22 @@
 # sdk/python/kei_agent_sdk/capabilities.py
 """
-capability advertisement and matagement for KEI-Agent-Framework SDK.
+Capability Advertisement und Management für KEI-Agent-Framework SDK.
 
 Implementiert automatische Capability-Discovery, MCP-Integration,
-Capability-Negotiation and dynamische Updates tor Lonzeit.
+Capability-Negotiation und dynamische Updates zur Laufzeit.
 """
 
 from __future__ import annotations
 
 import asyncio
+from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 import time
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 import uuid
+import warnings
 
 from packaging import version
 
@@ -21,14 +24,14 @@ from .client import KeiAgentClient
 from .exceptions import CapabilityError
 
 
-class Capabilitystatus(str, Enum):
-    """status ar Capability."""
+class CapabilityStatus(str, Enum):
+    """Status einer Capability."""
 
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
     DEPRECATED = "deprecated"
     EXPERIMENTAL = "experimental"
-    MAINTENANCE = "maintenatce"
+    MAINTENANCE = "maintenance"
 
 
 class CompatibilityLevel(str, Enum):
@@ -40,14 +43,64 @@ class CompatibilityLevel(str, Enum):
     UNKNOWN = "unknown"
 
 
+class DeprecatedCapabilityWarning(UserWarning):
+    """Warning für deprecated Capabilities."""
+
+
+
+@dataclass
+class DeprecationInfo:
+    """Informationen über deprecated Capabilities."""
+
+    deprecated_since: str  # Version seit der die Capability deprecated ist
+    removal_planned: Optional[str] = None  # Geplante Entfernung in Version
+    replacement: Optional[str] = None  # Empfohlener Ersatz
+    reason: str = ""  # Grund für Deprecation
+    migration_guide: Optional[str] = None  # Link zur Migration
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Konvertiert DeprecationInfo zu Dictionary."""
+        return {
+            "deprecated_since": self.deprecated_since,
+            "removal_planned": self.removal_planned,
+            "replacement": self.replacement,
+            "reason": self.reason,
+            "migration_guide": self.migration_guide,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> DeprecationInfo:
+        """Erstellt DeprecationInfo aus Dictionary."""
+        return cls(
+            deprecated_since=data["deprecated_since"],
+            removal_planned=data.get("removal_planned"),
+            replacement=data.get("replacement"),
+            reason=data.get("reason", ""),
+            migration_guide=data.get("migration_guide"),
+        )
+
+
+@dataclass
+class DeprecationPolicy:
+    """Policy für Deprecation-Handling."""
+
+    emit_warnings: bool = True  # Emittiere Warnings bei Verwendung
+    fail_on_deprecated: bool = False  # Fehlschlag bei deprecated Capabilities
+    track_usage: bool = True  # Tracke Verwendung deprecated Capabilities
+    log_usage: bool = True  # Logge Verwendung deprecated Capabilities
+
+
 @dataclass
 class CapabilityProfile:
-    """Profil ar Agent-Capability."""
+    """Profil einer Agent-Capability."""
 
     name: str
     version: str
     description: str = ""
-    status: Capabilitystatus = Capabilitystatus.AVAILABLE
+    status: CapabilityStatus = CapabilityStatus.AVAILABLE
+
+    # Deprecation-Informationen
+    deprecation_info: Optional[DeprecationInfo] = None
 
     # MCP-Integration
     mcp_profile_url: Optional[str] = None
@@ -106,16 +159,21 @@ class CapabilityProfile:
             "default_configuration": self.default_configuration,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "deprecation_info": self.deprecation_info.to_dict() if self.deprecation_info else None,
         }
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> CapabilityProfile:
         """Creates Capability-Profil out dictionary."""
+        deprecation_data = data.get("deprecation_info")
+        deprecation_info = DeprecationInfo.from_dict(deprecation_data) if deprecation_data else None
+
         return cls(
             name=data["name"],
             version=data["version"],
             description=data.get("description", ""),
-            status=Capabilitystatus(data.get("status", "available")),
+            status=CapabilityStatus(data.get("status", "available")),
+            deprecation_info=deprecation_info,
             mcp_profile_url=data.get("mcp_profile_url"),
             mcp_schema=data.get("mcp_schema"),
             methods=data.get("methods", {}),
@@ -564,26 +622,34 @@ class CapabilityVersioning:
 class CapabilityManager:
     """Manager for agent capabilities."""
 
-    def __init__(self, base_client: KeiAgentClient):
+    def __init__(
+        self, base_client: KeiAgentClient, deprecation_policy: Optional[DeprecationPolicy] = None
+    ):
         """Initializes Capability-Manager.
 
         Args:
             base_client: Basis-KEI-client
+            deprecation_policy: Policy für Deprecation-Handling
         """
         self.base_client = base_client
+        self.deprecation_policy = deprecation_policy or DeprecationPolicy()
 
         # Sub-Komponenten
         self.mcp_integration = MCPIntegration(base_client)
         self.negotiation = CapabilityNegotiation(base_client, self.mcp_integration)
         self.versioning = CapabilityVersioning()
 
-        # Capability-Regisry
+        # Capability-Registry
         self._capabilities: Dict[str, CapabilityProfile] = {}
         self._capability_handlers: Dict[str, Callable] = {}
 
+        # Deprecation-Tracking
+        self.deprecated_usage_stats = defaultdict(int)
+        self.deprecated_last_used: Dict[str, datetime] = {}
+
         # Advertisement
         self._advertisement_enabled = False
-        self._advertisement_interval = 60.0  # Sekatthe
+        self._advertisement_interval = 60.0  # Sekunden
         self._advertisement_task: Optional[asyncio.Task] = None
 
         # callbacks
@@ -591,15 +657,104 @@ class CapabilityManager:
         self.on_capability_removed: Optional[Callable[[str], Awaitable[None]]] = None
         self.on_capability_updated: Optional[Callable[[CapabilityProfile], Awaitable[None]]] = None
 
+    def _emit_deprecation_warning(self, capability: CapabilityProfile) -> None:
+        """Emittiert Deprecation-Warning für deprecated Capability.
+
+        Args:
+            capability: Deprecated Capability
+        """
+        if not self.deprecation_policy.emit_warnings:
+            return
+
+        if capability.status != CapabilityStatus.DEPRECATED or not capability.deprecation_info:
+            return
+
+        info = capability.deprecation_info
+        message = (
+            f"Capability '{capability.name}' ist deprecated seit Version {info.deprecated_since}. "
+            f"Grund: {info.reason}"
+        )
+
+        if info.replacement:
+            message += f" Verwende '{info.replacement}' stattdessen."
+
+        if info.removal_planned:
+            message += f" Entfernung geplant für Version {info.removal_planned}."
+
+        if info.migration_guide:
+            message += f" Migrations-Guide: {info.migration_guide}"
+
+        warnings.warn(message, DeprecatedCapabilityWarning, stacklevel=4)
+
+    def _track_deprecated_usage(self, capability: CapabilityProfile) -> None:
+        """Trackt Verwendung deprecated Capabilities.
+
+        Args:
+            capability: Verwendete deprecated Capability
+        """
+        if not self.deprecation_policy.track_usage:
+            return
+
+        self.deprecated_usage_stats[capability.name] += 1
+        self.deprecated_last_used[capability.name] = datetime.now()
+
+        if self.deprecation_policy.log_usage:
+            # Hier könnte strukturiertes Logging hinzugefügt werden
+            print(
+                f"DEPRECATED: Capability '{capability.name}' verwendet (Anzahl: {self.deprecated_usage_stats[capability.name]})"
+            )
+
+    def get_deprecation_report(self) -> Dict[str, Any]:
+        """Erstellt Bericht über deprecated Capability-Verwendung.
+
+        Returns:
+            Dictionary mit Deprecation-Statistiken
+        """
+        deprecated_capabilities = [
+            cap for cap in self._capabilities.values() if cap.status == CapabilityStatus.DEPRECATED
+        ]
+
+        return {
+            "total_deprecated": len(deprecated_capabilities),
+            "usage_stats": dict(self.deprecated_usage_stats),
+            "last_used": {
+                name: timestamp.isoformat() for name, timestamp in self.deprecated_last_used.items()
+            },
+            "capabilities": [
+                {
+                    "name": cap.name,
+                    "version": cap.version,
+                    "deprecated_since": cap.deprecation_info.deprecated_since
+                    if cap.deprecation_info
+                    else None,
+                    "removal_planned": cap.deprecation_info.removal_planned
+                    if cap.deprecation_info
+                    else None,
+                    "replacement": cap.deprecation_info.replacement
+                    if cap.deprecation_info
+                    else None,
+                    "reason": cap.deprecation_info.reason if cap.deprecation_info else None,
+                }
+                for cap in deprecated_capabilities
+            ],
+        }
+
     async def register_capability(
-        self, profile: CapabilityProfile, handler: Optional[Callable] = None
+        self,
+        profile: CapabilityProfile,
+        handler: Optional[Callable] = None,
+        emit_warnings: bool = True,
     ) -> None:
-        """Regisers neue Capability.
+        """Registriert neue Capability.
 
         Args:
             profile: Capability-Profil
-            handler: Handler-function for Capability
+            handler: Handler-Funktion für Capability
+            emit_warnings: Ob Deprecation-Warnings emittiert werden sollen
         """
+        # Deprecation-Warning emittieren falls aktiviert
+        if emit_warnings and profile.status == CapabilityStatus.DEPRECATED:
+            self._emit_deprecation_warning(profile)
         # Valithere MCP-Integration
         if profile.mcp_profile_url or profile.mcp_schema:
             mcp_profile = await self.mcp_integration.load_mcp_profile(profile.name)
@@ -690,6 +845,46 @@ class CapabilityManager:
             lis from Capability-Profilen
         """
         return list(self._capabilities.values())
+
+    async def invoke_capability(self, capability_name: str, *args, **kwargs) -> Any:
+        """Ruft Capability auf mit Deprecation-Handling.
+
+        Args:
+            capability_name: Name der Capability
+            *args: Positionale Argumente
+            **kwargs: Keyword-Argumente
+
+        Returns:
+            Ergebnis der Capability-Ausführung
+
+        Raises:
+            CapabilityError: Wenn Capability nicht gefunden oder deprecated und fail_on_deprecated=True
+        """
+        capability = self._capabilities.get(capability_name)
+        if not capability:
+            raise CapabilityError(f"Capability '{capability_name}' nicht gefunden")
+
+        # Deprecation-Handling
+        if capability.status == CapabilityStatus.DEPRECATED:
+            if self.deprecation_policy.fail_on_deprecated:
+                raise CapabilityError(
+                    f"Capability '{capability_name}' ist deprecated und fail_on_deprecated ist aktiviert"
+                )
+
+            # Warning emittieren und Usage tracken
+            self._emit_deprecation_warning(capability)
+            self._track_deprecated_usage(capability)
+
+        # Handler ausführen
+        handler = self._capability_handlers.get(capability_name)
+        if not handler:
+            raise CapabilityError(f"Kein Handler für Capability '{capability_name}' registriert")
+
+        return (
+            await handler(*args, **kwargs)
+            if asyncio.iscoroutinefunction(handler)
+            else handler(*args, **kwargs)
+        )
 
     async def enable_advertisement(self, interval: float = 60.0) -> None:
         """Enabled automatische Capability-Advertisement.

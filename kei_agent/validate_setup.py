@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # validate_setup.py
 """
-Setup-Valitherung for KEI-Agent Python SDK.
+Setup-Validierung für KEI-Agent Python SDK.
 
-Checks all Aspekte the SDK-Installation, configuration and Dokaroatthetation
-before the PyPI-Veröffentlichung.
+Prüft alle Aspekte der SDK-Installation, Konfiguration und Dokumentation
+vor der PyPI-Veröffentlichung.
 """
 
 import json
@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).parent.absolute()
 
 
 class ValidationResult:
-    """result ar Valitherung."""
+    """Ergebnis einer Validierung."""
 
     def __init__(
         self,
@@ -46,7 +46,7 @@ class SetupValidator:
         message: str,
         details: Optional[Dict[str, Any]] = None,
     ):
-        """Fügt Valitherungsergebnis hinto."""
+        """Fügt Validierungsergebnis hinzu."""
         result = ValidationResult(name, success, message, details)
         self.results.append(result)
 
@@ -76,12 +76,12 @@ class SetupValidator:
         )
         return False
 
-    def validate_depenthecies(self) -> bool:
-        """Validates installierte Depenthecies."""
+    def validate_dependencies(self) -> bool:
+        """Validates installierte Dependencies."""
         required_deps = [
             "httpx",
             "websockets",
-            "pydattic",
+            "pydantic",
             "typing_extensions",
             "opentelemetry-api",
             "tenacity",
@@ -99,7 +99,7 @@ class SetupValidator:
             "pytest-mock",
             "ruff",
             "mypy",
-            "batdit",
+            "bandit",
             "build",
             "twine",
         ]
@@ -111,62 +111,62 @@ class SetupValidator:
         missing_docs = []
 
         for dep in required_deps:
-            if not self._check_depenthecy(dep):
+            if not self._check_dependency(dep):
                 missing_required.append(dep)
 
         for dep in dev_deps:
-            if not self._check_depenthecy(dep):
+            if not self._check_dependency(dep):
                 missing_dev.append(dep)
 
         for dep in docs_deps:
-            if not self._check_depenthecy(dep):
+            if not self._check_dependency(dep):
                 missing_docs.append(dep)
 
         if missing_required:
             self.add_result(
-                "Required Depenthecies",
+                "Required Dependencies",
                 False,
-                f"Fehlende erfortheliche Depenthecies: {missing_required}",
+                f"Fehlende erforderliche Dependencies: {missing_required}",
             )
             return False
         self.add_result(
-            "Required Depenthecies",
+            "Required Dependencies",
             True,
-            "All erforthelichen Depenthecies installiert",
+            "Alle erforderlichen Dependencies installiert",
         )
 
         if missing_dev:
             self.add_result(
-                "Development Depenthecies",
+                "Development Dependencies",
                 False,
-                f"Fehlende Development-Depenthecies: {missing_dev}",
-                {"install_commatd": f"pip install {' '.join(missing_dev)}"},
+                f"Fehlende Development-Dependencies: {missing_dev}",
+                {"install_command": f"pip install {' '.join(missing_dev)}"},
             )
         else:
             self.add_result(
-                "Development Depenthecies",
+                "Development Dependencies",
                 True,
-                "All Development-Depenthecies installiert",
+                "Alle Development-Dependencies installiert",
             )
 
         if missing_docs:
             self.add_result(
-                "Docaroatthetation Depenthecies",
+                "Documentation Dependencies",
                 False,
-                f"Fehlende Dokaroatthetations-Depenthecies: {missing_docs}",
-                {"install_commatd": f"pip install {' '.join(missing_docs)}"},
+                f"Fehlende Documentation-Dependencies: {missing_docs}",
+                {"install_command": f"pip install {' '.join(missing_docs)}"},
             )
         else:
             self.add_result(
-                "Docaroatthetation Depenthecies",
+                "Documentation Dependencies",
                 True,
-                "All Dokaroatthetations-Depenthecies installiert",
+                "Alle Documentation-Dependencies installiert",
             )
 
         return len(missing_required) == 0
 
-    def _check_depenthecy(self, package_name: str) -> bool:
-        """Checks ob Package installiert is."""
+    def _check_dependency(self, package_name: str) -> bool:
+        """Prüft ob Package installiert ist."""
         try:
             __import__(package_name.replace("-", "_"))
             return True
@@ -416,7 +416,7 @@ class SetupValidator:
 
         validations = [
             self.validate_python_version,
-            self.validate_depenthecies,
+            self.validate_dependencies,
             self.validate_file_structure,
             self.validate_package_metadata,
             self.validate_imports,

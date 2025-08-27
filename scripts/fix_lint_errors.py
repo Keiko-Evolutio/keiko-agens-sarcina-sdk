@@ -17,7 +17,8 @@ def run_ruff_check() -> str:
     try:
         result = subprocess.run(
             ["python3", "-m", "ruff", "check", ".", "--output-format", "text"],
-            check=False, capture_output=True,
+            check=False,
+            capture_output=True,
             text=True,
             cwd=Path(__file__).parent.parent,
         )
@@ -40,13 +41,15 @@ def parse_ruff_output(output: str) -> List[Dict[str, str]]:
         match = re.match(r"^(.+):(\d+):(\d+):\s+(\w+)\s+(.+)$", line)
         if match:
             file_path, line_num, column, error_code, message = match.groups()
-            errors.append({
-                "file": file_path,
-                "line": int(line_num),
-                "column": int(column),
-                "code": error_code,
-                "message": message
-            })
+            errors.append(
+                {
+                    "file": file_path,
+                    "line": int(line_num),
+                    "column": int(column),
+                    "code": error_code,
+                    "message": message,
+                }
+            )
 
     return errors
 
@@ -114,7 +117,9 @@ def fix_asyncio_create_task(file_path: str, line_num: int) -> bool:
             line = lines[line_num - 1]
 
             # Suche nach asyncio.create_task ohne Zuweisung
-            if "asyncio.create_task(" in line and not re.search(r"\w+\s*=\s*asyncio\.create_task", line):
+            if "asyncio.create_task(" in line and not re.search(
+                r"\w+\s*=\s*asyncio\.create_task", line
+            ):
                 # Füge eine Variablenzuweisung hinzu
                 indent = len(line) - len(line.lstrip())
                 task_call = line.strip()
@@ -213,9 +218,9 @@ def main():
             fixed = fix_unused_arguments(error["file"], error["line"], error["message"])
         elif code == "RUF006":  # asyncio.create_task
             fixed = fix_asyncio_create_task(error["file"], error["line"])
-        elif code == "N802":   # Function naming
+        elif code == "N802":  # Function naming
             fixed = fix_function_naming(error["file"], error["line"])
-        elif code == "F821":   # Undefined names
+        elif code == "F821":  # Undefined names
             fixed = fix_undefined_names(error["file"], error["line"], error["message"])
 
         if fixed:
@@ -232,7 +237,9 @@ def main():
 
     if total_fixed > 0:
         print("\n🔄 Führe ruff check erneut aus, um verbleibende Fehler zu prüfen...")
-        subprocess.run(["python3", "-m", "ruff", "check", "."], check=False, cwd=Path(__file__).parent.parent)
+        subprocess.run(
+            ["python3", "-m", "ruff", "check", "."], check=False, cwd=Path(__file__).parent.parent
+        )
 
 
 if __name__ == "__main__":
