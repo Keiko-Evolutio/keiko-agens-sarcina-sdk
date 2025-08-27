@@ -91,8 +91,8 @@ def run_mypy_and_generate_report(package_dir: Path, report_dir: Path, project_ro
     Führt mypy aus und erzeugt einen Text-Report unter `report_dir`.
     Falls lxml nicht verfügbar ist, wird ein alternativer Ansatz verwendet.
     """
-    # mypy-Konfiguration optional berücksichtigen
-    config_file = project_root / "mypy.ini"
+    # mypy-Konfiguration aus pyproject.toml verwenden (Standard)
+    config_file = project_root / "pyproject.toml"
 
     # Prüfe, ob lxml verfügbar ist
     lxml_available = _check_lxml_available()
@@ -107,8 +107,7 @@ def run_mypy_and_generate_report(package_dir: Path, report_dir: Path, project_ro
             "--txt-report",
             str(report_dir),
         ]
-        if config_file.exists():
-            cmd.extend(["--config-file", str(config_file)])
+        # pyproject.toml wird automatisch von mypy erkannt, kein --config-file nötig
 
         print(f"Führe MyPy aus: {' '.join(cmd)}", file=sys.stderr)
 
@@ -142,15 +141,13 @@ def run_mypy_and_generate_report(package_dir: Path, report_dir: Path, project_ro
 def _create_mock_report(package_dir: Path, report_dir: Path, project_root: Path) -> None:
     """Erstellt einen Mock-Report wenn lxml nicht verfügbar ist."""
     # Führe MyPy ohne --txt-report aus, um zu prüfen ob es funktioniert
-    config_file = project_root / "mypy.ini"
+    # pyproject.toml wird automatisch von mypy erkannt
     cmd: List[str] = [
         sys.executable,
         "-m",
         "mypy",
         str(package_dir),
     ]
-    if config_file.exists():
-        cmd.extend(["--config-file", str(config_file)])
 
     print(f"Führe MyPy aus (ohne txt-report): {' '.join(cmd)}", file=sys.stderr)
     result = subprocess.run(cmd, check=False, capture_output=True, text=True)

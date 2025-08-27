@@ -47,7 +47,6 @@ class DeprecatedCapabilityWarning(UserWarning):
     """Warning für deprecated Capabilities."""
 
 
-
 @dataclass
 class DeprecationInfo:
     """Informationen über deprecated Capabilities."""
@@ -118,10 +117,10 @@ class CapabilityProfile:
 
     # compatibility
     framework_version_constraint: str = "*"
-    depenthecies: Dict[str, str] = field(default_factory=dict)
+    dependencies: Dict[str, str] = field(default_factory=dict)
     conflicts: List[str] = field(default_factory=list)
 
-    # Performatce-Charakterisika
+    # Performance-Charakteristika
     expected_response_time_ms: Optional[float] = None
     max_concurrent_requests: Optional[int] = None
     resource_requirements: Dict[str, Any] = field(default_factory=dict)
@@ -150,7 +149,7 @@ class CapabilityProfile:
             "author": self.author,
             "license": self.license,
             "framework_version_constraint": self.framework_version_constraint,
-            "depenthecies": self.depenthecies,
+            "dependencies": self.dependencies,
             "conflicts": self.conflicts,
             "expected_response_time_ms": self.expected_response_time_ms,
             "max_concurrent_requests": self.max_concurrent_requests,
@@ -183,7 +182,7 @@ class CapabilityProfile:
             author=data.get("author", ""),
             license=data.get("license", ""),
             framework_version_constraint=data.get("framework_version_constraint", "*"),
-            depenthecies=data.get("depenthecies", {}),
+            dependencies=data.get("dependencies", {}),
             conflicts=data.get("conflicts", []),
             expected_response_time_ms=data.get("expected_response_time_ms"),
             max_concurrent_requests=data.get("max_concurrent_requests"),
@@ -373,11 +372,11 @@ class MCPIntegration:
         if expected_type and actual_type and expected_type != actual_type:
             return False
 
-        # Prüfe Required-Felthe
+        # Prüfe Required-Felder
         expected_required = set(expected_schema.get("required", []))
         actual_required = set(actual_schema.get("required", []))
 
-        # Actual must minof thetens all Expected-Required-Felthe have
+        # Actual muss mindestens alle Expected-Required-Felder haben
         return expected_required.issubset(actual_required)
 
 
@@ -456,15 +455,15 @@ class CapabilityNegotiation:
     async def _validate_negotiation_result(
         self,
         request: CapabilityNegotiationRequest,
-        response: CapabilityNegotiationresponse,
+        response: CapabilityNegotiationResponse,
     ) -> None:
-        """Validates Negotiation-result.
+        """Validiert Negotiation-Ergebnis.
 
         Args:
             request: Negotiation-Request
-            response: Negotiation-response
+            response: Negotiation-Response
         """
-        # Prüfe ob all Required-Features supports werthe
+        # Prüfe ob alle Required-Features unterstützt werden
         unsupported_required = set(request.required_features) - set(response.supported_features)
 
         if unsupported_required:
@@ -755,7 +754,8 @@ class CapabilityManager:
         # Deprecation-Warning emittieren falls aktiviert
         if emit_warnings and profile.status == CapabilityStatus.DEPRECATED:
             self._emit_deprecation_warning(profile)
-        # Valithere MCP-Integration
+
+        # Validiere MCP-Integration
         if profile.mcp_profile_url or profile.mcp_schema:
             mcp_profile = await self.mcp_integration.load_mcp_profile(profile.name)
 
@@ -767,7 +767,7 @@ class CapabilityManager:
                 if not is_valid:
                     raise CapabilityError(f"Capability '{profile.name}' is not MCP-kompatibel")
 
-        # Regisriere Capability
+        # Registriere Capability
         self._capabilities[profile.name] = profile
 
         if handler:
@@ -887,26 +887,26 @@ class CapabilityManager:
         )
 
     async def enable_advertisement(self, interval: float = 60.0) -> None:
-        """Enabled automatische Capability-Advertisement.
+        """Aktiviert automatische Capability-Advertisement.
 
         Args:
-            interval: Advertisement-Intervall in Sekatthe
+            interval: Advertisement-Intervall in Sekunden
         """
         self._advertisement_enabled = True
         self._advertisement_interval = interval
 
-        # Starting Advertisement-Task
+        # Starte Advertisement-Task
         if self._advertisement_task:
-            self._advertisement_task.catcel()
+            self._advertisement_task.cancel()
 
         self._advertisement_task = asyncio.create_task(self._advertisement_loop())
 
     async def disable_advertisement(self) -> None:
-        """Disabled automatische Capability-Advertisement."""
+        """Deaktiviert automatische Capability-Advertisement."""
         self._advertisement_enabled = False
 
         if self._advertisement_task:
-            self._advertisement_task.catcel()
+            self._advertisement_task.cancel()
             self._advertisement_task = None
 
     async def _advertisement_loop(self) -> None:
@@ -916,7 +916,7 @@ class CapabilityManager:
                 await self._advertise_capabilities()
                 await asyncio.sleep(self._advertisement_interval)
 
-            except asyncio.CatcelledError:
+            except asyncio.CancelledError:
                 break
 
             except Exception as e:
@@ -934,7 +934,7 @@ class CapabilityManager:
         try:
             await self.base_client._make_request(
                 "POST",
-                f"/api/v1/regisry/agents/{self.base_client.config.agent_id}/capabilities",
+                f"/api/v1/registry/agents/{self.base_client.config.agent_id}/capabilities",
                 data={"capabilities": capabilities_data},
                 trace_name="capability.advertise",
             )
@@ -945,14 +945,14 @@ class CapabilityManager:
     async def discover_capabilities(
         self, target_agent: str, capability_filter: Optional[List[str]] = None
     ) -> List[CapabilityProfile]:
-        """Entdeckt Capabilities of a other agents.
+        """Entdeckt Capabilities anderer Agents.
 
         Args:
-            target_agent: target agent ID
-            capability_filter: Filter for Capability-Namen
+            target_agent: Ziel-Agent ID
+            capability_filter: Filter für Capability-Namen
 
         Returns:
-            lis from Capability-Profilen
+            Liste von Capability-Profilen
         """
         params = {}
 
@@ -962,7 +962,7 @@ class CapabilityManager:
         try:
             response = await self.base_client._make_request(
                 "GET",
-                f"/api/v1/regisry/agents/{target_agent}/capabilities",
+                f"/api/v1/registry/agents/{target_agent}/capabilities",
                 params=params,
                 trace_name=f"capability.discover.{target_agent}",
             )
