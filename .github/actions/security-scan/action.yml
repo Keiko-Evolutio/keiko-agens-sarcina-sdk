@@ -1,0 +1,305 @@
+# .github/actions/security-scan/action.yml
+name: 'Security Scanning Suite'
+description: 'Comprehensive security scanning with Bandit, Safety, and pip-audit'
+author: 'KEI-Agent Development Team'
+
+inputs:
+  scan-path:
+    description: 'Path to scan for security issues'
+    required: false
+    default: 'kei_agent/'
+  bandit-enabled:
+    description: 'Whether to run Bandit security scan'
+    required: false
+    default: 'true'
+  safety-enabled:
+    description: 'Whether to run Safety vulnerability scan'
+    required: false
+    default: 'true'
+  pip-audit-enabled:
+    description: 'Whether to run pip-audit scan'
+    required: false
+    default: 'true'
+  bandit-severity:
+    description: 'Bandit severity level (low, medium, high)'
+    required: false
+    default: 'medium'
+  bandit-confidence:
+    description: 'Bandit confidence level (low, medium, high)'
+    required: false
+    default: 'medium'
+  output-format:
+    description: 'Output format for reports (json, txt, both)'
+    required: false
+    default: 'both'
+  fail-on-error:
+    description: 'Whether to fail the action on security issues'
+    required: false
+    default: 'false'
+  upload-reports:
+    description: 'Whether to upload security reports as artifacts'
+    required: false
+    default: 'true'
+  working-directory:
+    description: 'Working directory for scans'
+    required: false
+    default: '.'
+
+outputs:
+  bandit-issues:
+    description: 'Number of issues found by Bandit'
+    value: ${{ steps.bandit-scan.outputs.issues }}
+  safety-vulnerabilities:
+    description: 'Number of vulnerabilities found by Safety'
+    value: ${{ steps.safety-scan.outputs.vulnerabilities }}
+  pip-audit-vulnerabilities:
+    description: 'Number of vulnerabilities found by pip-audit'
+    value: ${{ steps.pip-audit-scan.outputs.vulnerabilities }}
+  total-issues:
+    description: 'Total number of security issues found'
+    value: ${{ steps.summary.outputs.total-issues }}
+  scan-status:
+    description: 'Overall scan status (passed, failed, warnings)'
+    value: ${{ steps.summary.outputs.status }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🔧 Install security tools
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🔧 Installing security scanning tools..."
+        pip install bandit[toml] safety pip-audit
+
+    - name: 🛡️ Run Bandit security scan
+      id: bandit-scan
+      if: inputs.bandit-enabled == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🛡️ Running Bandit security scan..."
+        
+        BANDIT_ISSUES=0
+        
+        # JSON Report
+        if [[ "${{ inputs.output-format }}" == "json" || "${{ inputs.output-format }}" == "both" ]]; then
+          echo "Generating JSON report..."
+          bandit -r ${{ inputs.scan-path }} \
+            -f json \
+            -o bandit-report.json \
+            --severity-level ${{ inputs.bandit-severity }} \
+            --confidence-level ${{ inputs.bandit-confidence }} || true
+          
+          # Zähle Issues aus JSON
+          if [[ -f "bandit-report.json" ]]; then
+            BANDIT_ISSUES=$(python -c "
+            import json
+            try:
+                with open('bandit-report.json') as f:
+                    data = json.load(f)
+                    print(len(data.get('results', [])))
+            except:
+                print(0)
+            ")
+          fi
+        fi
+        
+        # Text Report
+        if [[ "${{ inputs.output-format }}" == "txt" || "${{ inputs.output-format }}" == "both" ]]; then
+          echo "Generating text report..."
+          bandit -r ${{ inputs.scan-path }} \
+            -f txt \
+            -o bandit-report.txt \
+            --severity-level ${{ inputs.bandit-severity }} \
+            --confidence-level ${{ inputs.bandit-confidence }} || true
+        fi
+        
+        # Console Output (immer)
+        echo "Running console scan..."
+        bandit -r ${{ inputs.scan-path }} \
+          --severity-level ${{ inputs.bandit-severity }} \
+          --confidence-level ${{ inputs.bandit-confidence }} || true
+        
+        echo "issues=$BANDIT_ISSUES" >> $GITHUB_OUTPUT
+        echo "🛡️ Bandit found $BANDIT_ISSUES issues"
+
+    - name: 🔍 Run Safety vulnerability scan
+      id: safety-scan
+      if: inputs.safety-enabled == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🔍 Running Safety vulnerability scan..."
+        
+        SAFETY_VULNS=0
+        
+        # JSON Report
+        if [[ "${{ inputs.output-format }}" == "json" || "${{ inputs.output-format }}" == "both" ]]; then
+          echo "Generating JSON report..."
+          safety scan --output json > safety-report.json || true
+          
+          # Zähle Vulnerabilities aus JSON
+          if [[ -f "safety-report.json" ]]; then
+            SAFETY_VULNS=$(python -c "
+            import json
+            try:
+                with open('safety-report.json') as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        print(len(data))
+                    elif isinstance(data, dict) and 'vulnerabilities' in data:
+                        print(len(data['vulnerabilities']))
+                    else:
+                        print(0)
+            except:
+                print(0)
+            ")
+          fi
+        fi
+        
+        # Text Report
+        if [[ "${{ inputs.output-format }}" == "txt" || "${{ inputs.output-format }}" == "both" ]]; then
+          echo "Generating text report..."
+          safety scan --output text > safety-report.txt || true
+        fi
+        
+        # Console Output
+        echo "Running console scan..."
+        safety scan --short-report || true
+        
+        echo "vulnerabilities=$SAFETY_VULNS" >> $GITHUB_OUTPUT
+        echo "🔍 Safety found $SAFETY_VULNS vulnerabilities"
+
+    - name: 🔎 Run pip-audit scan
+      id: pip-audit-scan
+      if: inputs.pip-audit-enabled == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🔎 Running pip-audit scan..."
+        
+        PIP_AUDIT_VULNS=0
+        
+        # JSON Report
+        if [[ "${{ inputs.output-format }}" == "json" || "${{ inputs.output-format }}" == "both" ]]; then
+          echo "Generating JSON report..."
+          pip-audit --format=json --output=pip-audit-report.json || true
+          
+          # Zähle Vulnerabilities aus JSON
+          if [[ -f "pip-audit-report.json" ]]; then
+            PIP_AUDIT_VULNS=$(python -c "
+            import json
+            try:
+                with open('pip-audit-report.json') as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        print(len(data))
+                    elif isinstance(data, dict) and 'vulnerabilities' in data:
+                        print(len(data['vulnerabilities']))
+                    else:
+                        print(0)
+            except:
+                print(0)
+            ")
+          fi
+        fi
+        
+        # SBOM Generation
+        echo "Generating SBOM..."
+        pip-audit --format=cyclonedx-json --output=pip-audit-sbom.json || true
+        
+        # Console Output
+        echo "Running console scan..."
+        pip-audit || true
+        
+        echo "vulnerabilities=$PIP_AUDIT_VULNS" >> $GITHUB_OUTPUT
+        echo "🔎 pip-audit found $PIP_AUDIT_VULNS vulnerabilities"
+
+    - name: 📊 Generate security summary
+      id: summary
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📊 Generating security summary..."
+        
+        BANDIT_ISSUES="${{ steps.bandit-scan.outputs.issues || '0' }}"
+        SAFETY_VULNS="${{ steps.safety-scan.outputs.vulnerabilities || '0' }}"
+        PIP_AUDIT_VULNS="${{ steps.pip-audit-scan.outputs.vulnerabilities || '0' }}"
+        
+        TOTAL_ISSUES=$((BANDIT_ISSUES + SAFETY_VULNS + PIP_AUDIT_VULNS))
+        
+        # Bestimme Status
+        if [[ $TOTAL_ISSUES -eq 0 ]]; then
+          STATUS="passed"
+          EMOJI="✅"
+        elif [[ $TOTAL_ISSUES -lt 5 ]]; then
+          STATUS="warnings"
+          EMOJI="⚠️"
+        else
+          STATUS="failed"
+          EMOJI="❌"
+        fi
+        
+        echo "total-issues=$TOTAL_ISSUES" >> $GITHUB_OUTPUT
+        echo "status=$STATUS" >> $GITHUB_OUTPUT
+        
+        # Erstelle Summary-Report
+        cat > security-summary.md << EOF
+        # $EMOJI Security Scan Summary
+        
+        **Overall Status:** $STATUS
+        **Total Issues:** $TOTAL_ISSUES
+        
+        ## Scan Results
+        
+        | Tool | Issues Found | Status |
+        |------|-------------|--------|
+        | Bandit | $BANDIT_ISSUES | $([[ $BANDIT_ISSUES -eq 0 ]] && echo "✅ Clean" || echo "⚠️ Issues") |
+        | Safety | $SAFETY_VULNS | $([[ $SAFETY_VULNS -eq 0 ]] && echo "✅ Clean" || echo "⚠️ Vulnerabilities") |
+        | pip-audit | $PIP_AUDIT_VULNS | $([[ $PIP_AUDIT_VULNS -eq 0 ]] && echo "✅ Clean" || echo "⚠️ Vulnerabilities") |
+        
+        ## Recommendations
+        
+        EOF
+        
+        if [[ $TOTAL_ISSUES -eq 0 ]]; then
+          echo "🎉 No security issues found! Your code is secure." >> security-summary.md
+        else
+          echo "⚠️ Security issues detected. Please review the detailed reports:" >> security-summary.md
+          echo "" >> security-summary.md
+          if [[ $BANDIT_ISSUES -gt 0 ]]; then
+            echo "- Review Bandit report for code security issues" >> security-summary.md
+          fi
+          if [[ $SAFETY_VULNS -gt 0 ]]; then
+            echo "- Update vulnerable dependencies identified by Safety" >> security-summary.md
+          fi
+          if [[ $PIP_AUDIT_VULNS -gt 0 ]]; then
+            echo "- Address vulnerabilities found by pip-audit" >> security-summary.md
+          fi
+        fi
+        
+        echo ""
+        echo "$EMOJI Security Scan Complete: $STATUS ($TOTAL_ISSUES total issues)"
+        cat security-summary.md
+
+    - name: 📦 Upload security reports
+      if: inputs.upload-reports == 'true' && always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports
+        path: |
+          ${{ inputs.working-directory }}/bandit-report.*
+          ${{ inputs.working-directory }}/safety-report.*
+          ${{ inputs.working-directory }}/pip-audit-report.*
+          ${{ inputs.working-directory }}/pip-audit-sbom.json
+          ${{ inputs.working-directory }}/security-summary.md
+        retention-days: 30
+
+    - name: ❌ Fail on security issues
+      if: inputs.fail-on-error == 'true' && steps.summary.outputs.status == 'failed'
+      shell: bash
+      run: |
+        echo "❌ Security scan failed with ${{ steps.summary.outputs.total-issues }} issues"
+        echo "Review the security reports for details"
+        exit 1

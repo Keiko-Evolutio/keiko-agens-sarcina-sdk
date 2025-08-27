@@ -1,0 +1,256 @@
+# .github/actions/upload-artifacts/action.yml
+name: 'Upload Artifacts with Smart Retention'
+description: 'Uploads artifacts with intelligent retention policies and compression'
+author: 'KEI-Agent Development Team'
+
+inputs:
+  artifact-name:
+    description: 'Name of the artifact'
+    required: true
+  artifact-path:
+    description: 'Path(s) to files/directories to upload'
+    required: true
+  retention-days:
+    description: 'Number of days to retain the artifact'
+    required: false
+    default: 'auto'
+  compression-level:
+    description: 'Compression level (0-9, 0=no compression, 9=max compression)'
+    required: false
+    default: '6'
+  include-metadata:
+    description: 'Whether to include metadata file'
+    required: false
+    default: 'true'
+  exclude-patterns:
+    description: 'Patterns to exclude from upload (newline-separated)'
+    required: false
+    default: ''
+  max-size-mb:
+    description: 'Maximum artifact size in MB (0=no limit)'
+    required: false
+    default: '100'
+  working-directory:
+    description: 'Working directory for artifact collection'
+    required: false
+    default: '.'
+  if-no-files-found:
+    description: 'What to do if no files are found (warn, error, ignore)'
+    required: false
+    default: 'warn'
+
+outputs:
+  artifact-id:
+    description: 'ID of the uploaded artifact'
+    value: ${{ steps.upload.outputs.artifact-id }}
+  artifact-url:
+    description: 'URL of the uploaded artifact'
+    value: ${{ steps.upload.outputs.artifact-url }}
+  files-uploaded:
+    description: 'Number of files uploaded'
+    value: ${{ steps.prepare.outputs.files-count }}
+  total-size-mb:
+    description: 'Total size of uploaded artifact in MB'
+    value: ${{ steps.prepare.outputs.total-size-mb }}
+  retention-days:
+    description: 'Actual retention days used'
+    value: ${{ steps.prepare.outputs.retention-days }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 📋 Prepare artifact upload
+      id: prepare
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📋 Preparing artifact upload..."
+        
+        # Bestimme intelligente Retention basierend auf Kontext
+        RETENTION_DAYS="${{ inputs.retention-days }}"
+        if [[ "$RETENTION_DAYS" == "auto" ]]; then
+          # Intelligente Retention basierend auf Event-Typ und Branch
+          case "${{ github.event_name }}" in
+            "push")
+              if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+                RETENTION_DAYS=90  # Main branch - länger behalten
+              elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+                RETENTION_DAYS=30  # Develop branch
+              else
+                RETENTION_DAYS=7   # Feature branches
+              fi
+              ;;
+            "pull_request")
+              RETENTION_DAYS=14    # PR artifacts
+              ;;
+            "schedule")
+              RETENTION_DAYS=30    # Scheduled runs
+              ;;
+            "workflow_dispatch")
+              RETENTION_DAYS=30    # Manual runs
+              ;;
+            "release")
+              RETENTION_DAYS=365   # Release artifacts - sehr lang behalten
+              ;;
+            *)
+              RETENTION_DAYS=7     # Default
+              ;;
+          esac
+        fi
+        
+        echo "retention-days=$RETENTION_DAYS" >> $GITHUB_OUTPUT
+        echo "📅 Using retention: $RETENTION_DAYS days"
+        
+        # Prüfe ob Dateien existieren
+        FILES_FOUND=false
+        FILES_COUNT=0
+        TOTAL_SIZE=0
+        
+        # Konvertiere Pfade zu Array
+        IFS=$'\n' read -d '' -r -a PATHS <<< "${{ inputs.artifact-path }}" || true
+        
+        for PATH_PATTERN in "${PATHS[@]}"; do
+          if [[ -n "$PATH_PATTERN" ]]; then
+            # Verwende find für bessere Kontrolle
+            while IFS= read -r -d '' file; do
+              if [[ -f "$file" ]]; then
+                FILES_FOUND=true
+                FILES_COUNT=$((FILES_COUNT + 1))
+                SIZE=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo 0)
+                TOTAL_SIZE=$((TOTAL_SIZE + SIZE))
+              fi
+            done < <(find . -path "$PATH_PATTERN" -type f -print0 2>/dev/null || true)
+          fi
+        done
+        
+        TOTAL_SIZE_MB=$((TOTAL_SIZE / 1024 / 1024))
+        
+        echo "files-count=$FILES_COUNT" >> $GITHUB_OUTPUT
+        echo "total-size-mb=$TOTAL_SIZE_MB" >> $GITHUB_OUTPUT
+        
+        echo "📊 Found $FILES_COUNT files ($TOTAL_SIZE_MB MB)"
+        
+        # Prüfe Größenlimit
+        MAX_SIZE_MB="${{ inputs.max-size-mb }}"
+        if [[ "$MAX_SIZE_MB" != "0" && "$TOTAL_SIZE_MB" -gt "$MAX_SIZE_MB" ]]; then
+          echo "⚠️ Artifact size ($TOTAL_SIZE_MB MB) exceeds limit ($MAX_SIZE_MB MB)"
+          echo "Consider reducing artifact size or increasing limit"
+        fi
+        
+        # Handle no files found
+        if [[ "$FILES_FOUND" == "false" ]]; then
+          case "${{ inputs.if-no-files-found }}" in
+            "error")
+              echo "❌ No files found matching patterns: ${{ inputs.artifact-path }}"
+              exit 1
+              ;;
+            "warn")
+              echo "⚠️ No files found matching patterns: ${{ inputs.artifact-path }}"
+              ;;
+            "ignore")
+              echo "ℹ️ No files found matching patterns: ${{ inputs.artifact-path }}"
+              ;;
+          esac
+        fi
+
+    - name: 📝 Generate metadata
+      if: inputs.include-metadata == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📝 Generating artifact metadata..."
+        
+        cat > artifact-metadata.json << EOF
+        {
+          "artifact_name": "${{ inputs.artifact-name }}",
+          "created_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+          "workflow": "${{ github.workflow }}",
+          "job": "${{ github.job }}",
+          "run_id": "${{ github.run_id }}",
+          "run_number": "${{ github.run_number }}",
+          "event_name": "${{ github.event_name }}",
+          "ref": "${{ github.ref }}",
+          "sha": "${{ github.sha }}",
+          "actor": "${{ github.actor }}",
+          "repository": "${{ github.repository }}",
+          "retention_days": ${{ steps.prepare.outputs.retention-days }},
+          "files_count": ${{ steps.prepare.outputs.files-count }},
+          "total_size_mb": ${{ steps.prepare.outputs.total-size-mb }},
+          "compression_level": ${{ inputs.compression-level }},
+          "upload_timestamp": "$(date +%s)"
+        }
+        EOF
+        
+        echo "📝 Metadata generated:"
+        cat artifact-metadata.json
+
+    - name: 🗜️ Prepare compression
+      if: inputs.compression-level != '0'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🗜️ Preparing compression (level ${{ inputs.compression-level }})..."
+        
+        # Erstelle temporäres Verzeichnis für komprimierte Dateien
+        mkdir -p .artifact-temp
+        
+        # Komprimiere große Dateien falls nötig
+        COMPRESSION_LEVEL="${{ inputs.compression-level }}"
+        
+        # Finde große Dateien (>1MB) die komprimiert werden sollten
+        find . -name "*.log" -o -name "*.txt" -o -name "*.json" -o -name "*.xml" -o -name "*.html" | \
+        while read -r file; do
+          if [[ -f "$file" ]]; then
+            SIZE=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo 0)
+            if [[ $SIZE -gt 1048576 ]]; then  # 1MB
+              echo "Compressing large file: $file"
+              gzip -c -$COMPRESSION_LEVEL "$file" > "${file}.gz" || true
+            fi
+          fi
+        done
+
+    - name: 📤 Upload artifact
+      id: upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          ${{ inputs.artifact-path }}
+          ${{ inputs.include-metadata == 'true' && format('{0}/artifact-metadata.json', inputs.working-directory) || '' }}
+        retention-days: ${{ steps.prepare.outputs.retention-days }}
+        compression-level: ${{ inputs.compression-level }}
+        if-no-files-found: ${{ inputs.if-no-files-found }}
+
+    - name: 📊 Upload summary
+      shell: bash
+      run: |
+        echo "📊 Artifact upload summary:"
+        echo "  Name: ${{ inputs.artifact-name }}"
+        echo "  Files: ${{ steps.prepare.outputs.files-count }}"
+        echo "  Size: ${{ steps.prepare.outputs.total-size-mb }} MB"
+        echo "  Retention: ${{ steps.prepare.outputs.retention-days }} days"
+        echo "  Compression: Level ${{ inputs.compression-level }}"
+        
+        if [[ -n "${{ steps.upload.outputs.artifact-id }}" ]]; then
+          echo "  Artifact ID: ${{ steps.upload.outputs.artifact-id }}"
+        fi
+        
+        if [[ -n "${{ steps.upload.outputs.artifact-url }}" ]]; then
+          echo "  Artifact URL: ${{ steps.upload.outputs.artifact-url }}"
+        fi
+        
+        echo "✅ Artifact uploaded successfully!"
+
+    - name: 🧹 Cleanup
+      if: always()
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🧹 Cleaning up temporary files..."
+        rm -rf .artifact-temp
+        rm -f artifact-metadata.json
+        
+        # Entferne komprimierte Dateien falls erstellt
+        find . -name "*.gz" -newer artifact-metadata.json -delete 2>/dev/null || true
+        
+        echo "🧹 Cleanup completed"

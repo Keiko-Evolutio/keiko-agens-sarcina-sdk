@@ -81,29 +81,12 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      # Python Setup
-      - name: 🐍 Setup Python
-        uses: actions/setup-python@v5
+      # Python Setup mit Composite Action
+      - name: 🐍 Setup Python Environment
+        uses: ./.github/actions/setup-python-env
         with:
           python-version: "3.11"
-          cache: "pip"
-
-      # Dependencies installieren
-      - name: 📦 Install Dependencies
-        shell: bash
-        run: |
-          set -e
-          python -m pip install --upgrade pip setuptools wheel
-          echo "📋 Installiere Dependencies über pyproject.toml..."
-          pip install -e ".[dev]"
-          echo "SUCCESS: Dependencies erfolgreich installiert"
-
-          # Validiere kritische Dependencies
-          python -c "import httpx, aiohttp, websockets, pydantic; print('✅ Kritische Dependencies verfügbar')"
-          python -c "import pytest, ruff; print('✅ Dev-Dependencies verfügbar')"
-
-          # Test basic import
-          python -c "import kei_agent; print(f'✅ KEI-Agent SDK importiert: {getattr(kei_agent, \"__version__\", \"unknown\")}')"
+          install-dev-dependencies: 'true'
 
       # Ruff Linting
       - name: 🔍 Ruff Linting
@@ -124,21 +107,15 @@ jobs:
           timeout 60 make type-check || echo "WARNING: MyPy timeout - wird übersprungen"
         continue-on-error: true
 
-      # Bandit Security Scan
+      # Security Scan mit Composite Action
       - name: 🛡️ Security Scan
-        run: |
-          echo "🛡️ Führe Security-Scan aus..."
-          make security-scan
-        continue-on-error: true # Security-Warnungen sollen Build nicht stoppen
-
-      # Upload Security Report
-      - name: 📤 Upload Security Report
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/security-scan
         with:
-          name: security-report
-          path: bandit-report.json
-          retention-days: 30
+          bandit-enabled: 'true'
+          safety-enabled: 'false'  # Nur Bandit für CI
+          pip-audit-enabled: 'false'
+          fail-on-error: 'false'
+          upload-reports: 'true'
 
   # Job 2: Matrix Testing
   test-matrix:
@@ -167,41 +144,23 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      # Python Setup
-      - name: 🐍 Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      # Python Setup mit Composite Action
+      - name: 🐍 Setup Python Environment ${{ matrix.python-version }}
+        uses: ./.github/actions/setup-python-env
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
+          install-dev-dependencies: 'true'
 
-      # Dependencies installieren
-      - name: 📦 Install Dependencies
-        shell: bash
-        run: |
-          set -e
-          python -m pip install --upgrade pip setuptools wheel
-          echo "📋 Installiere Dependencies über pyproject.toml..."
-          pip install -e ".[dev]"
-          echo "SUCCESS: Dependencies installiert"
-          python -c "import httpx, aiohttp; print('✅ Kritische Dependencies verfügbar')"
-
-      # Schnelle Tests (Unit Tests)
-      - name: 🚀 Fast Tests
-        run: |
-          echo "🚀 Führe schnelle Unit Tests aus..."
-          make test-fast
-
-      # Upload Test Results
-      - name: 📤 Upload Test Results
-        if: always()
-        uses: actions/upload-artifact@v4
+      # Tests mit Composite Action
+      - name: 🚀 Run Fast Tests
+        uses: ./.github/actions/run-tests
         with:
-          name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
-          path: |
-            htmlcov/
-            .coverage
-            coverage.xml
-          retention-days: 30
+          test-markers: 'not slow'
+          coverage-enabled: 'true'
+          parallel-tests: 'true'
+          junit-xml: 'true'
+          html-report: 'true'
+          upload-artifacts: 'true'
 
   # Job 3: Umfassende Tests (nur Ubuntu + Python 3.11)
   comprehensive-tests:

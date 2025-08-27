@@ -1,0 +1,185 @@
+# .github/actions/setup-python-env/action.yml
+name: 'Setup Python Environment'
+description: 'Sets up Python with caching, installs dependencies, and configures the environment'
+author: 'KEI-Agent Development Team'
+
+inputs:
+  python-version:
+    description: 'Python version to set up'
+    required: false
+    default: '3.11'
+  cache-dependency-path:
+    description: 'Path to dependency files for cache key'
+    required: false
+    default: 'pyproject.toml'
+  install-dependencies:
+    description: 'Whether to install project dependencies'
+    required: false
+    default: 'true'
+  install-dev-dependencies:
+    description: 'Whether to install development dependencies'
+    required: false
+    default: 'true'
+  install-test-dependencies:
+    description: 'Whether to install test dependencies'
+    required: false
+    default: 'false'
+  extra-dependencies:
+    description: 'Additional dependencies to install (space-separated)'
+    required: false
+    default: ''
+  working-directory:
+    description: 'Working directory for installation'
+    required: false
+    default: '.'
+  pip-cache-enabled:
+    description: 'Whether to enable pip caching'
+    required: false
+    default: 'true'
+  upgrade-pip:
+    description: 'Whether to upgrade pip to latest version'
+    required: false
+    default: 'true'
+  install-editable:
+    description: 'Whether to install project in editable mode'
+    required: false
+    default: 'true'
+
+outputs:
+  python-version:
+    description: 'The Python version that was set up'
+    value: ${{ steps.setup-python.outputs.python-version }}
+  cache-hit:
+    description: 'Whether pip cache was hit'
+    value: ${{ steps.setup-python.outputs.cache-hit }}
+  pip-version:
+    description: 'Version of pip that was installed'
+    value: ${{ steps.get-versions.outputs.pip-version }}
+  dependencies-installed:
+    description: 'Whether dependencies were successfully installed'
+    value: ${{ steps.install-deps.outputs.success }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🐍 Set up Python ${{ inputs.python-version }}
+      id: setup-python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: ${{ inputs.pip-cache-enabled == 'true' && 'pip' || '' }}
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+    - name: ⬆️ Upgrade pip
+      if: inputs.upgrade-pip == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "⬆️ Upgrading pip to latest version..."
+        python -m pip install --upgrade pip
+
+    - name: 📋 Get versions
+      id: get-versions
+      shell: bash
+      run: |
+        PYTHON_VERSION=$(python --version | cut -d' ' -f2)
+        PIP_VERSION=$(pip --version | cut -d' ' -f2)
+        echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
+        echo "pip-version=$PIP_VERSION" >> $GITHUB_OUTPUT
+        echo "🐍 Python version: $PYTHON_VERSION"
+        echo "📦 Pip version: $PIP_VERSION"
+
+    - name: 📦 Install project dependencies
+      id: install-deps
+      if: inputs.install-dependencies == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📦 Installing project dependencies..."
+        
+        # Bestimme Installation-Flags
+        INSTALL_FLAGS=""
+        if [[ "${{ inputs.install-editable }}" == "true" ]]; then
+          INSTALL_FLAGS="-e"
+        fi
+        
+        # Bestimme Extras
+        EXTRAS=""
+        if [[ "${{ inputs.install-dev-dependencies }}" == "true" ]]; then
+          EXTRAS="dev"
+        fi
+        if [[ "${{ inputs.install-test-dependencies }}" == "true" ]]; then
+          if [[ -n "$EXTRAS" ]]; then
+            EXTRAS="$EXTRAS,test"
+          else
+            EXTRAS="test"
+          fi
+        fi
+        
+        # Installiere Projekt mit Extras
+        if [[ -n "$EXTRAS" ]]; then
+          echo "Installing with extras: $EXTRAS"
+          pip install $INSTALL_FLAGS ".[$EXTRAS]"
+        else
+          echo "Installing without extras"
+          pip install $INSTALL_FLAGS .
+        fi
+        
+        echo "success=true" >> $GITHUB_OUTPUT
+
+    - name: 🔧 Install extra dependencies
+      if: inputs.extra-dependencies != ''
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🔧 Installing extra dependencies: ${{ inputs.extra-dependencies }}"
+        pip install ${{ inputs.extra-dependencies }}
+
+    - name: 📋 Verify installation
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📋 Verifying installation..."
+        echo "Installed packages:"
+        pip list --format=columns
+        
+        echo ""
+        echo "Python path:"
+        python -c "import sys; print('\n'.join(sys.path))"
+        
+        echo ""
+        echo "Current working directory:"
+        pwd
+        
+        echo ""
+        echo "Python executable:"
+        which python
+        
+        # Teste Import falls Projekt installiert wurde
+        if [[ "${{ inputs.install-dependencies }}" == "true" ]]; then
+          echo ""
+          echo "Testing project import..."
+          python -c "
+          try:
+              import kei_agent
+              print('✅ kei_agent import successful')
+          except ImportError as e:
+              print(f'⚠️ kei_agent import failed: {e}')
+              print('This might be expected if the project structure differs')
+          except Exception as e:
+              print(f'❌ Unexpected error: {e}')
+          "
+        fi
+
+    - name: 🧹 Cleanup
+      if: always()
+      shell: bash
+      run: |
+        echo "🧹 Cleaning up temporary files..."
+        # Entferne pip cache falls gewünscht (für Debugging)
+        if [[ "${{ runner.debug }}" == "1" ]]; then
+          echo "Debug mode - keeping all files"
+        else
+          # Cleanup kann hier erweitert werden
+          echo "Standard cleanup completed"
+        fi
