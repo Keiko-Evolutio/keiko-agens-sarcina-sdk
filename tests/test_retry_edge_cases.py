@@ -10,9 +10,10 @@ import pytest
 
 from kei_agent.client import (
     AgentClientConfig,
+    RetryConfig,
+    RetryStrategy,
     TracingConfig,
 )
-from kei_agent.protocol_types import RetryConfig, RetryStrategy
 from kei_agent.unified_client import UnifiedKeiAgentClient
 
 
@@ -45,12 +46,12 @@ async def test_max_delay_cap(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(
+            "rpc": RetryConfig(
                 max_attempts =4,
                 base_delay =10.0,
                 max_delay =5.0,
                 jitter=False,
-                strategy=retryStrategy.FIXED_DELAY,
+                strategy=RetryStrategy.FIXED_DELAY,
             )
         },
     )
@@ -81,12 +82,12 @@ async def test_exponential_base_edge_cases(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(
+            "rpc": RetryConfig(
                 max_attempts =4,
                 base_delay =0.5,
                 exponential_base =1.0,
                 jitter=False,
-                strategy=retryStrategy.EXPONENTIAL_BACKOFF,
+                strategy=RetryStrategy.EXPONENTIAL_BACKOFF,
             )
         },
     )
@@ -104,12 +105,12 @@ async def test_exponential_base_edge_cases(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(
+            "rpc": RetryConfig(
                 max_attempts =4,
                 base_delay =0.5,
                 exponential_base =10.0,
                 jitter=False,
-                strategy=retryStrategy.EXPONENTIAL_BACKOFF,
+                strategy=RetryStrategy.EXPONENTIAL_BACKOFF,
             )
         },
     )
