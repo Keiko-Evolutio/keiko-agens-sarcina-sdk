@@ -3,6 +3,8 @@
 
 from unittest.mock import Mock, patch
 
+import pytest
+
 from kei_agent import (
     AgentClientConfig,
     Authtypee,
@@ -48,15 +50,40 @@ class TestAgentClientConfig:
         assert hasattr(config, "retry")
 
     def test_config_validation(self):
-        """Tests configurationsvalitherung."""
-        # AgentClientConfig has aktuell ka agebaute Valitherung
-        # Teste, thes leere valuee akzeptiert werthe (for jetzt)
+        """Tests Konfigurationsvalidierung."""
+        # Test mit gültigen Werten
         config = AgentClientConfig(
-            agent_id ="",
-            base_url ="http://localhost:8000",
-            api_token ="test-token"
+            agent_id="test-agent",
+            base_url="http://localhost:8000",
+            api_token="test-token"
         )
-        assert config.agent_id == ""
+        assert config.agent_id == "test-agent"
+        assert config.base_url == "http://localhost:8000"
+        assert config.api_token == "test-token"
+
+        # Test Validierung für leere agent_id
+        with pytest.raises(ValueError, match="agent_id cannot be empty"):
+            AgentClientConfig(
+                agent_id="",
+                base_url="http://localhost:8000",
+                api_token="test-token"
+            )
+
+        # Test Validierung für leere base_url
+        with pytest.raises(ValueError, match="base_url cannot be empty"):
+            AgentClientConfig(
+                agent_id="test-agent",
+                base_url="",
+                api_token="test-token"
+            )
+
+        # Test Validierung für leere api_token
+        with pytest.raises(ValueError, match="api_token cannot be empty"):
+            AgentClientConfig(
+                agent_id="test-agent",
+                base_url="http://localhost:8000",
+                api_token=""
+            )
 
 
 class TestCapabilityProfile:
