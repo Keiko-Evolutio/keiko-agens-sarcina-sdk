@@ -1,0 +1,356 @@
+# .github/actions/detect-changes/action.yml
+name: 'Intelligent Change Detection'
+description: 'Advanced file change detection with impact analysis and conditional workflow execution'
+author: 'KEI-Agent Development Team'
+
+inputs:
+  base-ref:
+    description: 'Base reference for comparison (auto-detected if not provided)'
+    required: false
+    default: ''
+  change-filters:
+    description: 'Custom change filters as YAML string'
+    required: false
+    default: ''
+  impact-analysis:
+    description: 'Whether to perform impact analysis'
+    required: false
+    default: 'true'
+  dependency-tracking:
+    description: 'Whether to track dependency changes'
+    required: false
+    default: 'true'
+  test-mapping:
+    description: 'Whether to map changes to relevant tests'
+    required: false
+    default: 'true'
+  output-format:
+    description: 'Output format (json, yaml, env)'
+    required: false
+    default: 'json'
+
+outputs:
+  # Core change categories
+  core-changed:
+    description: 'Whether core application code changed'
+    value: ${{ steps.analyze.outputs.core-changed }}
+  tests-changed:
+    description: 'Whether test files changed'
+    value: ${{ steps.analyze.outputs.tests-changed }}
+  docs-changed:
+    description: 'Whether documentation changed'
+    value: ${{ steps.analyze.outputs.docs-changed }}
+  ci-changed:
+    description: 'Whether CI/CD configuration changed'
+    value: ${{ steps.analyze.outputs.ci-changed }}
+  dependencies-changed:
+    description: 'Whether dependencies changed'
+    value: ${{ steps.analyze.outputs.dependencies-changed }}
+  
+  # Advanced analysis
+  impact-level:
+    description: 'Impact level (low, medium, high, critical)'
+    value: ${{ steps.analyze.outputs.impact-level }}
+  affected-modules:
+    description: 'List of affected modules'
+    value: ${{ steps.analyze.outputs.affected-modules }}
+  relevant-tests:
+    description: 'List of relevant test files'
+    value: ${{ steps.analyze.outputs.relevant-tests }}
+  deployment-required:
+    description: 'Whether deployment is required'
+    value: ${{ steps.analyze.outputs.deployment-required }}
+  
+  # Workflow recommendations
+  skip-tests:
+    description: 'Whether tests can be skipped'
+    value: ${{ steps.recommend.outputs.skip-tests }}
+  skip-security:
+    description: 'Whether security scans can be skipped'
+    value: ${{ steps.recommend.outputs.skip-security }}
+  skip-docs:
+    description: 'Whether documentation build can be skipped'
+    value: ${{ steps.recommend.outputs.skip-docs }}
+  fast-mode:
+    description: 'Whether to use fast mode for workflows'
+    value: ${{ steps.recommend.outputs.fast-mode }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🔍 Detect changed files
+      id: detect
+      shell: bash
+      run: |
+        echo "🔍 Detecting changed files..."
+        
+        # Bestimme Base-Referenz
+        BASE_REF="${{ inputs.base-ref }}"
+        if [[ -z "$BASE_REF" ]]; then
+          case "${{ github.event_name }}" in
+            "pull_request")
+              BASE_REF="${{ github.event.pull_request.base.sha }}"
+              ;;
+            "push")
+              if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+                BASE_REF="HEAD~1"
+              else
+                BASE_REF="origin/main"
+              fi
+              ;;
+            "workflow_dispatch")
+              BASE_REF="HEAD~1"
+              ;;
+            *)
+              BASE_REF="HEAD~1"
+              ;;
+          esac
+        fi
+        
+        echo "base-ref=$BASE_REF" >> $GITHUB_OUTPUT
+        echo "📋 Using base reference: $BASE_REF"
+        
+        # Hole geänderte Dateien
+        if git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
+          CHANGED_FILES=$(git diff --name-only "$BASE_REF"..HEAD)
+          ADDED_FILES=$(git diff --name-only --diff-filter=A "$BASE_REF"..HEAD)
+          DELETED_FILES=$(git diff --name-only --diff-filter=D "$BASE_REF"..HEAD)
+          MODIFIED_FILES=$(git diff --name-only --diff-filter=M "$BASE_REF"..HEAD)
+        else
+          echo "⚠️ Base reference not found, using all files"
+          CHANGED_FILES=$(find . -type f -name "*.py" -o -name "*.yml" -o -name "*.yaml" -o -name "*.toml" -o -name "*.md" | grep -v ".git")
+          ADDED_FILES=""
+          DELETED_FILES=""
+          MODIFIED_FILES="$CHANGED_FILES"
+        fi
+        
+        # Speichere Dateilisten
+        echo "changed-files<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        echo "added-files<<EOF" >> $GITHUB_OUTPUT
+        echo "$ADDED_FILES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        echo "deleted-files<<EOF" >> $GITHUB_OUTPUT
+        echo "$DELETED_FILES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        echo "modified-files<<EOF" >> $GITHUB_OUTPUT
+        echo "$MODIFIED_FILES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        # Statistiken
+        TOTAL_CHANGED=$(echo "$CHANGED_FILES" | wc -l)
+        echo "total-changed=$TOTAL_CHANGED" >> $GITHUB_OUTPUT
+        
+        echo "📊 Change statistics:"
+        echo "  Total changed: $TOTAL_CHANGED"
+        echo "  Added: $(echo "$ADDED_FILES" | wc -l)"
+        echo "  Deleted: $(echo "$DELETED_FILES" | wc -l)"
+        echo "  Modified: $(echo "$MODIFIED_FILES" | wc -l)"
+
+    - name: 🎯 Analyze change impact
+      id: analyze
+      shell: bash
+      run: |
+        echo "🎯 Analyzing change impact..."
+        
+        CHANGED_FILES="${{ steps.detect.outputs.changed-files }}"
+        
+        # Initialisiere Flags
+        CORE_CHANGED=false
+        TESTS_CHANGED=false
+        DOCS_CHANGED=false
+        CI_CHANGED=false
+        DEPS_CHANGED=false
+        CONFIG_CHANGED=false
+        
+        AFFECTED_MODULES=()
+        RELEVANT_TESTS=()
+        
+        # Analysiere jede geänderte Datei
+        while IFS= read -r file; do
+          if [[ -z "$file" ]]; then continue; fi
+          
+          case "$file" in
+            # Core application code
+            kei_agent/*.py|src/*.py|backend/*.py)
+              CORE_CHANGED=true
+              # Extrahiere Modul-Namen
+              MODULE=$(echo "$file" | sed 's|/.*||' | sed 's|\.py$||')
+              AFFECTED_MODULES+=("$MODULE")
+              ;;
+            
+            # Test files
+            tests/*.py|test_*.py|*_test.py)
+              TESTS_CHANGED=true
+              RELEVANT_TESTS+=("$file")
+              ;;
+            
+            # Documentation
+            docs/*|*.md|*.rst)
+              DOCS_CHANGED=true
+              ;;
+            
+            # CI/CD configuration
+            .github/*|.gitlab-ci.yml|Jenkinsfile|azure-pipelines.yml)
+              CI_CHANGED=true
+              ;;
+            
+            # Dependencies
+            pyproject.toml|requirements*.txt|Pipfile|setup.py|setup.cfg)
+              DEPS_CHANGED=true
+              ;;
+            
+            # Configuration
+            *.toml|*.yaml|*.yml|*.json|*.ini|*.cfg)
+              CONFIG_CHANGED=true
+              ;;
+          esac
+        done <<< "$CHANGED_FILES"
+        
+        # Bestimme Impact-Level
+        IMPACT_LEVEL="low"
+        if [[ "$DEPS_CHANGED" == "true" ]]; then
+          IMPACT_LEVEL="high"
+        elif [[ "$CORE_CHANGED" == "true" ]]; then
+          IMPACT_LEVEL="medium"
+        elif [[ "$CI_CHANGED" == "true" ]]; then
+          IMPACT_LEVEL="medium"
+        fi
+        
+        # Deployment erforderlich?
+        DEPLOYMENT_REQUIRED=false
+        if [[ "$CORE_CHANGED" == "true" || "$DEPS_CHANGED" == "true" || "$CONFIG_CHANGED" == "true" ]]; then
+          DEPLOYMENT_REQUIRED=true
+        fi
+        
+        # Entferne Duplikate aus Arrays
+        AFFECTED_MODULES=($(printf '%s\n' "${AFFECTED_MODULES[@]}" | sort -u))
+        RELEVANT_TESTS=($(printf '%s\n' "${RELEVANT_TESTS[@]}" | sort -u))
+        
+        # Setze Outputs
+        echo "core-changed=$CORE_CHANGED" >> $GITHUB_OUTPUT
+        echo "tests-changed=$TESTS_CHANGED" >> $GITHUB_OUTPUT
+        echo "docs-changed=$DOCS_CHANGED" >> $GITHUB_OUTPUT
+        echo "ci-changed=$CI_CHANGED" >> $GITHUB_OUTPUT
+        echo "dependencies-changed=$DEPS_CHANGED" >> $GITHUB_OUTPUT
+        echo "config-changed=$CONFIG_CHANGED" >> $GITHUB_OUTPUT
+        echo "impact-level=$IMPACT_LEVEL" >> $GITHUB_OUTPUT
+        echo "deployment-required=$DEPLOYMENT_REQUIRED" >> $GITHUB_OUTPUT
+        
+        # Arrays als JSON
+        MODULES_JSON=$(printf '%s\n' "${AFFECTED_MODULES[@]}" | jq -R . | jq -s .)
+        TESTS_JSON=$(printf '%s\n' "${RELEVANT_TESTS[@]}" | jq -R . | jq -s .)
+        
+        echo "affected-modules=$MODULES_JSON" >> $GITHUB_OUTPUT
+        echo "relevant-tests=$TESTS_JSON" >> $GITHUB_OUTPUT
+        
+        echo "🎯 Impact analysis results:"
+        echo "  Core changed: $CORE_CHANGED"
+        echo "  Tests changed: $TESTS_CHANGED"
+        echo "  Docs changed: $DOCS_CHANGED"
+        echo "  CI changed: $CI_CHANGED"
+        echo "  Dependencies changed: $DEPS_CHANGED"
+        echo "  Impact level: $IMPACT_LEVEL"
+        echo "  Deployment required: $DEPLOYMENT_REQUIRED"
+        echo "  Affected modules: ${AFFECTED_MODULES[*]}"
+
+    - name: 💡 Generate workflow recommendations
+      id: recommend
+      shell: bash
+      run: |
+        echo "💡 Generating workflow recommendations..."
+        
+        CORE_CHANGED="${{ steps.analyze.outputs.core-changed }}"
+        TESTS_CHANGED="${{ steps.analyze.outputs.tests-changed }}"
+        DOCS_CHANGED="${{ steps.analyze.outputs.docs-changed }}"
+        CI_CHANGED="${{ steps.analyze.outputs.ci-changed }}"
+        DEPS_CHANGED="${{ steps.analyze.outputs.dependencies-changed }}"
+        IMPACT_LEVEL="${{ steps.analyze.outputs.impact-level }}"
+        
+        # Workflow-Optimierungen
+        SKIP_TESTS=false
+        SKIP_SECURITY=false
+        SKIP_DOCS=false
+        FAST_MODE=false
+        
+        # Nur Dokumentation geändert
+        if [[ "$DOCS_CHANGED" == "true" && "$CORE_CHANGED" == "false" && "$TESTS_CHANGED" == "false" && "$CI_CHANGED" == "false" && "$DEPS_CHANGED" == "false" ]]; then
+          SKIP_TESTS=true
+          SKIP_SECURITY=true
+          FAST_MODE=true
+        fi
+        
+        # Nur Tests geändert
+        if [[ "$TESTS_CHANGED" == "true" && "$CORE_CHANGED" == "false" && "$DEPS_CHANGED" == "false" ]]; then
+          SKIP_SECURITY=true
+          FAST_MODE=true
+        fi
+        
+        # Nur CI geändert
+        if [[ "$CI_CHANGED" == "true" && "$CORE_CHANGED" == "false" && "$DEPS_CHANGED" == "false" ]]; then
+          SKIP_DOCS=true
+          FAST_MODE=true
+        fi
+        
+        # Niedrige Impact-Level
+        if [[ "$IMPACT_LEVEL" == "low" ]]; then
+          FAST_MODE=true
+        fi
+        
+        echo "skip-tests=$SKIP_TESTS" >> $GITHUB_OUTPUT
+        echo "skip-security=$SKIP_SECURITY" >> $GITHUB_OUTPUT
+        echo "skip-docs=$SKIP_DOCS" >> $GITHUB_OUTPUT
+        echo "fast-mode=$FAST_MODE" >> $GITHUB_OUTPUT
+        
+        echo "💡 Workflow recommendations:"
+        echo "  Skip tests: $SKIP_TESTS"
+        echo "  Skip security: $SKIP_SECURITY"
+        echo "  Skip docs: $SKIP_DOCS"
+        echo "  Fast mode: $FAST_MODE"
+
+    - name: 📊 Generate change report
+      shell: bash
+      run: |
+        echo "📊 Generating comprehensive change report..."
+        
+        # Erstelle Change Report
+        cat > change-report.json << EOF
+        {
+          "event": "${{ github.event_name }}",
+          "ref": "${{ github.ref }}",
+          "base_ref": "${{ steps.detect.outputs.base-ref }}",
+          "total_changed": ${{ steps.detect.outputs.total-changed }},
+          "changes": {
+            "core": ${{ steps.analyze.outputs.core-changed }},
+            "tests": ${{ steps.analyze.outputs.tests-changed }},
+            "docs": ${{ steps.analyze.outputs.docs-changed }},
+            "ci": ${{ steps.analyze.outputs.ci-changed }},
+            "dependencies": ${{ steps.analyze.outputs.dependencies-changed }}
+          },
+          "impact": {
+            "level": "${{ steps.analyze.outputs.impact-level }}",
+            "deployment_required": ${{ steps.analyze.outputs.deployment-required }},
+            "affected_modules": ${{ steps.analyze.outputs.affected-modules }},
+            "relevant_tests": ${{ steps.analyze.outputs.relevant-tests }}
+          },
+          "recommendations": {
+            "skip_tests": ${{ steps.recommend.outputs.skip-tests }},
+            "skip_security": ${{ steps.recommend.outputs.skip-security }},
+            "skip_docs": ${{ steps.recommend.outputs.skip-docs }},
+            "fast_mode": ${{ steps.recommend.outputs.fast-mode }}
+          },
+          "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        }
+        EOF
+        
+        echo "📊 Change report generated:"
+        cat change-report.json | jq .
+        
+        # Optional: Upload als Artifact
+        if [[ "${{ inputs.output-format }}" == "json" ]]; then
+          echo "📤 Change report available as change-report.json"
+        fi

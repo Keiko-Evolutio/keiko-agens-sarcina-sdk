@@ -1,0 +1,465 @@
+# .github/actions/background-tasks/action.yml
+name: 'Background Task Manager'
+description: 'Manages background tasks and step-level parallelization for improved workflow efficiency'
+author: 'KEI-Agent Development Team'
+
+inputs:
+  tasks:
+    description: 'Background tasks as JSON array'
+    required: true
+  max-concurrent:
+    description: 'Maximum concurrent background tasks'
+    required: false
+    default: '3'
+  timeout-minutes:
+    description: 'Timeout for each background task in minutes'
+    required: false
+    default: '30'
+  failure-strategy:
+    description: 'Failure strategy (fail-fast, continue, ignore)'
+    required: false
+    default: 'continue'
+  priority-levels:
+    description: 'Priority levels for task scheduling'
+    required: false
+    default: 'high,medium,low'
+  resource-monitoring:
+    description: 'Whether to monitor resource usage'
+    required: false
+    default: 'true'
+  output-aggregation:
+    description: 'Whether to aggregate task outputs'
+    required: false
+    default: 'true'
+  working-directory:
+    description: 'Working directory for tasks'
+    required: false
+    default: '.'
+
+outputs:
+  completed-tasks:
+    description: 'Number of completed tasks'
+    value: ${{ steps.execute.outputs.completed-tasks }}
+  failed-tasks:
+    description: 'Number of failed tasks'
+    value: ${{ steps.execute.outputs.failed-tasks }}
+  total-duration:
+    description: 'Total execution duration in seconds'
+    value: ${{ steps.execute.outputs.total-duration }}
+  task-results:
+    description: 'Results of all tasks as JSON'
+    value: ${{ steps.execute.outputs.task-results }}
+  resource-usage:
+    description: 'Peak resource usage during execution'
+    value: ${{ steps.monitor.outputs.resource-usage }}
+  efficiency-score:
+    description: 'Background task efficiency score (0-100)'
+    value: ${{ steps.analyze.outputs.efficiency-score }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🔧 Initialize background task manager
+      id: init
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🔧 Initializing background task manager..."
+        
+        # Erstelle Task-Management-Verzeichnis
+        mkdir -p .background-tasks
+        
+        # Parse Tasks
+        TASKS='${{ inputs.tasks }}'
+        echo "$TASKS" > .background-tasks/tasks.json
+        
+        # Validiere Tasks
+        TASK_COUNT=$(echo "$TASKS" | jq length)
+        if [[ $TASK_COUNT -eq 0 ]]; then
+          echo "❌ No tasks provided"
+          exit 1
+        fi
+        
+        # Parse Priority-Levels
+        IFS=',' read -ra PRIORITIES <<< "${{ inputs.priority-levels }}"
+        echo "Priority levels: ${PRIORITIES[*]}"
+        
+        # Initialisiere Tracking-Dateien
+        echo "0" > .background-tasks/completed.txt
+        echo "0" > .background-tasks/failed.txt
+        echo "$(date +%s)" > .background-tasks/start-time.txt
+        
+        # Erstelle Task-Status-Tracking
+        echo "{}" > .background-tasks/task-status.json
+        echo "[]" > .background-tasks/task-results.json
+        
+        echo "🔧 Initialized background task manager:"
+        echo "  Total tasks: $TASK_COUNT"
+        echo "  Max concurrent: ${{ inputs.max-concurrent }}"
+        echo "  Timeout: ${{ inputs.timeout-minutes }} minutes"
+        echo "  Failure strategy: ${{ inputs.failure-strategy }}"
+
+    - name: 📊 Start resource monitoring
+      if: inputs.resource-monitoring == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📊 Starting resource monitoring for background tasks..."
+        
+        # Background Resource Monitor
+        (
+          PEAK_CPU=0
+          PEAK_MEMORY=0
+          
+          while [[ -f .background-tasks/monitoring-active.txt ]]; do
+            # CPU Monitoring
+            if command -v top >/dev/null 2>&1; then
+              CPU_PERCENT=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | sed 's/%us,//' 2>/dev/null || echo "0")
+              if [[ -z "$CPU_PERCENT" ]]; then
+                CPU_PERCENT=$(top -l 1 -n 0 | grep "CPU usage" | awk '{print $3}' | sed 's/%//' 2>/dev/null || echo "0")
+              fi
+            else
+              CPU_PERCENT=0
+            fi
+            
+            # Memory Monitoring
+            if command -v free >/dev/null 2>&1; then
+              MEMORY_MB=$(free -m | awk '/^Mem:/ {print $3}')
+            elif command -v vm_stat >/dev/null 2>&1; then
+              MEMORY_MB=$(vm_stat | awk '/Pages active:/ {print int($3 * 4096 / 1024 / 1024)}')
+            else
+              MEMORY_MB=0
+            fi
+            
+            # Update Peaks
+            if (( $(echo "$CPU_PERCENT > $PEAK_CPU" | bc -l 2>/dev/null || echo "0") )); then
+              PEAK_CPU=$CPU_PERCENT
+            fi
+            
+            if [[ $MEMORY_MB -gt $PEAK_MEMORY ]]; then
+              PEAK_MEMORY=$MEMORY_MB
+            fi
+            
+            # Log Metrics
+            echo "$(date +%s),$CPU_PERCENT,$MEMORY_MB" >> .background-tasks/resource-metrics.csv
+            
+            # Update Peak-Dateien
+            echo "$PEAK_CPU" > .background-tasks/peak-cpu.txt
+            echo "$PEAK_MEMORY" > .background-tasks/peak-memory.txt
+            
+            sleep 2
+          done
+        ) &
+        
+        MONITOR_PID=$!
+        echo "$MONITOR_PID" > .background-tasks/monitor-pid.txt
+        echo "active" > .background-tasks/monitoring-active.txt
+        
+        echo "📊 Resource monitoring started (PID: $MONITOR_PID)"
+
+    - name: 🚀 Execute background tasks
+      id: execute
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🚀 Executing background tasks..."
+        
+        TASKS=$(cat .background-tasks/tasks.json)
+        MAX_CONCURRENT="${{ inputs.max-concurrent }}"
+        TIMEOUT_MINUTES="${{ inputs.timeout-minutes }}"
+        FAILURE_STRATEGY="${{ inputs.failure-strategy }}"
+        
+        # Task-Execution mit Python für bessere Parallelisierung
+        python3 << 'EOF'
+        import json
+        import subprocess
+        import threading
+        import time
+        import os
+        import signal
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        from queue import Queue
+        
+        # Parse Inputs
+        with open('.background-tasks/tasks.json') as f:
+            tasks = json.load(f)
+        
+        max_concurrent = int(os.environ['MAX_CONCURRENT'])
+        timeout_seconds = int(os.environ['TIMEOUT_MINUTES']) * 60
+        failure_strategy = os.environ['FAILURE_STRATEGY']
+        
+        # Task-Execution-Funktion
+        def execute_task(task_info):
+            task_id = task_info.get('id', f"task-{time.time()}")
+            command = task_info.get('command', '')
+            priority = task_info.get('priority', 'medium')
+            timeout = task_info.get('timeout', timeout_seconds)
+            
+            start_time = time.time()
+            
+            try:
+                print(f"🚀 Starting task {task_id}: {command}")
+                
+                # Execute command with timeout
+                result = subprocess.run(
+                    command,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout
+                )
+                
+                end_time = time.time()
+                duration = end_time - start_time
+                
+                task_result = {
+                    'id': task_id,
+                    'command': command,
+                    'priority': priority,
+                    'exit_code': result.returncode,
+                    'stdout': result.stdout,
+                    'stderr': result.stderr,
+                    'duration': duration,
+                    'status': 'completed' if result.returncode == 0 else 'failed',
+                    'timestamp': time.time()
+                }
+                
+                if result.returncode == 0:
+                    print(f"✅ Task {task_id} completed successfully ({duration:.1f}s)")
+                else:
+                    print(f"❌ Task {task_id} failed with exit code {result.returncode}")
+                
+                return task_result
+                
+            except subprocess.TimeoutExpired:
+                end_time = time.time()
+                duration = end_time - start_time
+                
+                print(f"⏰ Task {task_id} timed out after {duration:.1f}s")
+                
+                return {
+                    'id': task_id,
+                    'command': command,
+                    'priority': priority,
+                    'exit_code': 124,  # Timeout exit code
+                    'stdout': '',
+                    'stderr': f'Task timed out after {timeout}s',
+                    'duration': duration,
+                    'status': 'timeout',
+                    'timestamp': time.time()
+                }
+                
+            except Exception as e:
+                end_time = time.time()
+                duration = end_time - start_time
+                
+                print(f"💥 Task {task_id} failed with exception: {e}")
+                
+                return {
+                    'id': task_id,
+                    'command': command,
+                    'priority': priority,
+                    'exit_code': 1,
+                    'stdout': '',
+                    'stderr': str(e),
+                    'duration': duration,
+                    'status': 'error',
+                    'timestamp': time.time()
+                }
+        
+        # Sortiere Tasks nach Priorität
+        priority_order = {'high': 0, 'medium': 1, 'low': 2}
+        tasks.sort(key=lambda t: priority_order.get(t.get('priority', 'medium'), 1))
+        
+        # Execute Tasks parallel
+        completed_tasks = 0
+        failed_tasks = 0
+        all_results = []
+        
+        with ThreadPoolExecutor(max_workers=max_concurrent) as executor:
+            # Submit alle Tasks
+            future_to_task = {executor.submit(execute_task, task): task for task in tasks}
+            
+            # Warte auf Completion
+            for future in as_completed(future_to_task):
+                task = future_to_task[future]
+                
+                try:
+                    result = future.result()
+                    all_results.append(result)
+                    
+                    if result['status'] == 'completed':
+                        completed_tasks += 1
+                    else:
+                        failed_tasks += 1
+                        
+                        # Handle Failure Strategy
+                        if failure_strategy == 'fail-fast':
+                            print(f"💥 Fail-fast triggered by task {result['id']}")
+                            # Cancel remaining tasks
+                            for remaining_future in future_to_task:
+                                if not remaining_future.done():
+                                    remaining_future.cancel()
+                            break
+                    
+                except Exception as e:
+                    print(f"💥 Task execution failed: {e}")
+                    failed_tasks += 1
+        
+        # Speichere Ergebnisse
+        with open('.background-tasks/task-results.json', 'w') as f:
+            json.dump(all_results, f, indent=2)
+        
+        # Update Counters
+        with open('.background-tasks/completed.txt', 'w') as f:
+            f.write(str(completed_tasks))
+        
+        with open('.background-tasks/failed.txt', 'w') as f:
+            f.write(str(failed_tasks))
+        
+        print(f"🏁 Background task execution completed:")
+        print(f"  Completed: {completed_tasks}")
+        print(f"  Failed: {failed_tasks}")
+        print(f"  Total: {len(tasks)}")
+        EOF
+        
+        # Berechne Gesamtdauer
+        START_TIME=$(cat .background-tasks/start-time.txt)
+        END_TIME=$(date +%s)
+        TOTAL_DURATION=$((END_TIME - START_TIME))
+        
+        # Hole Ergebnisse
+        COMPLETED=$(cat .background-tasks/completed.txt)
+        FAILED=$(cat .background-tasks/failed.txt)
+        TASK_RESULTS=$(cat .background-tasks/task-results.json)
+        
+        # Setze Outputs
+        echo "completed-tasks=$COMPLETED" >> $GITHUB_OUTPUT
+        echo "failed-tasks=$FAILED" >> $GITHUB_OUTPUT
+        echo "total-duration=$TOTAL_DURATION" >> $GITHUB_OUTPUT
+        echo "task-results<<EOF" >> $GITHUB_OUTPUT
+        echo "$TASK_RESULTS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        echo "🚀 Background task execution summary:"
+        echo "  Completed: $COMPLETED"
+        echo "  Failed: $FAILED"
+        echo "  Duration: ${TOTAL_DURATION}s"
+
+    - name: 📊 Stop resource monitoring
+      id: monitor
+      if: inputs.resource-monitoring == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📊 Stopping resource monitoring..."
+        
+        # Stoppe Monitoring
+        rm -f .background-tasks/monitoring-active.txt
+        
+        if [[ -f .background-tasks/monitor-pid.txt ]]; then
+          MONITOR_PID=$(cat .background-tasks/monitor-pid.txt)
+          kill $MONITOR_PID 2>/dev/null || true
+        fi
+        
+        # Sammle Resource-Usage
+        PEAK_CPU=$(cat .background-tasks/peak-cpu.txt 2>/dev/null || echo "0")
+        PEAK_MEMORY=$(cat .background-tasks/peak-memory.txt 2>/dev/null || echo "0")
+        
+        RESOURCE_USAGE=$(cat << EOF
+        {
+          "peak_cpu_percent": $PEAK_CPU,
+          "peak_memory_mb": $PEAK_MEMORY,
+          "monitoring_duration": ${{ steps.execute.outputs.total-duration }}
+        }
+        EOF
+        )
+        
+        echo "resource-usage=$RESOURCE_USAGE" >> $GITHUB_OUTPUT
+        
+        echo "📊 Resource monitoring summary:"
+        echo "  Peak CPU: ${PEAK_CPU}%"
+        echo "  Peak Memory: ${PEAK_MEMORY}MB"
+
+    - name: 📈 Analyze efficiency
+      id: analyze
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📈 Analyzing background task efficiency..."
+        
+        COMPLETED="${{ steps.execute.outputs.completed-tasks }}"
+        FAILED="${{ steps.execute.outputs.failed-tasks }}"
+        TOTAL_DURATION="${{ steps.execute.outputs.total-duration }}"
+        MAX_CONCURRENT="${{ inputs.max-concurrent }}"
+        
+        TOTAL_TASKS=$((COMPLETED + FAILED))
+        
+        # Berechne Efficiency Score
+        EFFICIENCY_SCORE=0
+        
+        # Success Rate (40% of score)
+        if [[ $TOTAL_TASKS -gt 0 ]]; then
+          SUCCESS_RATE=$((COMPLETED * 100 / TOTAL_TASKS))
+          EFFICIENCY_SCORE=$((EFFICIENCY_SCORE + SUCCESS_RATE * 40 / 100))
+        fi
+        
+        # Parallelization Efficiency (30% of score)
+        if [[ $TOTAL_DURATION -gt 0 && $MAX_CONCURRENT -gt 1 ]]; then
+          # Geschätzte sequentielle Zeit vs tatsächliche Zeit
+          ESTIMATED_SEQUENTIAL=$((TOTAL_TASKS * 60))  # 60s pro Task geschätzt
+          if [[ $TOTAL_DURATION -lt $ESTIMATED_SEQUENTIAL ]]; then
+            PARALLEL_EFFICIENCY=$(((ESTIMATED_SEQUENTIAL - TOTAL_DURATION) * 100 / ESTIMATED_SEQUENTIAL))
+            EFFICIENCY_SCORE=$((EFFICIENCY_SCORE + PARALLEL_EFFICIENCY * 30 / 100))
+          fi
+        fi
+        
+        # Resource Utilization (30% of score)
+        if [[ "${{ inputs.resource-monitoring }}" == "true" ]]; then
+          RESOURCE_USAGE='${{ steps.monitor.outputs.resource-usage }}'
+          PEAK_CPU=$(echo "$RESOURCE_USAGE" | jq -r '.peak_cpu_percent // 0')
+          
+          # Optimal CPU usage zwischen 50-80%
+          if (( $(echo "$PEAK_CPU >= 50 && $PEAK_CPU <= 80" | bc -l 2>/dev/null || echo "0") )); then
+            EFFICIENCY_SCORE=$((EFFICIENCY_SCORE + 30))
+          elif (( $(echo "$PEAK_CPU > 0" | bc -l 2>/dev/null || echo "0") )); then
+            EFFICIENCY_SCORE=$((EFFICIENCY_SCORE + 15))
+          fi
+        else
+          EFFICIENCY_SCORE=$((EFFICIENCY_SCORE + 15))  # Partial credit
+        fi
+        
+        # Begrenze auf 100
+        if [[ $EFFICIENCY_SCORE -gt 100 ]]; then
+          EFFICIENCY_SCORE=100
+        fi
+        
+        echo "efficiency-score=$EFFICIENCY_SCORE" >> $GITHUB_OUTPUT
+        
+        echo "📈 Efficiency analysis:"
+        echo "  Success rate: $((COMPLETED * 100 / (TOTAL_TASKS > 0 ? TOTAL_TASKS : 1)))%"
+        echo "  Total duration: ${TOTAL_DURATION}s"
+        echo "  Efficiency score: $EFFICIENCY_SCORE/100"
+
+    - name: 🧹 Cleanup
+      if: always()
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "🧹 Cleaning up background task manager..."
+        
+        # Stoppe eventuell noch laufende Monitoring-Prozesse
+        if [[ -f .background-tasks/monitor-pid.txt ]]; then
+          MONITOR_PID=$(cat .background-tasks/monitor-pid.txt)
+          kill $MONITOR_PID 2>/dev/null || true
+        fi
+        
+        # Behalte wichtige Ergebnisse, entferne temporäre Dateien
+        rm -f .background-tasks/monitoring-active.txt
+        rm -f .background-tasks/monitor-pid.txt
+        rm -f .background-tasks/start-time.txt
+        rm -f .background-tasks/completed.txt
+        rm -f .background-tasks/failed.txt
+        rm -f .background-tasks/peak-*.txt
+        
+        echo "🧹 Cleanup completed"

@@ -1,0 +1,437 @@
+# .github/actions/parallel-execution/action.yml
+name: 'Parallel Execution Manager'
+description: 'Advanced parallelization management with dynamic resource allocation and intelligent job scheduling'
+author: 'KEI-Agent Development Team'
+
+inputs:
+  execution-strategy:
+    description: 'Execution strategy (auto, aggressive, conservative, custom)'
+    required: false
+    default: 'auto'
+  max-parallel-jobs:
+    description: 'Maximum number of parallel jobs'
+    required: false
+    default: 'auto'
+  resource-constraints:
+    description: 'Resource constraints as JSON (cpu, memory, runners)'
+    required: false
+    default: '{"cpu_limit": 80, "memory_limit": 80, "max_runners": 20}'
+  dependency-graph:
+    description: 'Job dependency graph as JSON'
+    required: false
+    default: '{}'
+  priority-jobs:
+    description: 'High priority jobs (comma-separated)'
+    required: false
+    default: ''
+  background-jobs:
+    description: 'Background jobs that can run in parallel (comma-separated)'
+    required: false
+    default: ''
+  conditional-execution:
+    description: 'Whether to use conditional execution based on changes'
+    required: false
+    default: 'true'
+  performance-monitoring:
+    description: 'Whether to monitor parallelization performance'
+    required: false
+    default: 'true'
+  load-balancing:
+    description: 'Load balancing strategy (round-robin, least-loaded, priority)'
+    required: false
+    default: 'least-loaded'
+
+outputs:
+  execution-plan:
+    description: 'Generated execution plan as JSON'
+    value: ${{ steps.plan.outputs.execution-plan }}
+  parallel-groups:
+    description: 'Parallel execution groups'
+    value: ${{ steps.plan.outputs.parallel-groups }}
+  estimated-duration:
+    description: 'Estimated total execution duration in minutes'
+    value: ${{ steps.plan.outputs.estimated-duration }}
+  resource-allocation:
+    description: 'Resource allocation plan'
+    value: ${{ steps.plan.outputs.resource-allocation }}
+  optimization-applied:
+    description: 'List of optimizations applied'
+    value: ${{ steps.optimize.outputs.optimizations }}
+  parallelization-score:
+    description: 'Parallelization efficiency score (0-100)'
+    value: ${{ steps.analyze.outputs.parallelization-score }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🔍 Analyze execution environment
+      id: analyze-env
+      shell: bash
+      run: |
+        echo "🔍 Analyzing execution environment..."
+        
+        # Bestimme verfügbare Ressourcen
+        if command -v nproc >/dev/null 2>&1; then
+          CPU_CORES=$(nproc)
+        elif command -v sysctl >/dev/null 2>&1; then
+          CPU_CORES=$(sysctl -n hw.ncpu)
+        else
+          CPU_CORES=2
+        fi
+        
+        # Memory-Info
+        if command -v free >/dev/null 2>&1; then
+          TOTAL_MEMORY_GB=$(free -g | awk '/^Mem:/ {print $2}')
+        elif command -v vm_stat >/dev/null 2>&1; then
+          TOTAL_MEMORY_GB=$(vm_stat | awk '/Pages free:/ {print int($3 * 4096 / 1024 / 1024 / 1024)}')
+        else
+          TOTAL_MEMORY_GB=4
+        fi
+        
+        # Runner-Info
+        RUNNER_OS="${{ runner.os }}"
+        RUNNER_ARCH="${{ runner.arch }}"
+        
+        # Parse Resource-Constraints
+        CONSTRAINTS='${{ inputs.resource-constraints }}'
+        CPU_LIMIT=$(echo "$CONSTRAINTS" | jq -r '.cpu_limit // 80')
+        MEMORY_LIMIT=$(echo "$CONSTRAINTS" | jq -r '.memory_limit // 80')
+        MAX_RUNNERS=$(echo "$CONSTRAINTS" | jq -r '.max_runners // 20')
+        
+        # Berechne optimale Parallelität
+        OPTIMAL_PARALLEL=$((CPU_CORES * 2))  # 2x CPU cores als Ausgangspunkt
+        
+        if [[ "${{ inputs.max-parallel-jobs }}" == "auto" ]]; then
+          MAX_PARALLEL=$OPTIMAL_PARALLEL
+        else
+          MAX_PARALLEL="${{ inputs.max-parallel-jobs }}"
+        fi
+        
+        # Begrenze basierend auf Constraints
+        if [[ $MAX_PARALLEL -gt $MAX_RUNNERS ]]; then
+          MAX_PARALLEL=$MAX_RUNNERS
+        fi
+        
+        # Setze Outputs
+        echo "cpu-cores=$CPU_CORES" >> $GITHUB_OUTPUT
+        echo "total-memory-gb=$TOTAL_MEMORY_GB" >> $GITHUB_OUTPUT
+        echo "runner-os=$RUNNER_OS" >> $GITHUB_OUTPUT
+        echo "runner-arch=$RUNNER_ARCH" >> $GITHUB_OUTPUT
+        echo "max-parallel=$MAX_PARALLEL" >> $GITHUB_OUTPUT
+        echo "cpu-limit=$CPU_LIMIT" >> $GITHUB_OUTPUT
+        echo "memory-limit=$MEMORY_LIMIT" >> $GITHUB_OUTPUT
+        
+        echo "🔍 Environment analysis:"
+        echo "  CPU cores: $CPU_CORES"
+        echo "  Total memory: ${TOTAL_MEMORY_GB}GB"
+        echo "  Runner: $RUNNER_OS/$RUNNER_ARCH"
+        echo "  Max parallel: $MAX_PARALLEL"
+        echo "  CPU limit: ${CPU_LIMIT}%"
+        echo "  Memory limit: ${MEMORY_LIMIT}%"
+
+    - name: 🎯 Generate execution plan
+      id: plan
+      shell: bash
+      run: |
+        echo "🎯 Generating intelligent execution plan..."
+        
+        # Parse Inputs
+        STRATEGY="${{ inputs.execution-strategy }}"
+        DEPENDENCY_GRAPH='${{ inputs.dependency-graph }}'
+        PRIORITY_JOBS="${{ inputs.priority-jobs }}"
+        BACKGROUND_JOBS="${{ inputs.background-jobs }}"
+        MAX_PARALLEL="${{ steps.analyze-env.outputs.max-parallel }}"
+        
+        # Erstelle Execution Plan mit Python
+        python3 << 'EOF'
+        import json
+        import os
+        from collections import defaultdict, deque
+        
+        # Parse Inputs
+        strategy = os.environ['STRATEGY']
+        max_parallel = int(os.environ['MAX_PARALLEL'])
+        priority_jobs = [j.strip() for j in os.environ['PRIORITY_JOBS'].split(',') if j.strip()]
+        background_jobs = [j.strip() for j in os.environ['BACKGROUND_JOBS'].split(',') if j.strip()]
+        
+        try:
+            dependency_graph = json.loads(os.environ['DEPENDENCY_GRAPH'])
+        except:
+            dependency_graph = {}
+        
+        # Standard Job-Kategorien
+        job_categories = {
+            'fast': ['code-quality', 'lint', 'format-check', 'type-check'],
+            'medium': ['unit-tests', 'security-scan', 'docs-build'],
+            'slow': ['integration-tests', 'e2e-tests', 'performance-tests'],
+            'background': background_jobs
+        }
+        
+        # Generiere Parallel-Gruppen basierend auf Strategie
+        parallel_groups = []
+        
+        if strategy == 'aggressive':
+            # Maximale Parallelisierung
+            parallel_groups = [
+                {
+                    'name': 'fast-parallel',
+                    'jobs': job_categories['fast'] + job_categories['medium'],
+                    'max_parallel': max_parallel,
+                    'priority': 'high'
+                },
+                {
+                    'name': 'slow-parallel',
+                    'jobs': job_categories['slow'],
+                    'max_parallel': max(2, max_parallel // 2),
+                    'priority': 'medium'
+                },
+                {
+                    'name': 'background-parallel',
+                    'jobs': job_categories['background'],
+                    'max_parallel': max(1, max_parallel // 4),
+                    'priority': 'low'
+                }
+            ]
+        elif strategy == 'conservative':
+            # Konservative Parallelisierung
+            parallel_groups = [
+                {
+                    'name': 'priority-sequential',
+                    'jobs': priority_jobs or job_categories['fast'],
+                    'max_parallel': 1,
+                    'priority': 'high'
+                },
+                {
+                    'name': 'standard-parallel',
+                    'jobs': job_categories['medium'],
+                    'max_parallel': max(2, max_parallel // 3),
+                    'priority': 'medium'
+                },
+                {
+                    'name': 'background-limited',
+                    'jobs': job_categories['slow'] + job_categories['background'],
+                    'max_parallel': max(1, max_parallel // 4),
+                    'priority': 'low'
+                }
+            ]
+        else:  # auto or custom
+            # Intelligente Auto-Parallelisierung
+            parallel_groups = [
+                {
+                    'name': 'critical-path',
+                    'jobs': priority_jobs or ['code-quality', 'unit-tests'],
+                    'max_parallel': max(2, max_parallel // 2),
+                    'priority': 'high'
+                },
+                {
+                    'name': 'standard-parallel',
+                    'jobs': ['security-scan', 'docs-build', 'integration-tests'],
+                    'max_parallel': max(3, max_parallel // 2),
+                    'priority': 'medium'
+                },
+                {
+                    'name': 'background-tasks',
+                    'jobs': job_categories['background'] + ['performance-tests'],
+                    'max_parallel': max(1, max_parallel // 3),
+                    'priority': 'low'
+                }
+            ]
+        
+        # Berechne geschätzte Dauer
+        job_durations = {
+            'code-quality': 3,
+            'unit-tests': 8,
+            'security-scan': 5,
+            'integration-tests': 15,
+            'docs-build': 4,
+            'performance-tests': 20,
+            'e2e-tests': 25
+        }
+        
+        total_duration = 0
+        for group in parallel_groups:
+            group_duration = 0
+            for job in group['jobs']:
+                job_duration = job_durations.get(job, 10)  # Default 10 min
+                group_duration = max(group_duration, job_duration)
+            total_duration += group_duration
+        
+        # Resource Allocation
+        resource_allocation = {
+            'cpu_allocation': {},
+            'memory_allocation': {},
+            'runner_allocation': {}
+        }
+        
+        total_jobs = sum(len(group['jobs']) for group in parallel_groups)
+        for group in parallel_groups:
+            group_name = group['name']
+            job_count = len(group['jobs'])
+            
+            if total_jobs > 0:
+                cpu_share = (job_count / total_jobs) * 100
+                memory_share = (job_count / total_jobs) * 100
+                runner_share = min(group['max_parallel'], max_parallel)
+                
+                resource_allocation['cpu_allocation'][group_name] = f"{cpu_share:.1f}%"
+                resource_allocation['memory_allocation'][group_name] = f"{memory_share:.1f}%"
+                resource_allocation['runner_allocation'][group_name] = runner_share
+        
+        # Execution Plan
+        execution_plan = {
+            'strategy': strategy,
+            'total_jobs': total_jobs,
+            'parallel_groups': parallel_groups,
+            'estimated_duration_minutes': total_duration,
+            'max_parallel_jobs': max_parallel,
+            'resource_allocation': resource_allocation,
+            'dependency_graph': dependency_graph
+        }
+        
+        # Outputs setzen
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f"execution-plan={json.dumps(execution_plan)}\n")
+            f.write(f"parallel-groups={json.dumps(parallel_groups)}\n")
+            f.write(f"estimated-duration={total_duration}\n")
+            f.write(f"resource-allocation={json.dumps(resource_allocation)}\n")
+        
+        print(f"Generated execution plan with {len(parallel_groups)} parallel groups")
+        print(f"Estimated duration: {total_duration} minutes")
+        print(f"Max parallel jobs: {max_parallel}")
+        EOF
+
+    - name: 🚀 Apply optimizations
+      id: optimize
+      shell: bash
+      run: |
+        echo "🚀 Applying parallelization optimizations..."
+        
+        STRATEGY="${{ inputs.execution-strategy }}"
+        CONDITIONAL="${{ inputs.conditional-execution }}"
+        LOAD_BALANCING="${{ inputs.load-balancing }}"
+        
+        OPTIMIZATIONS=[]
+        
+        # Strategy-spezifische Optimierungen
+        case "$STRATEGY" in
+          "aggressive")
+            OPTIMIZATIONS+=("aggressive-parallelization")
+            OPTIMIZATIONS+=("maximum-resource-utilization")
+            ;;
+          "conservative")
+            OPTIMIZATIONS+=("conservative-parallelization")
+            OPTIMIZATIONS+=("resource-preservation")
+            ;;
+          "auto")
+            OPTIMIZATIONS+=("intelligent-auto-scaling")
+            OPTIMIZATIONS+=("adaptive-parallelization")
+            ;;
+        esac
+        
+        # Conditional Execution
+        if [[ "$CONDITIONAL" == "true" ]]; then
+          OPTIMIZATIONS+=("conditional-execution")
+        fi
+        
+        # Load Balancing
+        case "$LOAD_BALANCING" in
+          "round-robin")
+            OPTIMIZATIONS+=("round-robin-scheduling")
+            ;;
+          "least-loaded")
+            OPTIMIZATIONS+=("least-loaded-scheduling")
+            ;;
+          "priority")
+            OPTIMIZATIONS+=("priority-based-scheduling")
+            ;;
+        esac
+        
+        # Performance Monitoring
+        if [[ "${{ inputs.performance-monitoring }}" == "true" ]]; then
+          OPTIMIZATIONS+=("performance-monitoring")
+        fi
+        
+        # Dependency-Graph Optimierung
+        if [[ "${{ inputs.dependency-graph }}" != "{}" ]]; then
+          OPTIMIZATIONS+=("dependency-graph-optimization")
+        fi
+        
+        # Konvertiere zu JSON
+        OPTIMIZATIONS_JSON=$(printf '%s\n' "${OPTIMIZATIONS[@]}" | jq -R . | jq -s .)
+        echo "optimizations=$OPTIMIZATIONS_JSON" >> $GITHUB_OUTPUT
+        
+        echo "🚀 Applied optimizations:"
+        printf '%s\n' "${OPTIMIZATIONS[@]}" | sed 's/^/  - /'
+
+    - name: 📊 Analyze parallelization efficiency
+      id: analyze
+      shell: bash
+      run: |
+        echo "📊 Analyzing parallelization efficiency..."
+        
+        # Parse Execution Plan
+        EXECUTION_PLAN='${{ steps.plan.outputs.execution-plan }}'
+        TOTAL_JOBS=$(echo "$EXECUTION_PLAN" | jq -r '.total_jobs')
+        ESTIMATED_DURATION=$(echo "$EXECUTION_PLAN" | jq -r '.estimated_duration_minutes')
+        MAX_PARALLEL=$(echo "$EXECUTION_PLAN" | jq -r '.max_parallel_jobs')
+        
+        # Berechne Parallelization Score
+        PARALLELIZATION_SCORE=0
+        
+        # Basis-Score basierend auf Parallelität
+        if [[ $MAX_PARALLEL -gt 1 ]]; then
+          PARALLELIZATION_SCORE=$((PARALLELIZATION_SCORE + 30))
+        fi
+        
+        # Score basierend auf Job-Verteilung
+        if [[ $TOTAL_JOBS -gt 0 && $MAX_PARALLEL -gt 0 ]]; then
+          EFFICIENCY_RATIO=$((TOTAL_JOBS * 100 / MAX_PARALLEL))
+          if [[ $EFFICIENCY_RATIO -gt 200 ]]; then
+            PARALLELIZATION_SCORE=$((PARALLELIZATION_SCORE + 40))
+          elif [[ $EFFICIENCY_RATIO -gt 100 ]]; then
+            PARALLELIZATION_SCORE=$((PARALLELIZATION_SCORE + 30))
+          else
+            PARALLELIZATION_SCORE=$((PARALLELIZATION_SCORE + 20))
+          fi
+        fi
+        
+        # Score basierend auf geschätzter Dauer
+        if [[ $ESTIMATED_DURATION -lt 30 ]]; then
+          PARALLELIZATION_SCORE=$((PARALLELIZATION_SCORE + 30))
+        elif [[ $ESTIMATED_DURATION -lt 60 ]]; then
+          PARALLELIZATION_SCORE=$((PARALLELIZATION_SCORE + 20))
+        else
+          PARALLELIZATION_SCORE=$((PARALLELIZATION_SCORE + 10))
+        fi
+        
+        # Begrenze Score auf 100
+        if [[ $PARALLELIZATION_SCORE -gt 100 ]]; then
+          PARALLELIZATION_SCORE=100
+        fi
+        
+        echo "parallelization-score=$PARALLELIZATION_SCORE" >> $GITHUB_OUTPUT
+        
+        echo "📊 Parallelization analysis:"
+        echo "  Total jobs: $TOTAL_JOBS"
+        echo "  Max parallel: $MAX_PARALLEL"
+        echo "  Estimated duration: ${ESTIMATED_DURATION} minutes"
+        echo "  Parallelization score: $PARALLELIZATION_SCORE/100"
+
+    - name: 📋 Generate execution summary
+      shell: bash
+      run: |
+        echo "📋 Parallelization execution summary:"
+        echo "  Strategy: ${{ inputs.execution-strategy }}"
+        echo "  Max parallel jobs: ${{ steps.analyze-env.outputs.max-parallel }}"
+        echo "  Parallel groups: $(echo '${{ steps.plan.outputs.parallel-groups }}' | jq length)"
+        echo "  Estimated duration: ${{ steps.plan.outputs.estimated-duration }} minutes"
+        echo "  Parallelization score: ${{ steps.analyze.outputs.parallelization-score }}/100"
+        echo "  Optimizations applied: $(echo '${{ steps.optimize.outputs.optimizations }}' | jq length)"
+        
+        echo ""
+        echo "🎯 Parallel execution groups:"
+        echo '${{ steps.plan.outputs.parallel-groups }}' | jq -r '.[] | "  - \(.name): \(.jobs | length) jobs, max \(.max_parallel) parallel"'
+        
+        echo ""
+        echo "🚀 Applied optimizations:"
+        echo '${{ steps.optimize.outputs.optimizations }}' | jq -r '.[] | "  - \(.)"'

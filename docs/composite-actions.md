@@ -347,19 +347,105 @@ gh secret set SONAR_TOKEN --body "your-sonar-token"
 | Wartbarkeit | 6.2/10 | 8.7/10 | 40% besser |
 | Konsistenz | 60% | 95% | 58% besser |
 
-## 🚀 Roadmap
+## 🚀 Version 2.0 Features (Implemented)
 
-### Version 2.0 Features
-- **Matrix-optimierte Actions** für bessere Parallelisierung
-- **Conditional Execution** basierend auf Datei-Änderungen
-- **Advanced Caching** mit intelligenten Cache-Keys
-- **Performance Monitoring** für Action-Ausführung
+### 5. 🎯 Matrix Build Optimization
 
-### Geplante Actions
-- **Deploy Action** für standardisierte Deployments
-- **Documentation Action** für automatische Docs-Generierung
-- **Release Action** für automatisierte Releases
-- **Monitoring Action** für Performance-Tracking
+**Location:** `.github/actions/matrix-build/`
+
+Intelligente Matrix-Build-Optimierung mit Test-Selection und Conditional Execution.
+
+#### Features
+- **Intelligente Test-Selection** basierend auf Datei-Änderungen
+- **Matrix-Reduktion** für schnellere Builds
+- **Event-basierte Strategien** (fast, critical, changed, all)
+- **Cache-Optimierung** mit generierten Cache-Keys
+- **Performance-Schätzung** und Resource-Management
+
+#### Usage
+```yaml
+- name: 🎯 Optimize Matrix Build
+  uses: ./.github/actions/matrix-build
+  with:
+    matrix-config: ${{ toJSON(strategy.matrix) }}
+    test-selection-strategy: 'changed'
+    fail-fast: 'false'
+    max-parallel: '5'
+```
+
+### 6. 🔍 Intelligent Change Detection
+
+**Location:** `.github/actions/detect-changes/`
+
+Erweiterte Datei-Änderungs-Erkennung mit Impact-Analyse und Workflow-Empfehlungen.
+
+#### Features
+- **Impact-Analyse** für verschiedene Code-Bereiche
+- **Dependency-Tracking** und Test-Mapping
+- **Workflow-Empfehlungen** (skip tests, fast mode, etc.)
+- **Deployment-Entscheidungen** basierend auf Änderungen
+- **13 detaillierte Outputs** für Conditional Workflows
+
+#### Usage
+```yaml
+- name: 🔍 Detect Changes
+  id: changes
+  uses: ./.github/actions/detect-changes
+  with:
+    impact-analysis: 'true'
+    test-mapping: 'true'
+
+- name: 🧪 Run Tests
+  if: steps.changes.outputs.skip-tests != 'true'
+  uses: ./.github/actions/run-tests
+```
+
+### 7. 🔄 Retry with Exponential Backoff
+
+**Location:** `.github/actions/retry-with-backoff/`
+
+Erweiterte Retry-Mechanismen mit Circuit Breaker Pattern und intelligentem Error Handling.
+
+#### Features
+- **Exponential Backoff** mit konfigurierbaren Parametern
+- **Circuit Breaker Pattern** für Failure-Management
+- **Intelligente Error-Pattern-Erkennung**
+- **Configurable Retry-Conditions** (Exit-Codes, Error-Patterns)
+- **Performance-Monitoring** für Retry-Operationen
+
+#### Usage
+```yaml
+- name: 🔄 Execute with Retry
+  uses: ./.github/actions/retry-with-backoff
+  with:
+    command: 'npm test'
+    max-attempts: '3'
+    initial-delay: '5'
+    circuit-breaker: 'true'
+```
+
+### 8. 📊 Performance Monitoring
+
+**Location:** `.github/actions/performance-monitor/`
+
+Umfassendes Performance-Monitoring für CI/CD-Workflows mit Baseline-Vergleich.
+
+#### Features
+- **Resource-Monitoring** (CPU, Memory, Duration)
+- **Baseline-Vergleich** mit historischen Daten
+- **Performance-Scoring** (0-100 Punkte)
+- **Alert-System** mit konfigurierbaren Thresholds
+- **Optimization-Empfehlungen** basierend auf Metriken
+
+#### Usage
+```yaml
+- name: 📊 Monitor Performance
+  uses: ./.github/actions/performance-monitor
+  with:
+    monitor-type: 'workflow'
+    performance-baseline: '.github/performance-baseline.json'
+    alert-thresholds: '{"duration_increase": 50, "memory_increase": 30}'
+```
 
 ## 🤝 Contributing
 

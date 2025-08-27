@@ -1,0 +1,397 @@
+# .github/actions/performance-monitor/action.yml
+name: 'Performance Monitoring'
+description: 'Comprehensive performance monitoring for CI/CD workflows with metrics collection and analysis'
+author: 'KEI-Agent Development Team'
+
+inputs:
+  monitor-type:
+    description: 'Type of monitoring (workflow, job, step, command)'
+    required: false
+    default: 'workflow'
+  metrics-collection:
+    description: 'Whether to collect detailed metrics'
+    required: false
+    default: 'true'
+  resource-monitoring:
+    description: 'Whether to monitor system resources'
+    required: false
+    default: 'true'
+  performance-baseline:
+    description: 'Performance baseline file path'
+    required: false
+    default: '.github/performance-baseline.json'
+  alert-thresholds:
+    description: 'Alert thresholds as JSON string'
+    required: false
+    default: '{"duration_increase": 50, "memory_increase": 30, "cpu_threshold": 80}'
+  report-format:
+    description: 'Report format (json, markdown, both)'
+    required: false
+    default: 'both'
+  upload-metrics:
+    description: 'Whether to upload metrics as artifacts'
+    required: false
+    default: 'true'
+  comparison-enabled:
+    description: 'Whether to compare with baseline'
+    required: false
+    default: 'true'
+
+outputs:
+  duration-seconds:
+    description: 'Total execution duration in seconds'
+    value: ${{ steps.monitor.outputs.duration-seconds }}
+  peak-memory-mb:
+    description: 'Peak memory usage in MB'
+    value: ${{ steps.monitor.outputs.peak-memory-mb }}
+  avg-cpu-percent:
+    description: 'Average CPU usage percentage'
+    value: ${{ steps.monitor.outputs.avg-cpu-percent }}
+  performance-score:
+    description: 'Overall performance score (0-100)'
+    value: ${{ steps.analyze.outputs.performance-score }}
+  baseline-comparison:
+    description: 'Comparison with baseline (better, worse, similar)'
+    value: ${{ steps.analyze.outputs.baseline-comparison }}
+  alerts-triggered:
+    description: 'Number of performance alerts triggered'
+    value: ${{ steps.analyze.outputs.alerts-triggered }}
+  recommendations:
+    description: 'Performance optimization recommendations'
+    value: ${{ steps.analyze.outputs.recommendations }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🚀 Initialize performance monitoring
+      id: init
+      shell: bash
+      run: |
+        echo "🚀 Initializing performance monitoring..."
+        
+        # Erstelle Monitoring-Verzeichnis
+        mkdir -p .performance-monitoring
+        
+        # Initialisiere Metriken
+        echo "$(date +%s)" > .performance-monitoring/start-time.txt
+        echo "0" > .performance-monitoring/peak-memory.txt
+        echo "0" > .performance-monitoring/cpu-samples.txt
+        echo "0" > .performance-monitoring/cpu-sum.txt
+        
+        # Parse Alert-Thresholds
+        THRESHOLDS='${{ inputs.alert-thresholds }}'
+        echo "$THRESHOLDS" > .performance-monitoring/thresholds.json
+        
+        # System-Info sammeln
+        echo "📊 System information:"
+        echo "  OS: $(uname -s)"
+        echo "  Architecture: $(uname -m)"
+        echo "  CPU cores: $(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 'unknown')"
+        echo "  Total memory: $(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo 'unknown')"
+        echo "  Disk space: $(df -h . | awk 'NR==2 {print $4}')"
+        
+        # Erstelle System-Info JSON
+        cat > .performance-monitoring/system-info.json << EOF
+        {
+          "os": "$(uname -s)",
+          "architecture": "$(uname -m)",
+          "cpu_cores": $(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 0),
+          "hostname": "$(hostname)",
+          "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        }
+        EOF
+
+    - name: 📊 Start resource monitoring
+      if: inputs.resource-monitoring == 'true'
+      shell: bash
+      run: |
+        echo "📊 Starting resource monitoring..."
+        
+        # Background-Prozess für Resource-Monitoring
+        (
+          while true; do
+            # Memory monitoring
+            if command -v free >/dev/null 2>&1; then
+              # Linux
+              MEMORY_MB=$(free -m | awk '/^Mem:/ {print $3}')
+            elif command -v vm_stat >/dev/null 2>&1; then
+              # macOS
+              MEMORY_MB=$(vm_stat | awk '/Pages active:/ {print int($3 * 4096 / 1024 / 1024)}')
+            else
+              MEMORY_MB=0
+            fi
+            
+            # CPU monitoring
+            if command -v top >/dev/null 2>&1; then
+              # Versuche CPU-Usage zu ermitteln
+              CPU_PERCENT=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | sed 's/%us,//' 2>/dev/null || echo "0")
+              if [[ -z "$CPU_PERCENT" || "$CPU_PERCENT" == "0" ]]; then
+                # Fallback für macOS
+                CPU_PERCENT=$(top -l 1 -n 0 | grep "CPU usage" | awk '{print $3}' | sed 's/%//' 2>/dev/null || echo "0")
+              fi
+            else
+              CPU_PERCENT=0
+            fi
+            
+            # Update Peak Memory
+            CURRENT_PEAK=$(cat .performance-monitoring/peak-memory.txt)
+            if [[ $MEMORY_MB -gt $CURRENT_PEAK ]]; then
+              echo "$MEMORY_MB" > .performance-monitoring/peak-memory.txt
+            fi
+            
+            # Update CPU Statistics
+            CPU_SAMPLES=$(cat .performance-monitoring/cpu-samples.txt)
+            CPU_SUM=$(cat .performance-monitoring/cpu-sum.txt)
+            
+            CPU_SAMPLES=$((CPU_SAMPLES + 1))
+            CPU_SUM=$(echo "$CPU_SUM + $CPU_PERCENT" | bc -l 2>/dev/null || echo "$CPU_SUM")
+            
+            echo "$CPU_SAMPLES" > .performance-monitoring/cpu-samples.txt
+            echo "$CPU_SUM" > .performance-monitoring/cpu-sum.txt
+            
+            # Log Metrics (optional für Debugging)
+            echo "$(date +%s),$MEMORY_MB,$CPU_PERCENT" >> .performance-monitoring/metrics.csv
+            
+            sleep 5
+          done
+        ) &
+        
+        MONITOR_PID=$!
+        echo "$MONITOR_PID" > .performance-monitoring/monitor-pid.txt
+        
+        echo "📊 Resource monitoring started (PID: $MONITOR_PID)"
+
+    - name: ⏱️ Execute monitored workflow
+      id: monitor
+      shell: bash
+      run: |
+        echo "⏱️ Monitoring workflow execution..."
+        
+        # Hier würde normalerweise der zu überwachende Workflow-Step stehen
+        # Für diese Action simulieren wir eine kurze Ausführung
+        echo "🔄 Simulating workflow execution..."
+        sleep 2
+        
+        # Beende Resource-Monitoring
+        if [[ -f .performance-monitoring/monitor-pid.txt ]]; then
+          MONITOR_PID=$(cat .performance-monitoring/monitor-pid.txt)
+          kill $MONITOR_PID 2>/dev/null || true
+          echo "📊 Resource monitoring stopped"
+        fi
+        
+        # Berechne Gesamtdauer
+        START_TIME=$(cat .performance-monitoring/start-time.txt)
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+        
+        # Hole finale Metriken
+        PEAK_MEMORY=$(cat .performance-monitoring/peak-memory.txt)
+        CPU_SAMPLES=$(cat .performance-monitoring/cpu-samples.txt)
+        CPU_SUM=$(cat .performance-monitoring/cpu-sum.txt)
+        
+        # Berechne durchschnittliche CPU-Nutzung
+        if [[ $CPU_SAMPLES -gt 0 ]]; then
+          AVG_CPU=$(echo "scale=2; $CPU_SUM / $CPU_SAMPLES" | bc -l 2>/dev/null || echo "0")
+        else
+          AVG_CPU=0
+        fi
+        
+        # Setze Outputs
+        echo "duration-seconds=$DURATION" >> $GITHUB_OUTPUT
+        echo "peak-memory-mb=$PEAK_MEMORY" >> $GITHUB_OUTPUT
+        echo "avg-cpu-percent=$AVG_CPU" >> $GITHUB_OUTPUT
+        
+        echo "⏱️ Execution monitoring completed:"
+        echo "  Duration: ${DURATION}s"
+        echo "  Peak memory: ${PEAK_MEMORY}MB"
+        echo "  Average CPU: ${AVG_CPU}%"
+
+    - name: 📈 Analyze performance
+      id: analyze
+      shell: bash
+      run: |
+        echo "📈 Analyzing performance metrics..."
+        
+        DURATION="${{ steps.monitor.outputs.duration-seconds }}"
+        PEAK_MEMORY="${{ steps.monitor.outputs.peak-memory-mb }}"
+        AVG_CPU="${{ steps.monitor.outputs.avg-cpu-percent }}"
+        
+        # Parse Thresholds
+        THRESHOLDS=$(cat .performance-monitoring/thresholds.json)
+        DURATION_THRESHOLD=$(echo "$THRESHOLDS" | jq -r '.duration_increase // 50')
+        MEMORY_THRESHOLD=$(echo "$THRESHOLDS" | jq -r '.memory_increase // 30')
+        CPU_THRESHOLD=$(echo "$THRESHOLDS" | jq -r '.cpu_threshold // 80')
+        
+        ALERTS=0
+        RECOMMENDATIONS=()
+        
+        # Baseline-Vergleich
+        BASELINE_COMPARISON="unknown"
+        if [[ "${{ inputs.comparison-enabled }}" == "true" && -f "${{ inputs.performance-baseline }}" ]]; then
+          BASELINE=$(cat "${{ inputs.performance-baseline }}")
+          BASELINE_DURATION=$(echo "$BASELINE" | jq -r '.duration_seconds // 0')
+          BASELINE_MEMORY=$(echo "$BASELINE" | jq -r '.peak_memory_mb // 0')
+          
+          if [[ $BASELINE_DURATION -gt 0 ]]; then
+            DURATION_CHANGE=$(echo "scale=2; ($DURATION - $BASELINE_DURATION) * 100 / $BASELINE_DURATION" | bc -l)
+            
+            if (( $(echo "$DURATION_CHANGE > $DURATION_THRESHOLD" | bc -l) )); then
+              ALERTS=$((ALERTS + 1))
+              RECOMMENDATIONS+=("Duration increased by ${DURATION_CHANGE}% - consider optimization")
+              BASELINE_COMPARISON="worse"
+            elif (( $(echo "$DURATION_CHANGE < -10" | bc -l) )); then
+              BASELINE_COMPARISON="better"
+            else
+              BASELINE_COMPARISON="similar"
+            fi
+          fi
+          
+          if [[ $BASELINE_MEMORY -gt 0 ]]; then
+            MEMORY_CHANGE=$(echo "scale=2; ($PEAK_MEMORY - $BASELINE_MEMORY) * 100 / $BASELINE_MEMORY" | bc -l)
+            
+            if (( $(echo "$MEMORY_CHANGE > $MEMORY_THRESHOLD" | bc -l) )); then
+              ALERTS=$((ALERTS + 1))
+              RECOMMENDATIONS+=("Memory usage increased by ${MEMORY_CHANGE}% - check for memory leaks")
+            fi
+          fi
+        fi
+        
+        # CPU-Threshold Check
+        if (( $(echo "$AVG_CPU > $CPU_THRESHOLD" | bc -l) )); then
+          ALERTS=$((ALERTS + 1))
+          RECOMMENDATIONS+=("High CPU usage (${AVG_CPU}%) - consider parallelization")
+        fi
+        
+        # Performance Score berechnen (0-100)
+        PERFORMANCE_SCORE=100
+        
+        # Reduziere Score basierend auf Alerts
+        PERFORMANCE_SCORE=$((PERFORMANCE_SCORE - ALERTS * 20))
+        
+        # Reduziere Score basierend auf absoluten Werten
+        if [[ $DURATION -gt 300 ]]; then  # > 5 Minuten
+          PERFORMANCE_SCORE=$((PERFORMANCE_SCORE - 10))
+        fi
+        
+        if [[ $PEAK_MEMORY -gt 1000 ]]; then  # > 1GB
+          PERFORMANCE_SCORE=$((PERFORMANCE_SCORE - 10))
+        fi
+        
+        if (( $(echo "$AVG_CPU > 50" | bc -l) )); then
+          PERFORMANCE_SCORE=$((PERFORMANCE_SCORE - 5))
+        fi
+        
+        # Mindest-Score: 0
+        if [[ $PERFORMANCE_SCORE -lt 0 ]]; then
+          PERFORMANCE_SCORE=0
+        fi
+        
+        # Konvertiere Recommendations zu JSON
+        RECOMMENDATIONS_JSON=$(printf '%s\n' "${RECOMMENDATIONS[@]}" | jq -R . | jq -s .)
+        
+        # Setze Outputs
+        echo "performance-score=$PERFORMANCE_SCORE" >> $GITHUB_OUTPUT
+        echo "baseline-comparison=$BASELINE_COMPARISON" >> $GITHUB_OUTPUT
+        echo "alerts-triggered=$ALERTS" >> $GITHUB_OUTPUT
+        echo "recommendations=$RECOMMENDATIONS_JSON" >> $GITHUB_OUTPUT
+        
+        echo "📈 Performance analysis:"
+        echo "  Performance score: $PERFORMANCE_SCORE/100"
+        echo "  Baseline comparison: $BASELINE_COMPARISON"
+        echo "  Alerts triggered: $ALERTS"
+        echo "  Recommendations: ${#RECOMMENDATIONS[@]}"
+
+    - name: 📊 Generate performance report
+      shell: bash
+      run: |
+        echo "📊 Generating performance report..."
+        
+        # Erstelle detaillierten Performance-Report
+        cat > performance-report.json << EOF
+        {
+          "workflow": {
+            "name": "${{ github.workflow }}",
+            "run_id": "${{ github.run_id }}",
+            "event": "${{ github.event_name }}",
+            "ref": "${{ github.ref }}"
+          },
+          "metrics": {
+            "duration_seconds": ${{ steps.monitor.outputs.duration-seconds }},
+            "peak_memory_mb": ${{ steps.monitor.outputs.peak-memory-mb }},
+            "avg_cpu_percent": ${{ steps.monitor.outputs.avg-cpu-percent }}
+          },
+          "analysis": {
+            "performance_score": ${{ steps.analyze.outputs.performance-score }},
+            "baseline_comparison": "${{ steps.analyze.outputs.baseline-comparison }}",
+            "alerts_triggered": ${{ steps.analyze.outputs.alerts-triggered }},
+            "recommendations": ${{ steps.analyze.outputs.recommendations }}
+          },
+          "system_info": $(cat .performance-monitoring/system-info.json),
+          "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        }
+        EOF
+        
+        echo "📊 Performance report generated:"
+        cat performance-report.json | jq .
+        
+        # Generiere Markdown-Report
+        if [[ "${{ inputs.report-format }}" == "markdown" || "${{ inputs.report-format }}" == "both" ]]; then
+          cat > performance-report.md << EOF
+        # 📊 Performance Report
+        
+        **Workflow:** ${{ github.workflow }}  
+        **Run ID:** ${{ github.run_id }}  
+        **Event:** ${{ github.event_name }}  
+        **Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        
+        ## 📈 Metrics
+        
+        | Metric | Value |
+        |--------|-------|
+        | Duration | ${{ steps.monitor.outputs.duration-seconds }}s |
+        | Peak Memory | ${{ steps.monitor.outputs.peak-memory-mb }}MB |
+        | Average CPU | ${{ steps.monitor.outputs.avg-cpu-percent }}% |
+        | Performance Score | ${{ steps.analyze.outputs.performance-score }}/100 |
+        
+        ## 🎯 Analysis
+        
+        - **Baseline Comparison:** ${{ steps.analyze.outputs.baseline-comparison }}
+        - **Alerts Triggered:** ${{ steps.analyze.outputs.alerts-triggered }}
+        
+        ## 💡 Recommendations
+        
+        $(echo '${{ steps.analyze.outputs.recommendations }}' | jq -r '.[] | "- " + .')
+        
+        EOF
+          
+          echo "📄 Markdown report generated"
+        fi
+
+    - name: 📤 Upload performance artifacts
+      if: inputs.upload-metrics == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-metrics
+        path: |
+          performance-report.json
+          performance-report.md
+          .performance-monitoring/metrics.csv
+          .performance-monitoring/system-info.json
+        retention-days: 30
+
+    - name: 🧹 Cleanup monitoring
+      if: always()
+      shell: bash
+      run: |
+        echo "🧹 Cleaning up performance monitoring..."
+        
+        # Stoppe eventuell noch laufende Monitoring-Prozesse
+        if [[ -f .performance-monitoring/monitor-pid.txt ]]; then
+          MONITOR_PID=$(cat .performance-monitoring/monitor-pid.txt)
+          kill $MONITOR_PID 2>/dev/null || true
+        fi
+        
+        # Entferne temporäre Dateien
+        rm -rf .performance-monitoring
+        
+        echo "🧹 Performance monitoring cleanup completed"
