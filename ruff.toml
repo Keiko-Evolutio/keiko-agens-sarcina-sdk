@@ -112,6 +112,7 @@ ignore = [
     "F401",    # unused imports (test availability checks)
     "PT012",   # pytest.raises complex blocks (test code)
     "E712",    # boolean comparisons (test assertions)
+    "N805",    # first argument should be named self (conflicts with Pydantic @field_validator)
 ]
 
 # Regeln pro Datei-Pattern

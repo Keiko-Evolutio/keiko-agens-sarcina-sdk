@@ -20,7 +20,15 @@ import zlib
 try:
     import redis.asyncio as redis
     from redis.asyncio import ConnectionPool, Redis
-    from redis.exceptions import ConnectionError, RedisError, TimeoutError
+    from redis.exceptions import (
+        ConnectionError as RedisConnectionError,
+    )
+    from redis.exceptions import (
+        RedisError,
+    )
+    from redis.exceptions import (
+        TimeoutError as RedisTimeoutError,
+    )
 
     REDIS_AVAILABLE = True
 except ImportError:
@@ -29,8 +37,8 @@ except ImportError:
     Redis = None
     ConnectionPool = None
     RedisError = Exception
-    ConnectionError = Exception
-    TimeoutError = Exception
+    RedisConnectionError = Exception
+    RedisTimeoutError = Exception
 
 from .cache_framework import (
     CacheConfig,

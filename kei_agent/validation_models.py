@@ -79,7 +79,6 @@ class SecurityConfigValidation(BaseValidationModel):
     token_cache_ttl: int = Field(3600, ge=60, le=86400, description="Token cache TTL in seconds")
 
     @field_validator("api_token")
-    @classmethod
     def validate_api_token(cls, v):
         """Validate API token format and security."""
         if v is None:
@@ -107,7 +106,6 @@ class SecurityConfigValidation(BaseValidationModel):
         return v
 
     @field_validator("oidc_client_secret")
-    @classmethod
     def validate_oidc_client_secret(cls, v):
         """Validate OIDC client secret."""
         if v is None:
@@ -127,7 +125,6 @@ class SecurityConfigValidation(BaseValidationModel):
         return v
 
     @field_validator("mtls_cert_path", "mtls_key_path", "mtls_ca_path", "tls_ca_bundle")
-    @classmethod
     def validate_file_paths(cls, v):
         """Validate certificate/CA file paths."""
         if v is None:
@@ -226,7 +223,6 @@ class AgentClientConfigValidation(BaseValidationModel):
     retry_delay: float = Field(1.0, ge=0, le=60, description="Delay between retries in seconds")
 
     @field_validator("base_url")
-    @classmethod
     def validate_base_url(cls, v):
         """Validate base URL format and security."""
         url_str = str(v)
@@ -246,14 +242,12 @@ class AgentClientConfigValidation(BaseValidationModel):
         return v
 
     @field_validator("api_token")
-    @classmethod
     def validate_api_token(cls, v):
         """Validate API token."""
         # Reuse validation from SecurityConfigValidation
         return SecurityConfigValidation.validate_api_token(v)
 
     @field_validator("agent_id")
-    @classmethod
     def validate_agent_id(cls, v):
         """Validate agent ID format."""
         # Check for reserved names

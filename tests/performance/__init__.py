@@ -10,13 +10,12 @@ This package contains comprehensive performance tests that establish:
 - Performance budgets and SLA validation
 """
 
-import asyncio
 from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict
 
 import psutil
 

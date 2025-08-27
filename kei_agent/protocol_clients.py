@@ -226,6 +226,7 @@ class KEIStreamclient(BaseProtocolclient):
         super().__init__(base_url, security_manager)
         self._websocket: Optional[websockets.WebSocketServerProtocol] = None
         self._connected = False
+        self._message_task: Optional[asyncio.Task] = None  # Task für Message-Loop
 
     async def __aenter__(self):
         """Initializes WebSocket-connection."""

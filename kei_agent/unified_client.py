@@ -584,7 +584,7 @@ class UnifiedKeiAgentClient:
                 return await self._execute_mcp_operation(operation, data)
             raise ProtocolError(f"Unknown protocol: {protocol}")
 
-        except ProtocolError as e:
+        except ProtocolError as original_error:
             # try fallback if enabled
             if self.protocol_config.protocol_fallback_enabled:
                 fallback_chain = self.protocol_selector.get_fallback_chain(protocol)
@@ -594,15 +594,15 @@ class UnifiedKeiAgentClient:
                             f"Fallback from {protocol} to {fallback_protocol} for operation '{operation}'"
                         )
                         return await self._execute_with_protocol(fallback_protocol, operation, data)
-                    except Exception as e:
+                    except Exception as fallback_error:
                         _logger.warning(
-                            f"Fallback failed with {fallback_protocol}: {e}",
+                            f"Fallback failed with {fallback_protocol}: {fallback_error}",
                             exc_info=True,
                         )
                         continue
 
             # No fallback successful
-            raise e
+            raise original_error
 
     async def _execute_rpc_operation(self, operation: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Executes RPC operation.
@@ -1061,19 +1061,8 @@ class UnifiedKeiAgentClient:
         # Stub implementation for backward compatibility
         logger.debug(f"Message publish requested to topic {topic}: {message}")
 
-    async def _execute_mcp_operation(self, operation: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute an MCP operation (stub implementation for backward compatibility).
 
-        Args:
-            operation: MCP operation name
-            data: Operation data
-
-        Returns:
-            Operation result
-        """
-        # Stub implementation for backward compatibility
-        logger.debug(f"MCP operation requested: {operation} with data: {data}")
-        return {"result": "success", "operation": operation, "data": data}
+# _execute_mcp_operation bereits oben definiert (Zeile 707-734)
 
 
 __all__ = [

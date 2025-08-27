@@ -175,6 +175,7 @@ if WATCHDOG_AVAILABLE:
                 config_manager: Reference to the config manager
             """
             self.config_manager = config_manager
+            self._reload_task: Optional[asyncio.Task] = None  # Task für Config-Reload
             super().__init__()
 
         def on_modified(self, event):
@@ -230,6 +231,9 @@ class ConfigManager:
         # Configuration backup for rollback
         self.config_backup: Optional[Dict[str, Any]] = None
         self.max_history_size = 100
+
+        # Tasks für asynchrone Operationen
+        self._load_task: Optional[asyncio.Task] = None  # Task für Config-Loading
 
         # Initialize file watching if available
         if WATCHDOG_AVAILABLE:

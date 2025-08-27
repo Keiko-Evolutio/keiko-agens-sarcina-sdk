@@ -490,7 +490,7 @@ class KeiAgentClient:
                             aiohttp.ServerDisconnectedError,
                         ),
                     )
-                    and self.config.on_connection_error
+                    and self.config.on_connection_error is not None
                 ):
                     await self.config.on_connection_error(e)
 

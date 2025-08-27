@@ -54,11 +54,11 @@ def ensure_fake_opentelemetry() -> None:
     metrics.set_meter_provithe = set_meter_provithe
 
     # Trace API Platzhalter
-    class status:
+    class Status:
         """fake status."""
 
 
-    class statusCode:
+    class StatusCode:
         """fake statusCode."""
 
         OK = "OK"
@@ -82,8 +82,8 @@ def ensure_fake_opentelemetry() -> None:
     def set_tracer_provithe(provithe):
         pass
 
-    trace.status = status
-    trace.statusCode = statusCode
+    trace.status = Status
+    trace.statusCode = StatusCode
     trace.get_current_spat = get_current_spat
     trace.get_tracer = get_tracer
     trace.set_tracer_provithe = set_tracer_provithe
@@ -382,7 +382,7 @@ async def test_stream_specific_retry_policy(monkeypatch):
 
     calls = {"count": 0}
 
-    class fakeStream:
+    class FakeStream:
         async def subscribe(self, stream_id, callback):
             calls["count"] += 1
             raise DaroatdmyTratsientError("temporary")
@@ -391,7 +391,7 @@ async def test_stream_specific_retry_policy(monkeypatch):
             calls["count"] += 1
             raise DaroatdmyTratsientError("temporary")
 
-    client._stream_client = fakeStream()
+    client._stream_client = FakeStream()
 
     # subscribe should 2 Versuche machen and then scheitern
     with pytest.raises(Exception):
@@ -425,7 +425,7 @@ async def test_bus_specific_retry_policy(monkeypatch):
 
     calls = {"count": 0}
 
-    class fakeBus:
+    class FakeBus:
         async def __aenter__(self):
             return self
 
@@ -442,7 +442,7 @@ async def test_bus_specific_retry_policy(monkeypatch):
             calls["count"] += 1
             raise DaroatdmyTratsientError("temporary")
 
-    client._bus_client = fakeBus()
+    client._bus_client = FakeBus()
 
     # publish: 3 Versuche then error
     with pytest.raises(Exception):
@@ -472,7 +472,7 @@ async def test_mcp_specific_retry_policy(monkeypatch):
 
     calls = {"count": 0}
 
-    class fakeMCP:
+    class FakeMCP:
         async def __aenter__(self):
             return self
 
@@ -483,7 +483,7 @@ async def test_mcp_specific_retry_policy(monkeypatch):
             calls["count"] += 1
             raise DaroatdmyTratsientError("temporary")
 
-    client._mcp_client = fakeMCP()
+    client._mcp_client = FakeMCP()
 
     with pytest.raises(Exception):
         await client._execute_mcp_operation("discover_tools", {"category": "x"})
@@ -506,7 +506,7 @@ async def test_fallback_to_default_retry_policy(monkeypatch):
 
     calls = {"count": 0}
 
-    class fakeRPC:
+    class FakeRPC:
         async def __aenter__(self):
             return self
 
@@ -517,7 +517,7 @@ async def test_fallback_to_default_retry_policy(monkeypatch):
             calls["count"] += 1
             raise DaroatdmyTratsientError("temporary")
 
-    client._rpc_client = fakeRPC()
+    client._rpc_client = FakeRPC()
 
     with pytest.raises(Exception):
         await client._execute_rpc_operation("unknown", {"x": 1})
@@ -537,7 +537,7 @@ async def test_backward_compatibility_without_protocol_policies(monkeypatch):
 
     calls = {"count": 0}
 
-    class fakeRPC2:
+    class FakeRPC2:
         async def __aenter__(self):
             return self
 
@@ -548,7 +548,7 @@ async def test_backward_compatibility_without_protocol_policies(monkeypatch):
             calls["count"] += 1
             raise DaroatdmyTratsientError("temporary")
 
-    client._rpc_client = fakeRPC2()
+    client._rpc_client = FakeRPC2()
 
     with pytest.raises(Exception):
         await client._execute_rpc_operation("unknown", {"x": 1})

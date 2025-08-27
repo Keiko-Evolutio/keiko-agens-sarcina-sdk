@@ -298,9 +298,8 @@ class MultiLevelCache(CacheInterface):
 
     async def get_stats(self) -> Dict[CacheLevel, CacheStats]:
         """Get statistics for all cache levels."""
-        stats = {}
-
-        stats[CacheLevel.L1_MEMORY] = await self.l1_cache.get_stats()
+        # Dictionary literal mit L1 Cache initialisieren
+        stats = {CacheLevel.L1_MEMORY: await self.l1_cache.get_stats()}
 
         if self.l2_cache:
             stats[CacheLevel.L2_DISTRIBUTED] = await self.l2_cache.get_stats()
@@ -312,9 +311,8 @@ class MultiLevelCache(CacheInterface):
 
     async def invalidate_by_tags(self, tags: List[str]) -> Dict[CacheLevel, int]:
         """Invalidate cache entries by tags across all levels."""
-        results = {}
-
-        results[CacheLevel.L1_MEMORY] = await self.l1_cache.invalidate_by_tags(tags)
+        # Dictionary literal mit L1 Cache initialisieren
+        results = {CacheLevel.L1_MEMORY: await self.l1_cache.invalidate_by_tags(tags)}
 
         if self.l2_cache:
             results[CacheLevel.L2_DISTRIBUTED] = await self.l2_cache.invalidate_by_tags(tags)

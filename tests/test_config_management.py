@@ -453,6 +453,7 @@ class TestConfigIntegration:
         """Test complete configuration management flow."""
         # Initialize system
         temp_dir = Path(tempfile.mkdtemp())
+        config_manager = None  # Initialize to avoid unbound variable in finally block
 
         try:
             config_manager = initialize_config_manager(temp_dir)
@@ -484,7 +485,8 @@ class TestConfigIntegration:
             assert len(history) >= 3  # initial, update, rollback
 
         finally:
-            config_manager.stop_watching()
+            if config_manager is not None:
+                config_manager.stop_watching()
             import shutil
             shutil.rmtree(temp_dir, ignore_errors=True)
 

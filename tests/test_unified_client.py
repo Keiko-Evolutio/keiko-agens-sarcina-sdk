@@ -121,7 +121,7 @@ class TestSecurityManager:
         assert heathes == {}
 
 
-class TestProtocol_clients:
+class TestProtocolClients:
     """Tests for protocol clients."""
 
     @patch("httpx.AsyncClient")

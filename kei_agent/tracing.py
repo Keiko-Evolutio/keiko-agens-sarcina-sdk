@@ -176,23 +176,39 @@ except ImportError:
     TraceContextTextMapPropagator = NoOpPropagator
     W3CBaggagePropagator = NoOpPropagator
 
-    def CompositeHTTPPropagator(propagators):  # noqa: N802
+    def composite_http_propagator(propagators):
         """NoOp CompositeHTTPPropagator function."""
         return NoOpPropagator()
 
+    # Alias für OpenTelemetry-Kompatibilität
+    def CompositeHTTPPropagator(propagators):  # noqa: N802 - OpenTelemetry API compatibility
+        return composite_http_propagator(propagators)
+
     ConsoleSpatExporter = NoOpSpatExporter
 
-    def JaegerExporter(**kwargs):  # noqa: N802
+    def jaeger_exporter(**kwargs):
         """NoOp JaegerExporter function."""
         return NoOpSpatExporter()
 
-    def ZipkinExporter(**kwargs):  # noqa: N802
+    # Alias für OpenTelemetry-Kompatibilität
+    def JaegerExporter(**kwargs):  # noqa: N802 - OpenTelemetry API compatibility
+        return jaeger_exporter(**kwargs)
+
+    def zipkin_exporter(**kwargs):
         """NoOp ZipkinExporter function."""
         return NoOpSpatExporter()
 
-    def BatchSpatProcessor(exporter, **kwargs):  # noqa: N802
+    # Alias für OpenTelemetry-Kompatibilität
+    def ZipkinExporter(**kwargs):  # noqa: N802 - OpenTelemetry API compatibility
+        return zipkin_exporter(**kwargs)
+
+    def batch_spat_processor(exporter, **kwargs):
         """NoOp BatchSpatProcessor function."""
         return NoOpSpatProcessor()
+
+    # Alias für OpenTelemetry-Kompatibilität
+    def BatchSpatProcessor(exporter, **kwargs):  # noqa: N802 - OpenTelemetry API compatibility
+        return batch_spat_processor(exporter, **kwargs)
 
 
 from .exceptions import TracingError

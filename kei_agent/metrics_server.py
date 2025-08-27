@@ -17,12 +17,21 @@ import time
 from typing import Any, Dict, Optional
 
 try:
-    from aiohttp import WSMsgType, web
-    from aiohttp.web import Request, Response, WebSocketResponse
+    from aiohttp import web
+    from aiohttp.web import Response, WebSocketResponse
 
     AIOHTTP_AVAILABLE = True
+    # Fallback-Definitionen für fehlende Imports
+    WSMsgType = None
+    Request = None
 except ImportError:
     AIOHTTP_AVAILABLE = False
+    # Fallback-Definitionen
+    web = None
+    Response = None
+    WebSocketResponse = None
+    WSMsgType = None
+    Request = None
 
 from .config_api import get_config_api
 from .dashboard_generators import (

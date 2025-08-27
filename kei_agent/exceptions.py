@@ -111,7 +111,7 @@ class AuthenticationError(KeiSDKError):
         super().__init__(message, error_code="AUTHENTICATION_ERROR", **kwargs)
 
 
-class TimeoutError(KeiSDKError):
+class KeiTimeoutError(KeiSDKError):
     """Ausnahme for Timeout-error."""
 
     def __init__(

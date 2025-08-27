@@ -22,7 +22,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -187,7 +186,6 @@ cython_debug/
 *~
 
 # Emacs
-*~
 \#*\#
 /.emacs.desktop
 /.emacs.desktop.lock
@@ -235,7 +233,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # Linux
-*~
 .fuse_hidden*
 .directory
 .Trash-*
@@ -258,7 +255,6 @@ config/local.yaml
 
 # Logs
 logs/
-*.log
 *.log.*
 
 # Temporary files
@@ -276,13 +272,10 @@ cache/
 .cache/
 
 # Build artifacts
-build/
-dist/
 *.tar.gz
 *.whl
 
 # Documentation build
-docs/_build/
 docs/site/
 
 # MkDocs
@@ -311,7 +304,6 @@ secrets.json
 # Environment files with secrets
 .env.secret
 .env.prod
-.env.production
 
 # SSH keys
 id_rsa
@@ -347,12 +339,10 @@ perf.data*
 # Temporary files
 *.tmp
 *.temp
-*~
 
 # Archive files (unless specifically needed)
 *.zip
 *.tar
-*.tar.gz
 *.tar.bz2
 *.tar.xz
 *.rar
@@ -366,38 +356,8 @@ perf.data*
 build-report.json
 build-report-*.json
 
-# Package build artifacts
-*.egg-info/
-build/
-dist/
-
-# MkDocs site generation
-site/
-
-# Development and testing
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS specific
-.DS_Store
-Thumbs.db
-
 # Virtual environments
 .venv/
-venv/
-env/
 
 # Logs and temporary files
-*.log
-*.tmp
-*.temp
 build-report*.json

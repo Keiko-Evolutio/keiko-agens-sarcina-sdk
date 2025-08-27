@@ -16,8 +16,7 @@ in CI/CD environments with proper test infrastructure setup.
 
 import asyncio
 import os
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 # Test configuration
 INTEGRATION_TEST_CONFIG = {
@@ -72,7 +71,7 @@ def requires_service(service_name: str):
 
 def _check_service_availability(service_name: str) -> bool:
     """Check if a test service is available."""
-    import aiohttp
+    # aiohttp wird hier lokal importiert, aber nicht verwendet - entfernt
 
     endpoint = TEST_ENDPOINTS.get(service_name)
     if not endpoint:
