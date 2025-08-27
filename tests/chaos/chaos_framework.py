@@ -200,8 +200,8 @@ class ServiceDependencyChaosInjector(ChaosInjector):
         self._patches = []
 
     async def inject_chaos(self,
-                          service_failures: Dict[str, float] = None,
-                          slow_responses: Dict[str, float] = None,
+                          service_failures: Optional[Dict[str, float]] = None,
+                          slow_responses: Optional[Dict[str, float]] = None,
                           **kwargs) -> None:
         """Inject service dependency chaos.
 

@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 class ChaosTestSuite:
     """Orchestrates chaos engineering test execution."""
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         """Initialize chaos test suite.
 
         Args:
@@ -56,8 +56,8 @@ class ChaosTestSuite:
         }
 
     async def run_chaos_tests(self,
-                             categories: List[str] = None,
-                             test_names: List[str] = None,
+                             categories: Optional[List[str]] = None,
+                             test_names: Optional[List[str]] = None,
                              safe_mode: bool = True) -> Dict[str, Any]:
         """Run chaos engineering tests.
 
@@ -103,7 +103,7 @@ class ChaosTestSuite:
 
     async def _run_category_tests(self,
                                  category: str,
-                                 test_names: List[str] = None,
+                                 test_names: Optional[List[str]] = None,
                                  safe_mode: bool = True) -> None:
         """Run tests for a specific category.
 

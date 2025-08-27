@@ -213,7 +213,7 @@ from contextlib import (
     contextmanager,
 )
 
-from kei_agent.unified_client import UnifiedKeiAgentClient  # noqa: E402
+from kei_agent.unified_client import UnifiedKeiAgentClient
 
 
 @contextmanager
