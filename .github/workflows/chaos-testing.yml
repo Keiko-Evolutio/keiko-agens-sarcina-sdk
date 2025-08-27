@@ -351,25 +351,17 @@ jobs:
           print('✅ Chaos engineering tests passed thresholds')
           "
 
-      - name: Notify on failure
-        if: failure() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-        uses: actions/github-script@v6
+      # Enhanced notification with our new action
+      - name: 📢 Notify on chaos test failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
         with:
-          script: |
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `🔥 Chaos Engineering Tests Failed - ${new Date().toISOString().split('T')[0]}`,
-              body: `
-              Chaos engineering tests failed in environment: ${{ env.CHAOS_ENV }}
-
-              **Workflow:** ${context.workflow}
-              **Run ID:** ${context.runId}
-              **Triggered by:** ${context.eventName}
-
-              Please check the test results and address any resilience issues.
-
-              [View workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId})
-              `,
-              labels: ['chaos-engineering', 'test-failure', 'high-priority']
-            });
+          workflow_name: ${{ github.workflow }}
+          job_name: ${{ github.job }}
+          failure_reason: "Chaos engineering tests failed - system resilience issues detected"
+          severity: "high"
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          teams_webhook_url: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          notify_on_schedule: "true"
+          notify_on_push: "false"
+          notify_on_pr: "true"
