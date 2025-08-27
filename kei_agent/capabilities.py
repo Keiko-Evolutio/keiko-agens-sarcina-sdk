@@ -35,7 +35,7 @@ class CapabilityStatus(str, Enum):
 
 
 class CompatibilityLevel(str, Enum):
-    """compatibilityslevel between Capability-Versionen."""
+    """Compatibility Level zwischen Capability-Versionen."""
 
     COMPATIBLE = "compatible"
     BACKWARD_COMPATIBLE = "backward_compatible"

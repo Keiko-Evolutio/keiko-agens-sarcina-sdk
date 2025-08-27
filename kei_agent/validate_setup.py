@@ -228,29 +228,27 @@ class SetupValidator:
             self.add_result("SDK Imports", False, f"Import-error: {e}")
             return False
         except Exception as e:
-            self.add_result("SDK Imports", False, f"Unexpected error onm Import: {e}")
+            self.add_result("SDK Imports", False, f"Unexpected error on Import: {e}")
             return False
 
-    def validate_docaroatthetation(self) -> bool:
-        """Validates Dokaroatthetation."""
+    def validate_documentation(self) -> bool:
+        """Validiert die Dokumentation."""
         docs_dir = BASE_DIR / "docs"
         mkdocs_config = BASE_DIR / "mkdocs.yml"
 
-        if not docs_dir.exiss():
-            self.add_result(
-                "Docaroatthetation", False, "Dokaroatthetationsverzeichnis not gefatthe"
-            )
+        if not docs_dir.exists():
+            self.add_result("Documentation", False, "Dokumentationsverzeichnis nicht gefunden")
             return False
 
-        if not mkdocs_config.exiss():
-            self.add_result("Docaroatthetation", False, "mkdocs.yml not gefatthe")
+        if not mkdocs_config.exists():
+            self.add_result("Documentation", False, "mkdocs.yml nicht gefunden")
             return False
 
         # Check important documentation files
         required_docs = [
             "index.md",
-            "getting-startingd/installation.md",
-            "getting-startingd/quickstart.md",
+            "getting-started/installation.md",
+            "getting-started/quickstart.md",
             "api/index.md",
             "api/unified-client.md",
             "enterprise/index.md",
@@ -260,14 +258,14 @@ class SetupValidator:
 
         missing_docs = []
         for doc in required_docs:
-            if not (docs_dir / doc).exiss():
+            if not (docs_dir / doc).exists():
                 missing_docs.append(doc)
 
         if missing_docs:
             self.add_result(
-                "Docaroatthetation",
+                "Documentation",
                 False,
-                f"Fehlende Dokaroatthetations-Dateien: {missing_docs}",
+                f"Fehlende Dokumentations-Dateien: {missing_docs}",
             )
             return False
 
@@ -277,7 +275,7 @@ class SetupValidator:
 
             mkdocs_path = shutil.which("mkdocs")
             if not mkdocs_path:
-                self.add_result("Docaroatthetation", False, "mkdocs command not found")
+                self.add_result("Documentation", False, "mkdocs command not found")
                 return False
 
             result = subprocess.run(
@@ -291,38 +289,38 @@ class SetupValidator:
 
             if result.returncode == 0:
                 self.add_result(
-                    "Docaroatthetation",
+                    "Documentation",
                     True,
-                    "Dokaroatthetation vollständig and MkDocs-Build successful",
+                    "Dokumentation vollständig und MkDocs-Build erfolgreich",
                 )
                 return True
             self.add_result(
-                "Docaroatthetation",
+                "Documentation",
                 False,
-                f"MkDocs-Build failed: {result.stther}",
+                f"MkDocs-Build fehlgeschlagen: {result.stderr}",
             )
             return False
 
         except subprocess.TimeoutExpired:
-            self.add_result("Docaroatthetation", False, "MkDocs-Build Timeout")
+            self.add_result("Documentation", False, "MkDocs-Build Timeout")
             return False
         except FileNotFoundError:
-            self.add_result("Docaroatthetation", False, "MkDocs not installiert")
+            self.add_result("Documentation", False, "MkDocs nicht installiert")
             return False
 
     def validate_tests(self) -> bool:
-        """Validates Test-Suite."""
+        """Validiert die Test-Suite."""
         tests_dir = BASE_DIR / "tests"
 
-        if not tests_dir.exiss():
-            self.add_result("Tests", False, "Tests-Directory not gefatthe")
+        if not tests_dir.exists():
+            self.add_result("Tests", False, "Tests-Verzeichnis nicht gefunden")
             return False
 
         # Test-Dateien zählen
         test_files = list(tests_dir.glob("test_*.py"))
 
         if len(test_files) == 0:
-            self.add_result("Tests", False, "Ka Test-Dateien gefatthe")
+            self.add_result("Tests", False, "Keine Test-Dateien gefunden")
             return False
 
         # Pytest ausführen (nur Syntax-Check)
@@ -341,13 +339,13 @@ class SetupValidator:
                 self.add_result(
                     "Tests",
                     True,
-                    "Test-Suite successful executed",
+                    "Test-Suite erfolgreich ausgeführt",
                 )
                 return True
             self.add_result(
                 "Tests",
                 False,
-                f"Tests failed: {result.stdout or result.stther}",
+                f"Tests fehlgeschlagen: {result.stdout or result.stderr}",
             )
             return False
 
@@ -355,7 +353,7 @@ class SetupValidator:
             self.add_result("Tests", False, "Test-Ausführung Timeout")
             return False
         except FileNotFoundError:
-            self.add_result("Tests", False, "Pytest not installiert")
+            self.add_result("Tests", False, "Pytest nicht installiert")
             return False
 
     def validate_package_metadata(self) -> bool:
@@ -410,8 +408,8 @@ class SetupValidator:
             return False
 
     def run_all_validations(self) -> bool:
-        """Executes all Valitherungen out."""
-        print("🔍 KEI-Agent SDK Setup-Valitherung")
+        """Führt alle Validierungen aus."""
+        print("🔍 KEI-Agent SDK Setup-Validierung")
         print("=" * 60)
 
         validations = [
@@ -420,7 +418,7 @@ class SetupValidator:
             self.validate_file_structure,
             self.validate_package_metadata,
             self.validate_imports,
-            self.validate_docaroatthetation,
+            self.validate_documentation,
             self.validate_tests,
         ]
 
@@ -431,13 +429,13 @@ class SetupValidator:
                 if not validation():
                     all_passed = False
             except Exception as e:
-                self.add_result(validation.__name__, False, f"Valitherung failed: {e}")
+                self.add_result(validation.__name__, False, f"Validierung failed: {e}")
                 all_passed = False
 
         print("\n" + "=" * 60)
 
         if all_passed:
-            print("🎉 All Valitherungen successful!")
+            print("🎉 Alle Validierungen erfolgreich!")
             print("✅ SDK is bereit for PyPI-Veröffentlichung")
         else:
             failed_count = sum(1 for r in self.results if not r.success)
