@@ -10,17 +10,16 @@ These tests validate system resilience when external services fail:
 """
 
 import asyncio
+from unittest.mock import MagicMock
+
 import pytest
-import time
-from unittest.mock import patch, MagicMock, AsyncMock
-import aiohttp
 
 try:
-    from kei_agent.unified_client import UnifiedKeiAgentClient, AgentClientConfig
-    from kei_agent.metrics import get_metrics_collector
+    from kei_agent.alerting import get_alert_manager
     from kei_agent.config_manager import get_config_manager
     from kei_agent.error_aggregation import get_error_aggregator
-    from kei_agent.alerting import get_alert_manager
+    from kei_agent.metrics import get_metrics_collector
+    from kei_agent.unified_client import AgentClientConfig, UnifiedKeiAgentClient
 except ImportError:
     # Mock classes for testing when modules don't exist
     class AgentClientConfig:
@@ -47,9 +46,7 @@ except ImportError:
     def get_alert_manager():
         return MagicMock()
 
-from tests.chaos.chaos_framework import (
-    chaos_test_context, ServiceDependencyChaosInjector, ChaosTest
-)
+from tests.chaos.chaos_framework import ServiceDependencyChaosInjector, chaos_test_context
 from tests.chaos.chaos_metrics import get_chaos_metrics_collector
 
 

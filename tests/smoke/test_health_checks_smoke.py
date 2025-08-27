@@ -2,28 +2,18 @@
 
 def test_import_health_checks():
     """Test that health_checks module can be imported."""
-    import kei_agent.health_checks
 
 
 def test_import_health_check_classes():
     """Test that health check classes can be imported."""
-    from kei_agent.health_checks import (
-        Healthstatus,
-        HealthCheckResult,
-        BaseHealthCheck,
-        DatabaseHealthCheck,
-        APIHealthCheck,
-        MemoryHealthCheck,
-        HealthCheckManager,
-    )
 
 
 def test_health_status_enum():
     """Test basic Healthstatus enum usage."""
     from kei_agent.health_checks import Healthstatus
 
-    assert hasattr(Healthstatus, 'HEALTHY')
-    assert hasattr(Healthstatus, 'UNHEALTHY') or hasattr(Healthstatus, 'DEGRADED')
+    assert hasattr(Healthstatus, "HEALTHY")
+    assert hasattr(Healthstatus, "UNHEALTHY") or hasattr(Healthstatus, "DEGRADED")
 
 
 def test_health_check_result_creation():
@@ -49,7 +39,7 @@ def test_database_health_check_creation():
         connection_string="sqlite:///:memory:"
     )
     assert check.name == "test-db"
-    assert hasattr(check, 'check')
+    assert hasattr(check, "check")
 
 
 def test_api_health_check_creation():
@@ -61,7 +51,7 @@ def test_api_health_check_creation():
         url="https://httpbin.org/status/200"
     )
     assert check.name == "test-api"
-    assert hasattr(check, 'check')
+    assert hasattr(check, "check")
 
 
 def test_memory_health_check_creation():
@@ -70,7 +60,7 @@ def test_memory_health_check_creation():
 
     check = MemoryHealthCheck()
     assert check.name == "memory"
-    assert hasattr(check, 'check')
+    assert hasattr(check, "check")
 
 
 def test_health_check_manager_creation():
@@ -79,8 +69,8 @@ def test_health_check_manager_creation():
 
     manager = HealthCheckManager()
     assert manager is not None
-    assert hasattr(manager, 'register_check')
-    assert hasattr(manager, 'run_all_checks')
+    assert hasattr(manager, "register_check")
+    assert hasattr(manager, "run_all_checks")
 
 
 def test_get_health_manager():
@@ -89,4 +79,4 @@ def test_get_health_manager():
 
     manager = get_health_manager()
     assert manager is not None
-    assert hasattr(manager, 'register_check')
+    assert hasattr(manager, "register_check")

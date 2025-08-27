@@ -11,13 +11,13 @@ This test validates that:
 """
 
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
+import pytest
+
+from kei_agent.exceptions import SecurityError
+from kei_agent.protocol_types import Authtypee, SecurityConfig
 from kei_agent.security_manager import SecurityManager
-from kei_agent.protocol_types import SecurityConfig, Authtypee
-from kei_agent.exceptions import SecurityError, CommunicationError
-from kei_agent.a2a import A2Aclient
 
 
 class TestSecurityExceptionHandling:
@@ -41,7 +41,7 @@ class TestSecurityExceptionHandling:
         """Test that SecurityManager handles specific exception types properly."""
 
         # Test ValueError handling
-        with patch.object(security_manager, '_get_bearer_heathes', side_effect=ValueError("Invalid config")):
+        with patch.object(security_manager, "_get_bearer_heathes", side_effect=ValueError("Invalid config")):
             with pytest.raises(SecurityError) as exc_info:
                 await security_manager.get_auth_heathes()
 
@@ -53,7 +53,7 @@ class TestSecurityExceptionHandling:
         """Test that SecurityManager handles connection errors properly."""
 
         # Test ConnectionError handling
-        with patch.object(security_manager, '_get_bearer_heathes', side_effect=ConnectionError("Network down")):
+        with patch.object(security_manager, "_get_bearer_heathes", side_effect=ConnectionError("Network down")):
             with pytest.raises(SecurityError) as exc_info:
                 await security_manager.get_auth_heathes()
 
@@ -64,7 +64,7 @@ class TestSecurityExceptionHandling:
         """Test that SecurityManager preserves SecurityError exceptions."""
 
         original_error = SecurityError("Original security error")
-        with patch.object(security_manager, '_get_bearer_heathes', side_effect=original_error):
+        with patch.object(security_manager, "_get_bearer_heathes", side_effect=original_error):
             with pytest.raises(SecurityError) as exc_info:
                 await security_manager.get_auth_heathes()
 
@@ -84,7 +84,7 @@ class TestSecurityExceptionHandling:
         manager = SecurityManager(config)
 
         # Test KeyError handling (invalid response format)
-        with patch.object(manager, '_fetch_oidc_token', side_effect=KeyError("access_token")):
+        with patch.object(manager, "_fetch_oidc_token", side_effect=KeyError("access_token")):
             with pytest.raises(SecurityError) as exc_info:
                 await manager._get_oidc_token()
 
@@ -104,7 +104,7 @@ class TestSecurityExceptionHandling:
         manager = SecurityManager(config)
 
         # Mock the _get_oidc_token method to raise different exceptions
-        with patch.object(manager, '_get_oidc_token') as mock_get_token:
+        with patch.object(manager, "_get_oidc_token") as mock_get_token:
             # First call raises SecurityError, second call succeeds
             mock_get_token.side_effect = [SecurityError("Test error"), None]
 
@@ -135,7 +135,6 @@ class TestA2AExceptionHandling:
 
         # This test would require more setup of A2A client
         # For now, we'll test the pattern conceptually
-        pass
 
 
 class TestExceptionHandlingPatterns:
@@ -145,7 +144,6 @@ class TestExceptionHandlingPatterns:
         """Test that security-critical files don't contain bare except clauses."""
 
         import os
-        from pathlib import Path
 
         security_files = [
             "kei_agent/security_manager.py",
@@ -154,11 +152,11 @@ class TestExceptionHandlingPatterns:
 
         for file_path in security_files:
             if os.path.exists(file_path):
-                with open(file_path, 'r') as f:
+                with open(file_path) as f:
                     content = f.read()
 
                 # Check for bare except clauses
-                lines = content.split('\n')
+                lines = content.split("\n")
                 for i, line in enumerate(lines, 1):
                     stripped = line.strip()
                     if stripped == "except:" or stripped.startswith("except:"):
@@ -175,7 +173,7 @@ class TestExceptionHandlingPatterns:
             if not os.path.exists(file_path):
                 return True
 
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 try:
                     tree = ast.parse(f.read())
                 except SyntaxError:
@@ -190,8 +188,8 @@ class TestExceptionHandlingPatterns:
 
                     for child in ast.walk(node):
                         if isinstance(child, ast.Call):
-                            if (hasattr(child.func, 'attr') and
-                                child.func.attr in ['error', 'warning', 'info', 'debug']):
+                            if (hasattr(child.func, "attr") and
+                                child.func.attr in ["error", "warning", "info", "debug"]):
                                 has_logging = True
                         elif isinstance(child, ast.Raise):
                             has_reraise = True
@@ -216,8 +214,11 @@ class TestExceptionHandlingPatterns:
         """Test that security-related exceptions are specific types."""
 
         from kei_agent.exceptions import (
-            SecurityError, AuthenticationError, ValidationError,
-            ConfigurationError, KeiSDKError
+            AuthenticationError,
+            ConfigurationError,
+            KeiSDKError,
+            SecurityError,
+            ValidationError,
         )
 
         # Verify exception hierarchy

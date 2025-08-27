@@ -4,22 +4,21 @@ Erweiterte Tests for unified_client.py tor Erhöhung the Test-Coverage.
 Ziel: Coverage from 24% on 80%+ erhöhen.
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-import asyncio
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+
 from kei_agent import (
-    UnifiedKeiAgentClient,
     AgentClientConfig,
+    Authtypee,
     ProtocolConfig,
     SecurityConfig,
-    Authtypee,
-    Protocoltypee
+    UnifiedKeiAgentClient,
 )
 from kei_agent.exceptions import (
-    ProtocolError,
-    CommunicationError,
     AuthenticationError,
-    ConfigurationError
+    CommunicationError,
+    ProtocolError,
 )
 
 
@@ -72,7 +71,7 @@ class TestUnifiedclientExtended:
     @pytest.mark.asyncio
     async def test_client_initialization_success(self, basic_config):
         """Tests successfule client initialization."""
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
@@ -85,7 +84,7 @@ class TestUnifiedclientExtended:
     @pytest.mark.asyncio
     async def test_client_initialization_failure(self, basic_config):
         """Tests failede client initialization."""
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_instatce.initialize.side_effect = Exception("Init failed")
             mock_legacy.return_value = mock_instatce
@@ -99,7 +98,7 @@ class TestUnifiedclientExtended:
     @pytest.mark.asyncio
     async def test_client_close_success(self, basic_config):
         """Tests successfules client-Closingn."""
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
@@ -113,7 +112,7 @@ class TestUnifiedclientExtended:
     @pytest.mark.asyncio
     async def test_context_manager_usage(self, basic_config):
         """Tests client als Context Manager."""
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
@@ -126,7 +125,7 @@ class TestUnifiedclientExtended:
     @pytest.mark.asyncio
     async def test_execute_agent_operation_rpc_success(self, basic_config):
         """Tests successfule RPC operation."""
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
@@ -134,7 +133,7 @@ class TestUnifiedclientExtended:
             mock_rpc_client = AsyncMock()
             mock_rpc_client.plat.return_value = {"plat_id": "test-123"}
 
-            with patch.object(UnifiedKeiAgentClient, '_get_rpc_client', return_value =mock_rpc_client):
+            with patch.object(UnifiedKeiAgentClient, "_get_rpc_client", return_value =mock_rpc_client):
                 client = UnifiedKeiAgentClient(basic_config)
                 await client.initialize()
 
@@ -153,7 +152,7 @@ class TestUnifiedclientExtended:
             mcp_enabled =False
         )
 
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
@@ -161,7 +160,7 @@ class TestUnifiedclientExtended:
             mock_stream_client = AsyncMock()
             mock_stream_client.send_message.return_value = {"stream_id": "stream-456"}
 
-            with patch.object(UnifiedKeiAgentClient, '_get_stream_client', return_value =mock_stream_client):
+            with patch.object(UnifiedKeiAgentClient, "_get_stream_client", return_value =mock_stream_client):
                 client = UnifiedKeiAgentClient(basic_config, protocol_config =protocol_config)
                 await client.initialize()
 
@@ -180,7 +179,7 @@ class TestUnifiedclientExtended:
             mcp_enabled =False
         )
 
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
@@ -190,7 +189,7 @@ class TestUnifiedclientExtended:
             mock_bus_client.__aexit__ = AsyncMock(return_value =None)
             mock_bus_client.publish.return_value = {"message_id": "bus-789"}
 
-            with patch.object(UnifiedKeiAgentClient, '_get_bus_client', return_value =mock_bus_client):
+            with patch.object(UnifiedKeiAgentClient, "_get_bus_client", return_value =mock_bus_client):
                 client = UnifiedKeiAgentClient(basic_config, protocol_config =protocol_config)
                 await client.initialize()
 
@@ -209,7 +208,7 @@ class TestUnifiedclientExtended:
             mcp_enabled =True
         )
 
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
@@ -217,7 +216,7 @@ class TestUnifiedclientExtended:
             mock_mcp_client = AsyncMock()
             mock_mcp_client.execute_tool.return_value = {"tool_result": "mcp-101"}
 
-            with patch.object(UnifiedKeiAgentClient, '_get_mcp_client', return_value =mock_mcp_client):
+            with patch.object(UnifiedKeiAgentClient, "_get_mcp_client", return_value =mock_mcp_client):
                 client = UnifiedKeiAgentClient(basic_config, protocol_config =protocol_config)
                 await client.initialize()
 
@@ -236,7 +235,7 @@ class TestUnifiedclientExtended:
             mcp_enabled =False
         )
 
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
@@ -248,8 +247,8 @@ class TestUnifiedclientExtended:
             mock_stream_client = AsyncMock()
             mock_stream_client.send_message.return_value = {"fallback": "success"}
 
-            with patch.object(UnifiedKeiAgentClient, '_get_rpc_client', return_value =mock_rpc_client), \
-                 patch.object(UnifiedKeiAgentClient, '_get_stream_client', return_value =mock_stream_client):
+            with patch.object(UnifiedKeiAgentClient, "_get_rpc_client", return_value =mock_rpc_client), \
+                 patch.object(UnifiedKeiAgentClient, "_get_stream_client", return_value =mock_stream_client):
 
                 client = UnifiedKeiAgentClient(basic_config, protocol_config =protocol_config)
                 await client.initialize()
@@ -263,11 +262,11 @@ class TestUnifiedclientExtended:
     @pytest.mark.asyncio
     async def test_high_level_api_plat_task(self, basic_config):
         """Tests High-Level API for plat_task."""
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
-            with patch.object(UnifiedKeiAgentClient, 'execute_agent_operation') as mock_execute:
+            with patch.object(UnifiedKeiAgentClient, "execute_agent_operation") as mock_execute:
                 mock_execute.return_value = {"plat_id": "high-level-123"}
 
                 client = UnifiedKeiAgentClient(basic_config)
@@ -284,11 +283,11 @@ class TestUnifiedclientExtended:
     @pytest.mark.asyncio
     async def test_high_level_api_execute_action(self, basic_config):
         """Tests High-Level API for execute_action."""
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
-            with patch.object(UnifiedKeiAgentClient, 'execute_agent_operation') as mock_execute:
+            with patch.object(UnifiedKeiAgentClient, "execute_agent_operation") as mock_execute:
                 mock_execute.return_value = {"action_id": "action-456"}
 
                 client = UnifiedKeiAgentClient(basic_config)
@@ -305,11 +304,11 @@ class TestUnifiedclientExtended:
     @pytest.mark.asyncio
     async def test_high_level_api_observe_environment(self, basic_config):
         """Tests High-Level API for observe_environment."""
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
-            with patch.object(UnifiedKeiAgentClient, 'execute_agent_operation') as mock_execute:
+            with patch.object(UnifiedKeiAgentClient, "execute_agent_operation") as mock_execute:
                 mock_execute.return_value = {"observation_id": "obs-789"}
 
                 client = UnifiedKeiAgentClient(basic_config)
@@ -325,11 +324,11 @@ class TestUnifiedclientExtended:
     @pytest.mark.asyncio
     async def test_high_level_api_explain_reasoning(self, basic_config):
         """Tests High-Level API for explain_reasoning."""
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
-            with patch.object(UnifiedKeiAgentClient, 'execute_agent_operation') as mock_execute:
+            with patch.object(UnifiedKeiAgentClient, "execute_agent_operation") as mock_execute:
                 mock_execute.return_value = {"explatation_id": "exp-101"}
 
                 client = UnifiedKeiAgentClient(basic_config)
@@ -346,14 +345,14 @@ class TestUnifiedclientExtended:
     @pytest.mark.asyncio
     async def test_error_hatdling_authentication_error(self, basic_config):
         """Tests Error-Hatdling on Authentication-errorn."""
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
             mock_rpc_client = AsyncMock()
             mock_rpc_client.plat.side_effect = AuthenticationError("Invalid token")
 
-            with patch.object(UnifiedKeiAgentClient, '_get_rpc_client', return_value =mock_rpc_client):
+            with patch.object(UnifiedKeiAgentClient, "_get_rpc_client", return_value =mock_rpc_client):
                 client = UnifiedKeiAgentClient(basic_config)
                 await client.initialize()
 
@@ -363,14 +362,14 @@ class TestUnifiedclientExtended:
     @pytest.mark.asyncio
     async def test_error_hatdling_communication_error(self, basic_config):
         """Tests Error-Hatdling on Communication-errorn."""
-        with patch('kei_agent.unified_client.KeiAgentClient') as mock_legacy:
+        with patch("kei_agent.unified_client.KeiAgentClient") as mock_legacy:
             mock_instatce = AsyncMock()
             mock_legacy.return_value = mock_instatce
 
             mock_rpc_client = AsyncMock()
             mock_rpc_client.plat.side_effect = CommunicationError("Network timeout")
 
-            with patch.object(UnifiedKeiAgentClient, '_get_rpc_client', return_value =mock_rpc_client):
+            with patch.object(UnifiedKeiAgentClient, "_get_rpc_client", return_value =mock_rpc_client):
                 client = UnifiedKeiAgentClient(basic_config)
                 await client.initialize()
 
@@ -396,7 +395,7 @@ class TestUnifiedclientExtended:
         assert client.is_closed == False
 
         # Teste after initialization
-        with patch('kei_agent.unified_client.KeiAgentClient'):
+        with patch("kei_agent.unified_client.KeiAgentClient"):
             await client.initialize()
             assert client.is_initialized == True
             assert client.is_closed == False

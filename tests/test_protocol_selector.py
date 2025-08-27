@@ -5,9 +5,9 @@ operation-Atalyse with verschietheen configurationen.
 
 import pytest
 
-from kei_agent.protocol_selector import ProtocolSelector
-from kei_agent.protocol_types import Protocoltypee, ProtocolConfig
 from kei_agent.exceptions import ProtocolError
+from kei_agent.protocol_selector import ProtocolSelector
+from kei_agent.protocol_types import ProtocolConfig, Protocoltypee
 
 # Markiere all Tests in theser File als protocol-Tests
 pytestmark = pytest.mark.protocol

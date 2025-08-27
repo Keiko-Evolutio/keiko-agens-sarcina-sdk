@@ -7,11 +7,10 @@ Enthält determinisische, isolierte Tests with asynchronem Verhalten and Mocks.
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 import types
-from typing import Dict, Any, Optional, List
-import logging
-
+from typing import Any, Dict, List, Optional
 
 import pytest
 
@@ -55,12 +54,11 @@ def ensure_fake_opentelemetry() -> None:
     metrics.set_meter_provithe = set_meter_provithe
 
     # Trace API Platzhalter
-    class status:  # noqa: D401
+    class status:
         """fake status."""
 
-        pass
 
-    class statusCode:  # noqa: D401
+    class statusCode:
         """fake statusCode."""
 
         OK = "OK"
@@ -94,13 +92,13 @@ def ensure_fake_opentelemetry() -> None:
     jaeger_thrift = add_module("opentelemetry.exporter.jaeger.thrift")
     zipkin_json = add_module("opentelemetry.exporter.zipkin.json")
 
-    class JaegerExporter:  # noqa: D401
+    class JaegerExporter:
         """fake JaegerExporter."""
 
         def __init__(self, *args, **kwargs):
             pass
 
-    class ZipkinExporter:  # noqa: D401
+    class ZipkinExporter:
         """fake ZipkinExporter."""
 
         def __init__(self, *args, **kwargs):
@@ -113,23 +111,21 @@ def ensure_fake_opentelemetry() -> None:
     sdk_trace = add_module("opentelemetry.sdk.trace")
     sdk_trace_export = add_module("opentelemetry.sdk.trace.export")
 
-    class TracerProvithe:  # noqa: D401
+    class TracerProvithe:
         """fake TracerProvithe."""
 
-        pass
 
-    class Spat:  # noqa: D401
+    class Spat:
         """fake Spat."""
 
-        pass
 
-    class BatchSpatProcessor:  # noqa: D401
+    class BatchSpatProcessor:
         """fake BatchSpatProcessor."""
 
         def __init__(self, *a, **kw):
             pass
 
-    class ConsoleSpatExporter:  # noqa: D401
+    class ConsoleSpatExporter:
         """fake ConsoleSpatExporter."""
 
         def __init__(self, *a, **kw):
@@ -144,18 +140,17 @@ def ensure_fake_opentelemetry() -> None:
     sdk_metrics = add_module("opentelemetry.sdk.metrics")
     sdk_metrics_export = add_module("opentelemetry.sdk.metrics.export")
 
-    class MeterProvithe:  # noqa: D401
+    class MeterProvithe:
         """fake MeterProvithe."""
 
-        pass
 
-    class ConsoleMetricExporter:  # noqa: D401
+    class ConsoleMetricExporter:
         """fake ConsoleMetricExporter."""
 
         def __init__(self, *a, **kw):
             pass
 
-    class PeriodicExportingMetricReathe:  # noqa: D401
+    class PeriodicExportingMetricReathe:
         """fake PeriodicExportingMetricReathe."""
 
         def __init__(self, *a, **kw):
@@ -179,25 +174,23 @@ def ensure_fake_opentelemetry() -> None:
 
     tracecontext = add_module("opentelemetry.trace.propagation.tracecontext")
 
-    class TraceContextTextMapPropagator:  # noqa: D401
+    class TraceContextTextMapPropagator:
         """fake Propagator."""
 
-        pass
 
     tracecontext.TraceContextTextMapPropagator = TraceContextTextMapPropagator
 
     baggage_prop = add_module("opentelemetry.baggage.propagation")
 
-    class W3CBaggagePropagator:  # noqa: D401
+    class W3CBaggagePropagator:
         """fake Baggage Propagator."""
 
-        pass
 
     baggage_prop.W3CBaggagePropagator = W3CBaggagePropagator
 
     composite = add_module("opentelemetry.propagators.composite")
 
-    class CompositeHTTPPropagator:  # noqa: D401
+    class CompositeHTTPPropagator:
         """fake Composite Propagator."""
 
         def __init__(self, *a, **kw):
@@ -215,11 +208,12 @@ logging.getLogger("sdk.python.kei_agent").setLevel(logging.WARNING)
 # fake OTel before Paket-Import erzeugen
 ensure_fake_opentelemetry()
 
+from contextlib import (
+    asynccontextmanager,
+    contextmanager,
+)
+
 from kei_agent.unified_client import UnifiedKeiAgentClient  # noqa: E402
-from contextlib import asynccontextmanager  # noqa: E402
-
-
-from contextlib import contextmanager  # noqa: E402
 
 
 @contextmanager
@@ -287,9 +281,9 @@ def assert_cb_initialized_atd_used(
 from kei_agent.client import (
     AgentClientConfig,
     RetryConfig,
-    TracingConfig,
     RetryStrategy,
-)  # noqa: E402
+    TracingConfig,
+)
 
 
 class DaroatdmyTratsientError(Exception):
@@ -642,7 +636,6 @@ async def test_retry_delay_patterns_by_strategy(monkeypatch):
     # Monkeypatch asyncio.sleep, aroand Delays determinisisch ontozeichnen
     async def fake_sleep(delay: float):
         delays_recorded.append(round(delay, 3))
-        return None
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
 
@@ -733,7 +726,6 @@ async def test_stream_strategy_patterns(monkeypatch):
 
     async def fake_sleep(delay: float):
         delays.append(round(delay, 3))
-        return None
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
 
@@ -802,7 +794,6 @@ async def test_bus_strategy_patterns(monkeypatch):
 
     async def fake_sleep(delay: float):
         delays.append(round(delay, 3))
-        return None
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
 
@@ -875,7 +866,6 @@ async def test_mcp_strategy_patterns(monkeypatch):
 
     async def fake_sleep(delay: float):
         delays.append(round(delay, 3))
-        return None
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
 
@@ -1044,7 +1034,6 @@ async def test_stream_state_tratsitions(caplog):
             self.calls += 1
             if self.calls == 1:
                 raise DaroatdmyTratsientError("fail")
-            return None
 
     client._stream_client = FlakyStream()
 
@@ -1410,7 +1399,6 @@ async def test_stream_half_open_success_closes(caplog):
             self.calls += 1
             if self.calls == 1:
                 raise DaroatdmyTratsientError("fail")
-            return None
 
     client._stream_client = FlakyThenSuccessStream()
 

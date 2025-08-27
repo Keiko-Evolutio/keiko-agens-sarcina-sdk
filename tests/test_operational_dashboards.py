@@ -10,9 +10,6 @@ This test validates that:
 5. Real-time updates function properly
 """
 
-import asyncio
-import json
-from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -23,8 +20,11 @@ try:
 except ImportError:
     AIOHTTP_AVAILABLE = False
 
+from kei_agent.dashboard_generators import (
+    generate_business_dashboard_html,
+    generate_security_dashboard_html,
+)
 from kei_agent.metrics_server import MetricsServer
-from kei_agent.dashboard_generators import generate_security_dashboard_html, generate_business_dashboard_html
 
 
 @pytest.mark.skipif(not AIOHTTP_AVAILABLE, reason="aiohttp not available")
@@ -112,10 +112,10 @@ class TestOperationalDashboards:
         ]
 
         responsive_elements = [
-            'viewport',
-            'grid-template-columns',
-            'auto-fit',
-            'minmax'
+            "viewport",
+            "grid-template-columns",
+            "auto-fit",
+            "minmax"
         ]
 
         for dashboard_html in dashboards:
@@ -263,22 +263,22 @@ class TestOperationalDashboards:
         app = self.metrics_server.create_app()
 
         expected_routes = [
-            ('GET', '/'),
-            ('GET', '/dashboard'),
-            ('GET', '/dashboard/health'),
-            ('GET', '/dashboard/performance'),
-            ('GET', '/dashboard/security'),
-            ('GET', '/dashboard/business'),
-            ('GET', '/api/metrics/summary'),
-            ('GET', '/api/health/status'),
-            ('GET', '/api/performance/stats'),
-            ('GET', '/api/security/events'),
-            ('GET', '/api/business/metrics'),
-            ('GET', '/metrics'),
-            ('GET', '/health'),
-            ('GET', '/ready'),
-            ('GET', '/live'),
-            ('GET', '/ws/metrics')
+            ("GET", "/"),
+            ("GET", "/dashboard"),
+            ("GET", "/dashboard/health"),
+            ("GET", "/dashboard/performance"),
+            ("GET", "/dashboard/security"),
+            ("GET", "/dashboard/business"),
+            ("GET", "/api/metrics/summary"),
+            ("GET", "/api/health/status"),
+            ("GET", "/api/performance/stats"),
+            ("GET", "/api/security/events"),
+            ("GET", "/api/business/metrics"),
+            ("GET", "/metrics"),
+            ("GET", "/health"),
+            ("GET", "/ready"),
+            ("GET", "/live"),
+            ("GET", "/ws/metrics")
         ]
 
         # Get all routes from the app
@@ -308,8 +308,8 @@ class TestOperationalDashboards:
         accessibility_features = [
             'charset="utf-8"',
             'name="viewport"',
-            'alt=',  # Would be present if images were used
-            'aria-',  # Would be present if ARIA labels were used
+            "alt=",  # Would be present if images were used
+            "aria-",  # Would be present if ARIA labels were used
         ]
 
         for dashboard_html in dashboards:

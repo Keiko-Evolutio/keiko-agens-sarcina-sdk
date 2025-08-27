@@ -11,17 +11,16 @@ These tests validate end-to-end protocol functionality including:
 """
 
 import asyncio
-import json
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Dict, Any, List
+from unittest.mock import AsyncMock, patch
 
-from kei_agent import UnifiedKeiAgentClient, AgentClientConfig
-from kei_agent.protocol_types import ProtocolConfig, Protocoltypee
-from kei_agent.exceptions import CommunicationError, ProtocolError
+import pytest
+
+from kei_agent import AgentClientConfig, UnifiedKeiAgentClient
+from kei_agent.exceptions import CommunicationError
+from kei_agent.protocol_types import ProtocolConfig
+
 from . import (
-    skip_if_no_integration_env, requires_service, IntegrationTestBase,
-    integration_test_base, test_endpoints, test_credentials
+    skip_if_no_integration_env,
 )
 
 
@@ -46,7 +45,7 @@ class TestRPCProtocolIntegration:
 
         async with UnifiedKeiAgentClient(config) as client:
             # Mock RPC call
-            with patch.object(client, '_make_rpc_call') as mock_rpc:
+            with patch.object(client, "_make_rpc_call") as mock_rpc:
                 mock_rpc.return_value = {"result": "success", "data": {"message": "Hello RPC"}}
 
                 response = await client.call_remote_method(
@@ -66,7 +65,7 @@ class TestRPCProtocolIntegration:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_rpc_call') as mock_rpc:
+            with patch.object(client, "_make_rpc_call") as mock_rpc:
                 # Simulate RPC error
                 mock_rpc.side_effect = CommunicationError("RPC call failed")
 
@@ -84,7 +83,7 @@ class TestRPCProtocolIntegration:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_rpc_call') as mock_rpc:
+            with patch.object(client, "_make_rpc_call") as mock_rpc:
                 # Mock successful responses
                 mock_rpc.return_value = {"result": "success", "call_id": "test"}
 
@@ -124,7 +123,7 @@ class TestStreamProtocolIntegration:
             # Mock stream connection
             mock_stream = AsyncMock()
 
-            with patch.object(client, '_create_stream_connection', return_value=mock_stream):
+            with patch.object(client, "_create_stream_connection", return_value=mock_stream):
                 # Test connection establishment
                 stream = await client.create_stream("test_stream")
                 assert stream is not None
@@ -147,7 +146,7 @@ class TestStreamProtocolIntegration:
         async with UnifiedKeiAgentClient(config) as client:
             mock_stream = AsyncMock()
 
-            with patch.object(client, '_create_stream_connection', return_value=mock_stream):
+            with patch.object(client, "_create_stream_connection", return_value=mock_stream):
                 # Simulate connection loss
                 mock_stream.send.side_effect = [
                     None,  # First call succeeds
@@ -175,7 +174,7 @@ class TestStreamProtocolIntegration:
         async with UnifiedKeiAgentClient(config) as client:
             mock_stream = AsyncMock()
 
-            with patch.object(client, '_create_stream_connection', return_value=mock_stream):
+            with patch.object(client, "_create_stream_connection", return_value=mock_stream):
                 # Simulate slow consumer
                 mock_stream.send.side_effect = lambda data: asyncio.sleep(0.1)
 
@@ -221,8 +220,8 @@ class TestBusProtocolIntegration:
             async def message_handler(message):
                 received_messages.append(message)
 
-            with patch.object(client, '_subscribe_to_topic') as mock_subscribe:
-                with patch.object(client, '_publish_to_topic') as mock_publish:
+            with patch.object(client, "_subscribe_to_topic") as mock_subscribe:
+                with patch.object(client, "_publish_to_topic") as mock_publish:
                     # Subscribe to topic
                     await client.subscribe("test_topic", message_handler)
                     mock_subscribe.assert_called_once_with("test_topic", message_handler)
@@ -244,13 +243,13 @@ class TestBusProtocolIntegration:
             async def pattern_handler(message):
                 received_messages.append(message)
 
-            with patch.object(client, '_subscribe_to_pattern') as mock_subscribe:
+            with patch.object(client, "_subscribe_to_pattern") as mock_subscribe:
                 # Subscribe to pattern
                 await client.subscribe_pattern("events.*", pattern_handler)
                 mock_subscribe.assert_called_once_with("events.*", pattern_handler)
 
                 # Test that pattern matching works
-                with patch.object(client, '_publish_to_topic') as mock_publish:
+                with patch.object(client, "_publish_to_topic") as mock_publish:
                     await client.publish("events.user.created", {"user_id": 123})
                     await client.publish("events.order.placed", {"order_id": 456})
 
@@ -268,8 +267,8 @@ class TestBusProtocolIntegration:
             async def ordered_handler(message):
                 received_order.append(message["sequence"])
 
-            with patch.object(client, '_subscribe_to_topic') as mock_subscribe:
-                with patch.object(client, '_publish_to_topic') as mock_publish:
+            with patch.object(client, "_subscribe_to_topic") as mock_subscribe:
+                with patch.object(client, "_publish_to_topic") as mock_publish:
                     await client.subscribe("ordered_topic", ordered_handler)
 
                     # Publish messages in sequence
@@ -300,7 +299,7 @@ class TestMCPProtocolIntegration:
         )
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_negotiate_mcp_capabilities') as mock_negotiate:
+            with patch.object(client, "_negotiate_mcp_capabilities") as mock_negotiate:
                 mock_negotiate.return_value = {
                     "supported_capabilities": ["tools", "resources", "prompts"],
                     "protocol_version": "1.0.0"
@@ -319,7 +318,7 @@ class TestMCPProtocolIntegration:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_execute_mcp_tool') as mock_execute:
+            with patch.object(client, "_execute_mcp_tool") as mock_execute:
                 mock_execute.return_value = {
                     "result": "success",
                     "output": "Tool executed successfully",
@@ -343,7 +342,7 @@ class TestMCPProtocolIntegration:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_access_mcp_resource') as mock_access:
+            with patch.object(client, "_access_mcp_resource") as mock_access:
                 mock_access.return_value = {
                     "resource_id": "test_resource",
                     "content": "Resource content",
@@ -378,8 +377,8 @@ class TestCrossProtocolIntegration:
         )
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_try_rpc_connection') as mock_rpc:
-                with patch.object(client, '_try_stream_connection') as mock_stream:
+            with patch.object(client, "_try_rpc_connection") as mock_rpc:
+                with patch.object(client, "_try_stream_connection") as mock_stream:
                     # RPC fails, should fallback to Stream
                     mock_rpc.side_effect = ConnectionError("RPC unavailable")
                     mock_stream.return_value = True
@@ -397,7 +396,7 @@ class TestCrossProtocolIntegration:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_select_optimal_protocol') as mock_select:
+            with patch.object(client, "_select_optimal_protocol") as mock_select:
                 mock_select.return_value = "stream"
 
                 # Request capability that requires streaming
@@ -413,9 +412,9 @@ class TestCrossProtocolIntegration:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_maintain_rpc_connection') as mock_rpc:
-                with patch.object(client, '_maintain_stream_connection') as mock_stream:
-                    with patch.object(client, '_maintain_bus_connection') as mock_bus:
+            with patch.object(client, "_maintain_rpc_connection") as mock_rpc:
+                with patch.object(client, "_maintain_stream_connection") as mock_stream:
+                    with patch.object(client, "_maintain_bus_connection") as mock_bus:
                         # Establish multiple connections
                         await client.establish_multi_protocol_session()
 

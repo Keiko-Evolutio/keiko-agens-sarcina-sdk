@@ -6,13 +6,13 @@ This module provides comprehensive metrics collection, analysis, and reporting
 for chaos engineering tests to measure system resilience.
 """
 
+from dataclasses import asdict, dataclass
 import json
-import time
-from dataclasses import dataclass, asdict
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 import logging
+from pathlib import Path
 import statistics
+import time
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class ChaosMetricsCollector:
         """
         self.test_results.append({
             **metrics,
-            'timestamp': time.time()
+            "timestamp": time.time()
         })
         logger.info(f"Added test result for {metrics.get('test_name', 'unknown')}")
 
@@ -94,21 +94,21 @@ class ChaosMetricsCollector:
         groups = {}
 
         for test in self.test_results:
-            test_name = test.get('test_name', '')
+            test_name = test.get("test_name", "")
 
             # Extract component from test name
-            if 'network' in test_name.lower():
-                component = 'network'
-            elif 'service' in test_name.lower() or 'dependency' in test_name.lower():
-                component = 'service_dependencies'
-            elif 'resource' in test_name.lower():
-                component = 'resource_management'
-            elif 'config' in test_name.lower():
-                component = 'configuration'
-            elif 'security' in test_name.lower():
-                component = 'security'
+            if "network" in test_name.lower():
+                component = "network"
+            elif "service" in test_name.lower() or "dependency" in test_name.lower():
+                component = "service_dependencies"
+            elif "resource" in test_name.lower():
+                component = "resource_management"
+            elif "config" in test_name.lower():
+                component = "configuration"
+            elif "security" in test_name.lower():
+                component = "security"
             else:
-                component = 'general'
+                component = "general"
 
             if component not in groups:
                 groups[component] = []
@@ -123,7 +123,7 @@ class ChaosMetricsCollector:
 
         success_rates = []
         for test in tests:
-            success_rate = test.get('success_rate', 0.0)
+            success_rate = test.get("success_rate", 0.0)
             success_rates.append(success_rate * 100)  # Convert to percentage
 
         return statistics.mean(success_rates) if success_rates else 0.0
@@ -135,7 +135,7 @@ class ChaosMetricsCollector:
 
         recovery_scores = []
         for test in tests:
-            recovery_time = test.get('time_to_recovery')
+            recovery_time = test.get("time_to_recovery")
             if recovery_time is not None:
                 # Score based on recovery time (faster = better)
                 # 100 points for recovery under 1 second, decreasing linearly
@@ -162,8 +162,8 @@ class ChaosMetricsCollector:
 
         error_scores = []
         for test in tests:
-            errors = test.get('errors_during_chaos', 0)
-            total_ops = test.get('successful_operations', 0) + test.get('failed_operations', 0)
+            errors = test.get("errors_during_chaos", 0)
+            total_ops = test.get("successful_operations", 0) + test.get("failed_operations", 0)
 
             if total_ops > 0:
                 error_rate = errors / total_ops
@@ -198,19 +198,19 @@ class ChaosMetricsCollector:
         performance_impact = self._analyze_performance_impact()
 
         report = {
-            'summary': {
-                'total_tests': len(self.test_results),
-                'overall_resilience_score': overall_resilience,
-                'test_period': self._get_test_period(),
-                'components_tested': list(resilience_scores.keys())
+            "summary": {
+                "total_tests": len(self.test_results),
+                "overall_resilience_score": overall_resilience,
+                "test_period": self._get_test_period(),
+                "components_tested": list(resilience_scores.keys())
             },
-            'resilience_scores': {
+            "resilience_scores": {
                 name: score.to_dict() for name, score in resilience_scores.items()
             },
-            'trends': test_trends,
-            'weak_points': weak_points,
-            'performance_impact': performance_impact,
-            'recommendations': self._generate_recommendations(resilience_scores)
+            "trends": test_trends,
+            "weak_points": weak_points,
+            "performance_impact": performance_impact,
+            "recommendations": self._generate_recommendations(resilience_scores)
         }
 
         return report
@@ -218,26 +218,26 @@ class ChaosMetricsCollector:
     def _analyze_test_trends(self) -> Dict[str, Any]:
         """Analyze trends in test results over time."""
         if len(self.test_results) < 2:
-            return {'trend': 'insufficient_data'}
+            return {"trend": "insufficient_data"}
 
         # Sort tests by timestamp
-        sorted_tests = sorted(self.test_results, key=lambda x: x.get('timestamp', 0))
+        sorted_tests = sorted(self.test_results, key=lambda x: x.get("timestamp", 0))
 
         # Calculate trend in success rates
-        success_rates = [test.get('success_rate', 0.0) for test in sorted_tests]
+        success_rates = [test.get("success_rate", 0.0) for test in sorted_tests]
 
         if len(success_rates) >= 2:
-            trend_direction = 'improving' if success_rates[-1] > success_rates[0] else 'degrading'
+            trend_direction = "improving" if success_rates[-1] > success_rates[0] else "degrading"
             trend_magnitude = abs(success_rates[-1] - success_rates[0])
         else:
-            trend_direction = 'stable'
+            trend_direction = "stable"
             trend_magnitude = 0.0
 
         return {
-            'trend': trend_direction,
-            'magnitude': trend_magnitude,
-            'success_rate_trend': success_rates,
-            'recovery_time_trend': [test.get('time_to_recovery') for test in sorted_tests]
+            "trend": trend_direction,
+            "magnitude": trend_magnitude,
+            "success_rate_trend": success_rates,
+            "recovery_time_trend": [test.get("time_to_recovery") for test in sorted_tests]
         }
 
     def _identify_weak_points(self, resilience_scores: Dict[str, ResilienceScore]) -> List[Dict[str, Any]]:
@@ -247,17 +247,17 @@ class ChaosMetricsCollector:
         for component, score in resilience_scores.items():
             if score.overall_score < 70.0:  # Threshold for weak points
                 weak_point = {
-                    'component': component,
-                    'overall_score': score.overall_score,
-                    'issues': []
+                    "component": component,
+                    "overall_score": score.overall_score,
+                    "issues": []
                 }
 
                 if score.availability_score < 70.0:
-                    weak_point['issues'].append('low_availability')
+                    weak_point["issues"].append("low_availability")
                 if score.recovery_score < 70.0:
-                    weak_point['issues'].append('slow_recovery')
+                    weak_point["issues"].append("slow_recovery")
                 if score.error_handling_score < 70.0:
-                    weak_point['issues'].append('poor_error_handling')
+                    weak_point["issues"].append("poor_error_handling")
 
                 weak_points.append(weak_point)
 
@@ -273,27 +273,27 @@ class ChaosMetricsCollector:
         memory_impacts = []
 
         for test in self.test_results:
-            system_metrics = test.get('system_metrics', {})
+            system_metrics = test.get("system_metrics", {})
 
-            if 'cpu_percent' in system_metrics:
-                cpu_impacts.append(system_metrics['cpu_percent'])
-            if 'memory_percent' in system_metrics:
-                memory_impacts.append(system_metrics['memory_percent'])
+            if "cpu_percent" in system_metrics:
+                cpu_impacts.append(system_metrics["cpu_percent"])
+            if "memory_percent" in system_metrics:
+                memory_impacts.append(system_metrics["memory_percent"])
 
         impact_analysis = {}
 
         if cpu_impacts:
-            impact_analysis['cpu'] = {
-                'max_usage': max(cpu_impacts),
-                'avg_usage': statistics.mean(cpu_impacts),
-                'impact_level': 'high' if max(cpu_impacts) > 80 else 'medium' if max(cpu_impacts) > 50 else 'low'
+            impact_analysis["cpu"] = {
+                "max_usage": max(cpu_impacts),
+                "avg_usage": statistics.mean(cpu_impacts),
+                "impact_level": "high" if max(cpu_impacts) > 80 else "medium" if max(cpu_impacts) > 50 else "low"
             }
 
         if memory_impacts:
-            impact_analysis['memory'] = {
-                'max_usage': max(memory_impacts),
-                'avg_usage': statistics.mean(memory_impacts),
-                'impact_level': 'high' if max(memory_impacts) > 80 else 'medium' if max(memory_impacts) > 50 else 'low'
+            impact_analysis["memory"] = {
+                "max_usage": max(memory_impacts),
+                "avg_usage": statistics.mean(memory_impacts),
+                "impact_level": "high" if max(memory_impacts) > 80 else "medium" if max(memory_impacts) > 50 else "low"
             }
 
         return impact_analysis
@@ -327,12 +327,12 @@ class ChaosMetricsCollector:
         if not self.test_results:
             return {}
 
-        timestamps = [test.get('timestamp', 0) for test in self.test_results]
+        timestamps = [test.get("timestamp", 0) for test in self.test_results]
 
         return {
-            'start_time': min(timestamps),
-            'end_time': max(timestamps),
-            'duration_hours': (max(timestamps) - min(timestamps)) / 3600
+            "start_time": min(timestamps),
+            "end_time": max(timestamps),
+            "duration_hours": (max(timestamps) - min(timestamps)) / 3600
         }
 
     def save_report(self, report: Dict[str, Any], file_path: Path) -> None:
@@ -343,7 +343,7 @@ class ChaosMetricsCollector:
             file_path: Path to save the report
         """
         try:
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 json.dump(report, f, indent=2, default=str)
             logger.info(f"Chaos engineering report saved to {file_path}")
         except Exception as e:
@@ -358,7 +358,7 @@ class ChaosMetricsCollector:
         try:
             import csv
 
-            with open(file_path, 'w', newline='') as csvfile:
+            with open(file_path, "w", newline="") as csvfile:
                 if not self.test_results:
                     return
 

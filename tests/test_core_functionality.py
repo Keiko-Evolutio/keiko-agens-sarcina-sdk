@@ -1,17 +1,17 @@
 """Tests the gratdlegenthe functionen without externe Abhängigkeiten.
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
 from kei_agent import (
-    UnifiedKeiAgentClient,
     AgentClientConfig,
+    Authtypee,
     CapabilityManager,
     CapabilityProfile,
-    Protocoltypee,
-    Authtypee,
     ProtocolConfig,
-    SecurityConfig
+    Protocoltypee,
+    SecurityConfig,
+    UnifiedKeiAgentClient,
 )
 
 
@@ -44,8 +44,8 @@ class TestAgentClientConfig:
         assert config.api_token == "test-token"
         assert config.tenant_id == "test-tenant"
         # Teste Sub-configurationen
-        assert hasattr(config, 'connection')
-        assert hasattr(config, 'retry')
+        assert hasattr(config, "connection")
+        assert hasattr(config, "retry")
 
     def test_config_validation(self):
         """Tests configurationsvalitherung."""
@@ -129,10 +129,10 @@ class TestProtocolConfig:
         config = ProtocolConfig()
 
         # Teste Default-valuee
-        assert hasattr(config, 'rpc_enabled')
-        assert hasattr(config, 'stream_enabled')
-        assert hasattr(config, 'bus_enabled')
-        assert hasattr(config, 'mcp_enabled')
+        assert hasattr(config, "rpc_enabled")
+        assert hasattr(config, "stream_enabled")
+        assert hasattr(config, "bus_enabled")
+        assert hasattr(config, "mcp_enabled")
 
     def test_protocol_types_enaroatd(self):
         """Tests Protocoltypee Enaroatd."""
@@ -178,8 +178,8 @@ class TestUnifiedKeiAgentClientBasic:
         client = UnifiedKeiAgentClient(config)
 
         assert client.config == config
-        assert hasattr(client, 'protocol_config')
-        assert hasattr(client, 'security_config')
+        assert hasattr(client, "protocol_config")
+        assert hasattr(client, "security_config")
 
     def test_client_attributes(self):
         """Tests client-Attribute."""
@@ -192,13 +192,13 @@ class TestUnifiedKeiAgentClientBasic:
         client = UnifiedKeiAgentClient(config)
 
         # Teste wichtige Attribute
-        assert hasattr(client, 'config')
-        assert hasattr(client, 'protocol_config')
-        assert hasattr(client, 'security_config')
-        assert hasattr(client, '_initialized')
-        assert hasattr(client, '_closed')
+        assert hasattr(client, "config")
+        assert hasattr(client, "protocol_config")
+        assert hasattr(client, "security_config")
+        assert hasattr(client, "_initialized")
+        assert hasattr(client, "_closed")
 
-    @patch('kei_agent.unified_client.KeiAgentClient')
+    @patch("kei_agent.unified_client.KeiAgentClient")
     def test_client_with_mocked_depenthecies(self, mock_legacy_client):
         """Tests client with mockethe Abhängigkeiten."""
         config = AgentClientConfig(
@@ -225,8 +225,8 @@ class TestCapabilityManagerBasic:
         manager = CapabilityManager(mock_client)
 
         assert manager.base_client == mock_client
-        assert hasattr(manager, '_capabilities')
-        assert hasattr(manager, '_capability_handlers')
+        assert hasattr(manager, "_capabilities")
+        assert hasattr(manager, "_capability_handlers")
 
     def test_capability_registration_basic(self):
         """Tests gratdlegende Capability-Regisrierung."""
@@ -251,14 +251,10 @@ class TestPackageIntegrity:
         """Tests, thes all Hauptklassen importierbar are."""
         # These Imports sollten without error funktionieren
         from kei_agent import (
-            UnifiedKeiAgentClient,
             AgentClientConfig,
             CapabilityManager,
             CapabilityProfile,
-            Protocoltypee,
-            Authtypee,
-            ProtocolConfig,
-            SecurityConfig
+            UnifiedKeiAgentClient,
         )
 
         # Teste, thes all classn tatsächlich classn are
@@ -271,7 +267,7 @@ class TestPackageIntegrity:
         """Tests, thes Version available is."""
         import kei_agent
 
-        assert hasattr(kei_agent, '__version__')
+        assert hasattr(kei_agent, "__version__")
         assert isinstance(kei_agent.__version__, str)
         assert len(kei_agent.__version__) > 0
 
@@ -279,6 +275,6 @@ class TestPackageIntegrity:
         """Tests Package-metadata."""
         import kei_agent
 
-        assert hasattr(kei_agent, '__author__')
-        assert hasattr(kei_agent, '__license__')
-        assert hasattr(kei_agent, '__title__')
+        assert hasattr(kei_agent, "__author__")
+        assert hasattr(kei_agent, "__license__")
+        assert hasattr(kei_agent, "__title__")

@@ -10,15 +10,14 @@ These tests validate system resilience under resource constraints:
 """
 
 import asyncio
-import pytest
 import time
+
 import psutil
-import threading
-from unittest.mock import patch, MagicMock
+import pytest
 
 try:
-    from kei_agent.unified_client import UnifiedKeiAgentClient, AgentClientConfig
     from kei_agent.metrics_server import MetricsServer
+    from kei_agent.unified_client import AgentClientConfig, UnifiedKeiAgentClient
 except ImportError:
     # Mock classes for testing when modules don't exist
     class AgentClientConfig:
@@ -37,9 +36,7 @@ except ImportError:
         def __init__(self, **kwargs):
             pass
 
-from tests.chaos.chaos_framework import (
-    chaos_test_context, ResourceExhaustionInjector, ChaosTest
-)
+from tests.chaos.chaos_framework import ResourceExhaustionInjector, chaos_test_context
 from tests.chaos.chaos_metrics import get_chaos_metrics_collector
 
 
@@ -376,7 +373,7 @@ class TestResourceExhaustionChaos:
 
             try:
                 # Get baseline disk usage
-                initial_disk = psutil.disk_usage('/')
+                initial_disk = psutil.disk_usage("/")
                 chaos_test.add_custom_metric("initial_disk_percent", initial_disk.percent)
 
                 # Inject disk pressure
@@ -389,7 +386,7 @@ class TestResourceExhaustionChaos:
                 for i in range(8):
                     try:
                         # Simulate file operations that might be affected by disk space
-                        current_disk = psutil.disk_usage('/')
+                        current_disk = psutil.disk_usage("/")
 
                         if current_disk.percent > 90:  # High disk usage
                             # Some operations might fail
@@ -471,7 +468,7 @@ class TestResourceExhaustionChaos:
                         # Monitor system resources
                         memory = psutil.virtual_memory()
                         cpu = psutil.cpu_percent()
-                        disk = psutil.disk_usage('/')
+                        disk = psutil.disk_usage("/")
 
                         # Simulate operations under resource stress
                         await asyncio.sleep(0.1)

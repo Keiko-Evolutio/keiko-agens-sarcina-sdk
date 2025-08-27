@@ -1,14 +1,15 @@
 """Integration tests for security scenarios and authentication flows."""
 
-import pytest
-import tempfile
 import json
 import os
-from unittest.mock import AsyncMock, patch
+import tempfile
+from unittest.mock import AsyncMock
 
-from kei_agent.security_manager import SecurityManager
-from kei_agent.protocol_types import SecurityConfig, Authtypee
+import pytest
+
 from kei_agent.exceptions import SecurityError
+from kei_agent.protocol_types import Authtypee, SecurityConfig
+from kei_agent.security_manager import SecurityManager
 
 
 def test_security_config_validation():
@@ -180,13 +181,13 @@ def test_security_config_from_file():
         "tls_verify": True
     }
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(config_data, f)
         temp_path = f.name
 
     try:
         # Load config from file
-        with open(temp_path, 'r') as f:
+        with open(temp_path) as f:
             loaded_data = json.load(f)
 
         config = SecurityConfig(**loaded_data)

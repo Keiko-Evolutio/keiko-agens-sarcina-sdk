@@ -13,19 +13,22 @@ This test validates that:
 
 import asyncio
 import json
+from pathlib import Path
 import tempfile
 import time
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import pytest
 
-from kei_agent.config_manager import (
-    ConfigManager, ConfigValidator, ConfigChange,
-    get_config_manager, initialize_config_manager,
-    get_config_value, update_config_value
-)
 from kei_agent.config_api import ConfigAPI, get_config_api, initialize_config_api
+from kei_agent.config_manager import (
+    ConfigChange,
+    ConfigManager,
+    ConfigValidator,
+    get_config_manager,
+    get_config_value,
+    initialize_config_manager,
+    update_config_value,
+)
 
 
 class TestConfigValidator:
@@ -43,46 +46,46 @@ class TestConfigValidator:
 
     def test_required_fields_validation(self):
         """Test required fields validation."""
-        self.validator.set_required_fields(['host', 'port'])
+        self.validator.set_required_fields(["host", "port"])
 
         # Valid config with required fields
-        valid_config = {'host': 'localhost', 'port': 8080, 'debug': True}
+        valid_config = {"host": "localhost", "port": 8080, "debug": True}
         assert self.validator.validate(valid_config)
 
         # Invalid config missing required field
-        invalid_config = {'host': 'localhost', 'debug': True}
+        invalid_config = {"host": "localhost", "debug": True}
         assert not self.validator.validate(invalid_config)
 
     def test_field_types_validation(self):
         """Test field types validation."""
         self.validator.set_field_types({
-            'host': str,
-            'port': int,
-            'debug': bool
+            "host": str,
+            "port": int,
+            "debug": bool
         })
 
         # Valid config with correct types
-        valid_config = {'host': 'localhost', 'port': 8080, 'debug': True}
+        valid_config = {"host": "localhost", "port": 8080, "debug": True}
         assert self.validator.validate(valid_config)
 
         # Invalid config with wrong type
-        invalid_config = {'host': 'localhost', 'port': '8080', 'debug': True}
+        invalid_config = {"host": "localhost", "port": "8080", "debug": True}
         assert not self.validator.validate(invalid_config)
 
     def test_custom_validation_rules(self):
         """Test custom validation rules."""
         def port_range_validator(config):
-            port = config.get('port', 0)
+            port = config.get("port", 0)
             return 1024 <= port <= 65535
 
         self.validator.add_validation_rule(port_range_validator)
 
         # Valid config within port range
-        valid_config = {'port': 8080}
+        valid_config = {"port": 8080}
         assert self.validator.validate(valid_config)
 
         # Invalid config outside port range
-        invalid_config = {'port': 80}
+        invalid_config = {"port": 80}
         assert not self.validator.validate(invalid_config)
 
     def test_validation_exception_handling(self):
@@ -92,7 +95,7 @@ class TestConfigValidator:
 
         self.validator.add_validation_rule(failing_validator)
 
-        config = {'test': 'value'}
+        config = {"test": "value"}
         assert not self.validator.validate(config)
 
 
@@ -101,8 +104,8 @@ class TestConfigChange:
 
     def test_config_change_creation(self):
         """Test ConfigChange creation and serialization."""
-        old_config = {'host': 'old-host', 'port': 8080}
-        new_config = {'host': 'new-host', 'port': 8081}
+        old_config = {"host": "old-host", "port": 8080}
+        new_config = {"host": "new-host", "port": 8081}
 
         change = ConfigChange(
             timestamp=time.time(),
@@ -154,70 +157,70 @@ class TestConfigManager:
 
     def test_get_config(self):
         """Test getting current configuration."""
-        test_config = {'test': 'value', 'number': 42}
+        test_config = {"test": "value", "number": 42}
         self.config_manager.current_config = test_config
 
         retrieved_config = self.config_manager.get_config()
         assert retrieved_config == test_config
 
         # Ensure it's a copy, not the original
-        retrieved_config['new_key'] = 'new_value'
-        assert 'new_key' not in self.config_manager.current_config
+        retrieved_config["new_key"] = "new_value"
+        assert "new_key" not in self.config_manager.current_config
 
     def test_get_config_value(self):
         """Test getting specific configuration values."""
         test_config = {
-            'database': {
-                'host': 'localhost',
-                'port': 5432
+            "database": {
+                "host": "localhost",
+                "port": 5432
             },
-            'debug': True
+            "debug": True
         }
         self.config_manager.current_config = test_config
 
         # Test simple key
-        assert self.config_manager.get_config_value('debug') is True
+        assert self.config_manager.get_config_value("debug") is True
 
         # Test nested key with dot notation
-        assert self.config_manager.get_config_value('database.host') == 'localhost'
-        assert self.config_manager.get_config_value('database.port') == 5432
+        assert self.config_manager.get_config_value("database.host") == "localhost"
+        assert self.config_manager.get_config_value("database.port") == 5432
 
         # Test non-existent key with default
-        assert self.config_manager.get_config_value('nonexistent', 'default') == 'default'
+        assert self.config_manager.get_config_value("nonexistent", "default") == "default"
 
         # Test non-existent nested key
-        assert self.config_manager.get_config_value('database.nonexistent', 'default') == 'default'
+        assert self.config_manager.get_config_value("database.nonexistent", "default") == "default"
 
     @pytest.mark.asyncio
     async def test_update_config(self):
         """Test updating configuration."""
-        initial_config = {'host': 'localhost', 'port': 8080}
+        initial_config = {"host": "localhost", "port": 8080}
         self.config_manager.current_config = initial_config
 
-        updates = {'port': 8081, 'debug': True}
+        updates = {"port": 8081, "debug": True}
 
-        success = await self.config_manager.update_config(updates, user_id='test-user', reason='Test update')
+        success = await self.config_manager.update_config(updates, user_id="test-user", reason="Test update")
 
         assert success
-        assert self.config_manager.current_config['port'] == 8081
-        assert self.config_manager.current_config['debug'] is True
-        assert self.config_manager.current_config['host'] == 'localhost'  # Unchanged
+        assert self.config_manager.current_config["port"] == 8081
+        assert self.config_manager.current_config["debug"] is True
+        assert self.config_manager.current_config["host"] == "localhost"  # Unchanged
 
         # Check change history
         assert len(self.config_manager.change_history) == 1
         change = self.config_manager.change_history[0]
-        assert change.source == 'api'
-        assert change.user_id == 'test-user'
-        assert change.reason == 'Test update'
+        assert change.source == "api"
+        assert change.user_id == "test-user"
+        assert change.reason == "Test update"
 
     @pytest.mark.asyncio
     async def test_config_validation_failure(self):
         """Test configuration update with validation failure."""
         # Set up validation rule
-        self.config_manager.validator.set_required_fields(['host'])
+        self.config_manager.validator.set_required_fields(["host"])
 
         # Try to update with invalid config (missing required field)
-        invalid_updates = {'port': 8081}
+        invalid_updates = {"port": 8081}
 
         success = await self.config_manager.update_config(invalid_updates)
 
@@ -232,34 +235,34 @@ class TestConfigManager:
     @pytest.mark.asyncio
     async def test_config_rollback(self):
         """Test configuration rollback functionality."""
-        initial_config = {'host': 'localhost', 'port': 8080}
+        initial_config = {"host": "localhost", "port": 8080}
         self.config_manager.current_config = initial_config
         self.config_manager.config_backup = initial_config.copy()
 
         # Make a change
-        updates = {'port': 8081}
+        updates = {"port": 8081}
         await self.config_manager.update_config(updates)
 
-        assert self.config_manager.current_config['port'] == 8081
+        assert self.config_manager.current_config["port"] == 8081
 
         # Rollback
         success = await self.config_manager.rollback_config()
 
         assert success
-        assert self.config_manager.current_config['port'] == 8080
+        assert self.config_manager.current_config["port"] == 8080
 
         # Check rollback was recorded in history
         rollback_change = self.config_manager.change_history[-1]
-        assert rollback_change.source == 'rollback'
+        assert rollback_change.source == "rollback"
 
     @pytest.mark.asyncio
     async def test_config_file_loading(self):
         """Test loading configuration from JSON file."""
         # Create test config file
         config_file = self.temp_dir / "test_config.json"
-        test_config = {'host': 'test-host', 'port': 9090, 'debug': False}
+        test_config = {"host": "test-host", "port": 9090, "debug": False}
 
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             json.dump(test_config, f)
 
         # Load config file
@@ -280,7 +283,7 @@ class TestConfigManager:
                 change_id=f"change-{i}",
                 source="test",
                 old_config={},
-                new_config={'iteration': i},
+                new_config={"iteration": i},
                 validation_result=True,
                 applied=True
             )
@@ -300,7 +303,7 @@ class TestConfigManager:
                 change_id=f"change-{i}",
                 source="test",
                 old_config={},
-                new_config={'iteration': i},
+                new_config={"iteration": i},
                 validation_result=True,
                 applied=True
             )
@@ -331,8 +334,8 @@ class TestConfigManager:
         self.config_manager.add_change_callback(test_callback)
 
         # Make a configuration change
-        new_config = {'test': 'callback'}
-        await self.config_manager._apply_config_change(new_config, source='test')
+        new_config = {"test": "callback"}
+        await self.config_manager._apply_config_change(new_config, source="test")
 
         assert callback_called
         assert callback_config == new_config
@@ -350,8 +353,8 @@ class TestConfigManager:
         self.config_manager.add_change_callback(async_callback)
 
         # Make a configuration change
-        new_config = {'test': 'async_callback'}
-        await self.config_manager._apply_config_change(new_config, source='test')
+        new_config = {"test": "async_callback"}
+        await self.config_manager._apply_config_change(new_config, source="test")
 
         assert callback_called
 
@@ -389,24 +392,24 @@ class TestGlobalFunctions:
         """Test global get_config_value function."""
         # Set up test config
         manager = get_config_manager()
-        manager.current_config = {'test': {'nested': 'value'}}
+        manager.current_config = {"test": {"nested": "value"}}
 
         # Test getting value
-        value = get_config_value('test.nested', 'default')
-        assert value == 'value'
+        value = get_config_value("test.nested", "default")
+        assert value == "value"
 
         # Test default value
-        default_value = get_config_value('nonexistent', 'default')
-        assert default_value == 'default'
+        default_value = get_config_value("nonexistent", "default")
+        assert default_value == "default"
 
     @pytest.mark.asyncio
     async def test_update_config_value_function(self):
         """Test global update_config_value function."""
         manager = get_config_manager()
-        manager.current_config = {'existing': 'value'}
+        manager.current_config = {"existing": "value"}
 
         # Update a nested value
-        success = await update_config_value('new.nested.key', 'new_value', user_id='test')
+        success = await update_config_value("new.nested.key", "new_value", user_id="test")
 
         assert success
         # Note: This would require proper nested update logic in the actual implementation
@@ -456,25 +459,25 @@ class TestConfigIntegration:
             config_api = initialize_config_api(config_manager, require_auth=False)
 
             # Set up validation
-            config_manager.validator.set_required_fields(['host'])
-            config_manager.validator.set_field_types({'port': int})
+            config_manager.validator.set_required_fields(["host"])
+            config_manager.validator.set_field_types({"port": int})
 
             # Initial configuration
-            initial_config = {'host': 'localhost', 'port': 8080}
-            await config_manager._apply_config_change(initial_config, source='initial')
+            initial_config = {"host": "localhost", "port": 8080}
+            await config_manager._apply_config_change(initial_config, source="initial")
 
             # Update configuration
-            updates = {'port': 8081, 'debug': True}
-            success = await config_manager.update_config(updates, user_id='test-user')
+            updates = {"port": 8081, "debug": True}
+            success = await config_manager.update_config(updates, user_id="test-user")
 
             assert success
-            assert config_manager.get_config_value('port') == 8081
-            assert config_manager.get_config_value('debug') is True
+            assert config_manager.get_config_value("port") == 8081
+            assert config_manager.get_config_value("debug") is True
 
             # Test rollback
             rollback_success = await config_manager.rollback_config()
             assert rollback_success
-            assert config_manager.get_config_value('port') == 8080
+            assert config_manager.get_config_value("port") == 8080
 
             # Check history
             history = config_manager.get_change_history()
@@ -490,14 +493,14 @@ class TestConfigIntegration:
         import threading
 
         config_manager = ConfigManager()
-        config_manager.current_config = {'counter': 0}
+        config_manager.current_config = {"counter": 0}
 
         def update_counter():
             for i in range(10):
-                current = config_manager.get_config_value('counter', 0)
+                current = config_manager.get_config_value("counter", 0)
                 # Simulate some processing time
                 time.sleep(0.001)
-                config_manager.current_config['counter'] = current + 1
+                config_manager.current_config["counter"] = current + 1
 
         # Run multiple threads
         threads = []

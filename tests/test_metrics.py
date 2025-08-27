@@ -13,13 +13,17 @@ This test validates that:
 
 import asyncio
 import time
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
 from kei_agent.metrics import (
-    MetricsCollector, MetricEvent, get_metrics_collector,
-    initialize_metrics, record_request_metric, record_connection_metric
+    MetricEvent,
+    MetricsCollector,
+    get_metrics_collector,
+    initialize_metrics,
+    record_connection_metric,
+    record_request_metric,
 )
 
 
@@ -32,9 +36,9 @@ class TestMetricsCollector:
 
         # Should initialize without errors
         assert collector is not None
-        assert hasattr(collector, 'enabled')
-        assert hasattr(collector, 'metrics')
-        assert hasattr(collector, 'custom_metrics')
+        assert hasattr(collector, "enabled")
+        assert hasattr(collector, "metrics")
+        assert hasattr(collector, "custom_metrics")
 
     def test_prometheus_metrics_availability(self):
         """Test Prometheus metrics availability detection."""
@@ -56,10 +60,10 @@ class TestMetricsCollector:
         collector.record_connection("test-agent", "stream", "disconnected")
 
         # If Prometheus is available, check metric was recorded
-        if collector.enabled and 'agent_connections_total' in collector.metrics:
-            metric = collector.metrics['agent_connections_total']
+        if collector.enabled and "agent_connections_total" in collector.metrics:
+            metric = collector.metrics["agent_connections_total"]
             # Metric should exist and be callable
-            assert hasattr(metric, 'labels')
+            assert hasattr(metric, "labels")
 
     def test_record_request_metric(self):
         """Test request metric recording."""
@@ -71,10 +75,10 @@ class TestMetricsCollector:
 
         # If Prometheus is available, check metrics were recorded
         if collector.enabled:
-            if 'agent_requests_total' in collector.metrics:
-                assert hasattr(collector.metrics['agent_requests_total'], 'labels')
-            if 'agent_request_duration' in collector.metrics:
-                assert hasattr(collector.metrics['agent_request_duration'], 'labels')
+            if "agent_requests_total" in collector.metrics:
+                assert hasattr(collector.metrics["agent_requests_total"], "labels")
+            if "agent_request_duration" in collector.metrics:
+                assert hasattr(collector.metrics["agent_request_duration"], "labels")
 
     def test_record_protocol_message(self):
         """Test protocol message metric recording."""
@@ -264,7 +268,7 @@ class TestMetricsIntegration:
     @pytest.mark.asyncio
     async def test_metrics_with_unified_client(self):
         """Test metrics integration with UnifiedKeiAgentClient."""
-        from kei_agent import UnifiedKeiAgentClient, AgentClientConfig
+        from kei_agent import AgentClientConfig, UnifiedKeiAgentClient
 
         config = AgentClientConfig(
             base_url="https://api.example.com",
@@ -273,7 +277,7 @@ class TestMetricsIntegration:
         )
 
         # Mock the actual network calls
-        with patch.object(UnifiedKeiAgentClient, '_execute_with_protocol') as mock_execute:
+        with patch.object(UnifiedKeiAgentClient, "_execute_with_protocol") as mock_execute:
             mock_execute.return_value = {"status": "success"}
 
             async with UnifiedKeiAgentClient(config) as client:
@@ -363,7 +367,7 @@ class TestMetricsErrorHandling:
     def test_metrics_with_missing_prometheus(self):
         """Test metrics behavior when Prometheus is not available."""
         # Create collector with disabled Prometheus
-        with patch('kei_agent.metrics.PROMETHEUS_AVAILABLE', False):
+        with patch("kei_agent.metrics.PROMETHEUS_AVAILABLE", False):
             collector = MetricsCollector()
 
             assert not collector.enabled
@@ -377,7 +381,7 @@ class TestMetricsErrorHandling:
 
     def test_metrics_with_missing_opentelemetry(self):
         """Test metrics behavior when OpenTelemetry is not available."""
-        with patch('kei_agent.metrics.OPENTELEMETRY_AVAILABLE', False):
+        with patch("kei_agent.metrics.OPENTELEMETRY_AVAILABLE", False):
             collector = MetricsCollector()
 
             # Should initialize without OpenTelemetry

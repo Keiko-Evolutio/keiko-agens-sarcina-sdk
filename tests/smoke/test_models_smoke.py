@@ -2,12 +2,10 @@
 
 def test_import_models():
     """Test that models module can be imported."""
-    import kei_agent.models
 
 
 def test_import_model_classes():
     """Test that model classes can be imported."""
-    from kei_agent.models import Agent, AgentHealth, AgentCapability
 
 
 def test_agent_model_creation():

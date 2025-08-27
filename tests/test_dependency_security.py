@@ -10,10 +10,9 @@ This test validates that:
 """
 
 import json
-import subprocess
-import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
+import tempfile
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -33,7 +32,7 @@ class TestSecurityScanning:
         assert script_path.exists(), "SBOM generation script not found"
         assert script_path.is_file(), "SBOM generation script is not a file"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_security_scanner_initialization(self, mock_run):
         """Test SecurityScanner class initialization."""
         from scripts.security_scan import SecurityScanner
@@ -47,7 +46,7 @@ class TestSecurityScanning:
         assert "scanners" in scanner.results
         assert "summary" in scanner.results
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_safety_scan_success(self, mock_run):
         """Test successful Safety vulnerability scan."""
         from scripts.security_scan import SecurityScanner
@@ -55,8 +54,8 @@ class TestSecurityScanning:
         # Mock successful Safety scan
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout='[]',  # No vulnerabilities
-            stderr=''
+            stdout="[]",  # No vulnerabilities
+            stderr=""
         )
 
         scanner = SecurityScanner(Path.cwd())
@@ -66,7 +65,7 @@ class TestSecurityScanning:
         assert result["vulnerabilities"] == []
         mock_run.assert_called_once()
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_safety_scan_with_vulnerabilities(self, mock_run):
         """Test Safety scan with vulnerabilities found."""
         from scripts.security_scan import SecurityScanner
@@ -84,7 +83,7 @@ class TestSecurityScanning:
         mock_run.return_value = MagicMock(
             returncode=1,
             stdout=json.dumps(vulnerabilities),
-            stderr=''
+            stderr=""
         )
 
         scanner = SecurityScanner(Path.cwd())
@@ -94,7 +93,7 @@ class TestSecurityScanning:
         assert len(result["vulnerabilities"]) == 1
         assert result["vulnerabilities"][0]["id"] == "12345"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_pip_audit_scan_success(self, mock_run):
         """Test successful pip-audit scan."""
         from scripts.security_scan import SecurityScanner
@@ -107,13 +106,13 @@ class TestSecurityScanning:
 
             # Create mock audit report file
             audit_report_path = scanner.output_dir / "pip-audit-report.json"
-            with open(audit_report_path, 'w') as f:
+            with open(audit_report_path, "w") as f:
                 json.dump(audit_data, f)
 
             mock_run.return_value = MagicMock(
                 returncode=0,
-                stdout='',
-                stderr=''
+                stdout="",
+                stderr=""
             )
 
             result = scanner.run_pip_audit_scan()
@@ -121,7 +120,7 @@ class TestSecurityScanning:
             assert result["status"] == "passed"
             assert result["vulnerabilities"] == []
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_bandit_scan_success(self, mock_run):
         """Test successful Bandit security scan."""
         from scripts.security_scan import SecurityScanner
@@ -137,13 +136,13 @@ class TestSecurityScanning:
 
             # Create mock bandit report file
             bandit_report_path = scanner.output_dir / "bandit-report.json"
-            with open(bandit_report_path, 'w') as f:
+            with open(bandit_report_path, "w") as f:
                 json.dump(bandit_data, f)
 
             mock_run.return_value = MagicMock(
                 returncode=0,
-                stdout='',
-                stderr=''
+                stdout="",
+                stderr=""
             )
 
             result = scanner.run_bandit_scan()
@@ -230,7 +229,7 @@ class TestSBOMGeneration:
         assert generator.project_root == project_root
         assert generator.output_dir == project_root / "sbom"
 
-    @patch('builtins.open', new_callable=mock_open, read_data='''
+    @patch("builtins.open", new_callable=mock_open, read_data="""
 [project]
 name = "test-project"
 version = "1.0.0"
@@ -241,12 +240,12 @@ license = {text = "MIT"}
 [project.urls]
 Homepage = "https://example.com"
 Repository = "https://github.com/example/test"
-''')
+""")
     def test_load_project_metadata(self, mock_file):
         """Test loading project metadata from pyproject.toml."""
         from scripts.generate_sbom import SBOMGenerator
 
-        with patch('pathlib.Path.exists', return_value=True):
+        with patch("pathlib.Path.exists", return_value=True):
             generator = SBOMGenerator(Path.cwd())
             metadata = generator._load_project_metadata()
 
@@ -256,7 +255,7 @@ Repository = "https://github.com/example/test"
             assert metadata["homepage"] == "https://example.com"
             assert metadata["repository"] == "https://github.com/example/test"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_cyclonedx_sbom_generation_success(self, mock_run):
         """Test successful CycloneDX SBOM generation."""
         from scripts.generate_sbom import SBOMGenerator
@@ -264,8 +263,8 @@ Repository = "https://github.com/example/test"
         # Mock successful cyclonedx-bom execution
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout='',
-            stderr=''
+            stdout="",
+            stderr=""
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -279,16 +278,16 @@ Repository = "https://github.com/example/test"
             }
 
             # Mock the SBOM file creation
-            with patch.object(generator, '_enhance_sbom'):
-                with patch('pathlib.Path.exists', return_value=True):
-                    with patch('builtins.open', mock_open(read_data=json.dumps(sbom_data))):
+            with patch.object(generator, "_enhance_sbom"):
+                with patch("pathlib.Path.exists", return_value=True):
+                    with patch("builtins.open", mock_open(read_data=json.dumps(sbom_data))):
                         result = generator.generate_cyclonedx_sbom()
 
                         assert result is not None
                         assert result.name.startswith("sbom-")
                         assert result.suffix == ".json"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_dependency_tree_generation(self, mock_run):
         """Test dependency tree generation."""
         from scripts.generate_sbom import SBOMGenerator
@@ -312,7 +311,7 @@ Repository = "https://github.com/example/test"
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout=json.dumps(deps_data),
-            stderr=''
+            stderr=""
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -324,7 +323,7 @@ Repository = "https://github.com/example/test"
             assert result.suffix == ".txt"
 
             # Check file content
-            with open(result, 'r') as f:
+            with open(result) as f:
                 content = f.read()
                 assert "test-package==1.0.0" in content
                 assert "dependency1==2.0.0" in content
@@ -343,7 +342,7 @@ Repository = "https://github.com/example/test"
             mock_package.location = "/path/to/package"
             mock_package.get_metadata.return_value = "License: MIT\nAuthor: Test"
 
-            with patch('pkg_resources.working_set', [mock_package]):
+            with patch("pkg_resources.working_set", [mock_package]):
                 result = generator.generate_license_report()
 
                 assert result is not None
@@ -351,7 +350,7 @@ Repository = "https://github.com/example/test"
                 assert result.suffix == ".json"
 
                 # Check file content
-                with open(result, 'r') as f:
+                with open(result) as f:
                     data = json.load(f)
                     assert len(data["licenses"]) == 1
                     assert data["licenses"][0]["package"] == "test-package"
@@ -376,7 +375,7 @@ class TestSecurityPolicy:
         import yaml
 
         dependabot_path = Path(".github/dependabot.yml")
-        with open(dependabot_path, 'r') as f:
+        with open(dependabot_path) as f:
             config = yaml.safe_load(f)
 
         pip_config = None

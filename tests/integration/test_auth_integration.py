@@ -12,23 +12,19 @@ These tests validate end-to-end authentication functionality including:
 """
 
 import asyncio
-import json
-import ssl
-import tempfile
 from pathlib import Path
+import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timedelta
 
 import pytest
-import aiohttp
 
-from kei_agent import UnifiedKeiAgentClient, AgentClientConfig
-from kei_agent.protocol_types import SecurityConfig, Authtypee
+from kei_agent import AgentClientConfig, UnifiedKeiAgentClient
+from kei_agent.exceptions import AuthenticationError, SecurityError
+from kei_agent.protocol_types import Authtypee, SecurityConfig
 from kei_agent.security_manager import SecurityManager
-from kei_agent.exceptions import SecurityError, AuthenticationError
+
 from . import (
-    skip_if_no_integration_env, requires_service, IntegrationTestBase,
-    integration_test_base, test_endpoints, test_credentials
+    skip_if_no_integration_env,
 )
 
 
@@ -69,7 +65,7 @@ class TestBearerAuthIntegration:
 
         async with UnifiedKeiAgentClient(config) as client:
             # Mock API call that requires authentication
-            with patch.object(client, '_make_authenticated_request') as mock_request:
+            with patch.object(client, "_make_authenticated_request") as mock_request:
                 mock_request.return_value = {"status": "authenticated", "user": "test"}
 
                 response = await client.get_agent_status()
@@ -77,7 +73,7 @@ class TestBearerAuthIntegration:
                 # Verify request was made with proper authentication
                 mock_request.assert_called_once()
                 call_args = mock_request.call_args
-                headers = call_args[1].get('headers', {})
+                headers = call_args[1].get("headers", {})
                 assert "Authorization" in headers
                 assert headers["Authorization"].startswith("Bearer ")
 
@@ -94,7 +90,7 @@ class TestBearerAuthIntegration:
 
         security_manager = SecurityManager(security_config)
 
-        with patch.object(security_manager, '_refresh_bearer_token') as mock_refresh:
+        with patch.object(security_manager, "_refresh_bearer_token") as mock_refresh:
             mock_refresh.return_value = "new-refreshed-token"
 
             # Get initial token
@@ -124,7 +120,7 @@ class TestBearerAuthIntegration:
         )
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_authenticated_request') as mock_request:
+            with patch.object(client, "_make_authenticated_request") as mock_request:
                 # Simulate 401 Unauthorized response
                 mock_request.side_effect = AuthenticationError("Invalid token")
 
@@ -159,7 +155,7 @@ class TestOIDCAuthIntegration:
             "scope": "openid profile email"
         }
 
-        with patch.object(security_manager, '_fetch_oidc_token') as mock_fetch:
+        with patch.object(security_manager, "_fetch_oidc_token") as mock_fetch:
             mock_fetch.return_value = mock_token_response
 
             headers = await security_manager.get_auth_heathes()
@@ -197,8 +193,8 @@ class TestOIDCAuthIntegration:
             "expires_in": 3600
         }
 
-        with patch.object(security_manager, '_fetch_oidc_token') as mock_fetch:
-            with patch.object(security_manager, '_refresh_oidc_token') as mock_refresh:
+        with patch.object(security_manager, "_fetch_oidc_token") as mock_fetch:
+            with patch.object(security_manager, "_refresh_oidc_token") as mock_refresh:
                 mock_fetch.return_value = initial_token
                 mock_refresh.return_value = refreshed_token
 
@@ -238,7 +234,7 @@ class TestOIDCAuthIntegration:
             "scopes_supported": ["openid", "profile", "email"]
         }
 
-        with patch('aiohttp.ClientSession.get') as mock_get:
+        with patch("aiohttp.ClientSession.get") as mock_get:
             mock_response = AsyncMock()
             mock_response.json.return_value = discovery_doc
             mock_response.status = 200
@@ -263,14 +259,14 @@ class TestOIDCAuthIntegration:
         security_manager = SecurityManager(security_config)
 
         # Test invalid client credentials
-        with patch.object(security_manager, '_fetch_oidc_token') as mock_fetch:
+        with patch.object(security_manager, "_fetch_oidc_token") as mock_fetch:
             mock_fetch.side_effect = AuthenticationError("Invalid client credentials")
 
             with pytest.raises(SecurityError):
                 await security_manager.get_auth_heathes()
 
         # Test network failure
-        with patch.object(security_manager, '_fetch_oidc_token') as mock_fetch:
+        with patch.object(security_manager, "_fetch_oidc_token") as mock_fetch:
             mock_fetch.side_effect = ConnectionError("Network unreachable")
 
             with pytest.raises(SecurityError):
@@ -286,7 +282,7 @@ class TestMTLSAuthIntegration:
     async def test_mtls_auth_setup(self, integration_test_base):
         """Test mTLS authentication setup with certificates."""
         # Create temporary certificate files for testing
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.pem', delete=False) as cert_file:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as cert_file:
             cert_file.write("""-----BEGIN CERTIFICATE-----
 MIICljCCAX4CCQCKOtLUOHDAuTANBgkqhkiG9w0BAQsFADCBjTELMAkGA1UEBhMC
 VVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJhbmNpc2NvMRAwDgYDVQQK
@@ -299,7 +295,7 @@ lc3RAZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC
 -----END CERTIFICATE-----""")
             cert_path = cert_file.name
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.pem', delete=False) as key_file:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as key_file:
             key_file.write("""-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKB
 wQNfFmuPiKuSRSKlzlnMjO/FtnXdwcKvBgPbAIDjLVxB9y7ot4g3JT6B4wqfVdMu
@@ -317,7 +313,7 @@ Aw==
             security_manager = SecurityManager(security_config)
 
             # Test SSL context creation
-            with patch.object(security_manager, '_create_ssl_context') as mock_ssl:
+            with patch.object(security_manager, "_create_ssl_context") as mock_ssl:
                 mock_context = MagicMock()
                 mock_ssl.return_value = mock_context
 
@@ -336,11 +332,11 @@ Aw==
     async def test_mtls_client_integration(self, integration_test_base):
         """Test mTLS authentication with client integration."""
         # Create temporary certificate files
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.pem', delete=False) as cert_file:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as cert_file:
             cert_file.write("-----BEGIN CERTIFICATE-----\ntest-cert\n-----END CERTIFICATE-----")
             cert_path = cert_file.name
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.pem', delete=False) as key_file:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as key_file:
             key_file.write("-----BEGIN PRIVATE KEY-----\ntest-key\n-----END PRIVATE KEY-----")
             key_path = key_file.name
 
@@ -355,7 +351,7 @@ Aw==
             )
 
             async with UnifiedKeiAgentClient(config) as client:
-                with patch.object(client, '_make_mtls_request') as mock_request:
+                with patch.object(client, "_make_mtls_request") as mock_request:
                     mock_request.return_value = {"status": "authenticated", "cert_subject": "test"}
 
                     response = await client.get_agent_status()
@@ -391,7 +387,6 @@ Aw==
         # This would test certificate expiry checking
         # In a real implementation, this would parse the certificate
         # and check the expiration date
-        pass
 
 
 @pytest.mark.integration
@@ -415,7 +410,7 @@ class TestAuthenticationIntegration:
 
         async with UnifiedKeiAgentClient(config) as client:
             # Test Bearer auth
-            with patch.object(client, '_make_authenticated_request') as mock_request:
+            with patch.object(client, "_make_authenticated_request") as mock_request:
                 mock_request.return_value = {"auth_method": "bearer"}
                 response = await client.get_agent_status()
                 assert response["auth_method"] == "bearer"
@@ -431,7 +426,7 @@ class TestAuthenticationIntegration:
             await client.update_security_config(oidc_config)
 
             # Test OIDC auth
-            with patch.object(client, '_make_authenticated_request') as mock_request:
+            with patch.object(client, "_make_authenticated_request") as mock_request:
                 mock_request.return_value = {"auth_method": "oidc"}
                 response = await client.get_agent_status()
                 assert response["auth_method"] == "oidc"
@@ -451,7 +446,7 @@ class TestAuthenticationIntegration:
         )
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_authenticated_request') as mock_request:
+            with patch.object(client, "_make_authenticated_request") as mock_request:
                 mock_request.return_value = {"status": "ok"}
 
                 # Make concurrent authenticated requests
@@ -482,8 +477,8 @@ class TestAuthenticationIntegration:
         )
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_authenticated_request') as mock_request:
-                with patch.object(client.security_manager, '_refresh_bearer_token') as mock_refresh:
+            with patch.object(client, "_make_authenticated_request") as mock_request:
+                with patch.object(client.security_manager, "_refresh_bearer_token") as mock_refresh:
                     # First request fails with 401, second succeeds after refresh
                     mock_request.side_effect = [
                         AuthenticationError("Token expired"),

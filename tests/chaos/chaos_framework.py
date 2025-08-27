@@ -6,21 +6,21 @@ This framework provides the foundation for chaos engineering tests that validate
 system resilience and fault tolerance under various failure conditions.
 """
 
+from abc import ABC, abstractmethod
 import asyncio
 import contextlib
-import logging
-import random
-import time
-import threading
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Callable, AsyncGenerator, Generator
-from unittest.mock import patch, MagicMock
-import psutil
-import socket
-import subprocess
-import tempfile
+import logging
 from pathlib import Path
+import random
+import socket
+import tempfile
+import threading
+import time
+from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
+from unittest.mock import patch
+
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +89,10 @@ class ChaosInjector(ABC):
         Args:
             **kwargs: Chaos-specific parameters
         """
-        pass
 
     @abstractmethod
     async def stop_chaos(self) -> None:
         """Stop chaos injection and restore normal operation."""
-        pass
 
     def add_cleanup_callback(self, callback: Callable) -> None:
         """Add a cleanup callback to be called when stopping chaos.
@@ -247,7 +245,7 @@ class ServiceDependencyChaosInjector(ChaosInjector):
 
                 return await original_request(self, method, url, **kwargs)
 
-            patcher = patch.object(aiohttp.ClientSession, '_request', chaotic_request)
+            patcher = patch.object(aiohttp.ClientSession, "_request", chaotic_request)
             patcher.start()
             self._patches.append(patcher)
 
@@ -335,8 +333,8 @@ class ResourceExhaustionInjector(ChaosInjector):
         # Create some large files (but not too large to avoid system damage)
         for i in range(5):
             file_path = temp_dir / f"chaos_file_{i}.tmp"
-            with open(file_path, 'wb') as f:
-                f.write(b'0' * (10 * 1024 * 1024))  # 10MB per file
+            with open(file_path, "wb") as f:
+                f.write(b"0" * (10 * 1024 * 1024))  # 10MB per file
 
 
 class ChaosTest:
@@ -372,14 +370,14 @@ class ChaosTest:
                     # Collect system metrics
                     cpu_percent = psutil.cpu_percent(interval=1)
                     memory = psutil.virtual_memory()
-                    disk = psutil.disk_usage('/')
+                    disk = psutil.disk_usage("/")
 
                     self.metrics.system_metrics.update({
-                        'cpu_percent': cpu_percent,
-                        'memory_percent': memory.percent,
-                        'memory_available_mb': memory.available / (1024 * 1024),
-                        'disk_percent': disk.percent,
-                        'timestamp': time.time()
+                        "cpu_percent": cpu_percent,
+                        "memory_percent": memory.percent,
+                        "memory_available_mb": memory.available / (1024 * 1024),
+                        "disk_percent": disk.percent,
+                        "timestamp": time.time()
                     })
 
                 except Exception as e:

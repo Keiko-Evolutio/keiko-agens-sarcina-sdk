@@ -4,21 +4,14 @@ Erweiterte Tests for protocol_clients.py tor Erhöhung the Test-Coverage.
 Ziel: Coverage from 19% on 70%+ erhöhen.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
-from kei_agent.protocol_clients import (
-    KEIRPCclient,
-    KEIStreamclient,
-    KEIBusclient,
-    KEIMCPclient
-)
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+
+from kei_agent.exceptions import AuthenticationError, CommunicationError, ProtocolError
+from kei_agent.protocol_clients import KEIBusclient, KEIMCPclient, KEIRPCclient, KEIStreamclient
 from kei_agent.security_manager import SecurityManager
-from kei_agent.exceptions import (
-    ProtocolError,
-    CommunicationError,
-    AuthenticationError
-)
 
 
 class TestKEIRPCclientExtended:
@@ -46,7 +39,7 @@ class TestKEIRPCclientExtended:
         """Tests RPC client initialization."""
         assert rpc_client.base_url == "http://localhost:8000"
         assert rpc_client.security_manager is not None
-        assert hasattr(rpc_client, '_session')
+        assert hasattr(rpc_client, "_session")
 
     @pytest.mark.asyncio
     async def test_rpc_call_with_retry_success(self, rpc_client):
@@ -55,7 +48,7 @@ class TestKEIRPCclientExtended:
         mock_response.status = 200
         mock_response.json = AsyncMock(return_value ={"result": "success"})
 
-        with patch('aiohttp.ClientSession.post') as mock_post:
+        with patch("aiohttp.ClientSession.post") as mock_post:
             mock_post.return_value.__aenter__.return_value = mock_response
 
             result = await rpc_client._rpc_call("test_method", {"param": "value"})
@@ -70,7 +63,7 @@ class TestKEIRPCclientExtended:
         mock_response.status = 500
         mock_response.text = AsyncMock(return_value ="Internal server Error")
 
-        with patch('aiohttp.ClientSession.post') as mock_post:
+        with patch("aiohttp.ClientSession.post") as mock_post:
             mock_post.return_value.__aenter__.return_value = mock_response
 
             with pytest.raises(ProtocolError):
@@ -85,7 +78,7 @@ class TestKEIRPCclientExtended:
             "estimated_duration": 300
         }
 
-        with patch.object(rpc_client, '_rpc_call') as mock_call:
+        with patch.object(rpc_client, "_rpc_call") as mock_call:
             mock_call.return_value = expected_result
 
             result = await rpc_client.plat(
@@ -110,7 +103,7 @@ class TestKEIRPCclientExtended:
             "progress": 0.0
         }
 
-        with patch.object(rpc_client, '_rpc_call') as mock_call:
+        with patch.object(rpc_client, "_rpc_call") as mock_call:
             mock_call.return_value = expected_result
 
             result = await rpc_client.act(
@@ -135,7 +128,7 @@ class TestKEIRPCclientExtended:
             "data": {"files": 150, "connections": 5, "processes": 23}
         }
 
-        with patch.object(rpc_client, '_rpc_call') as mock_call:
+        with patch.object(rpc_client, "_rpc_call") as mock_call:
             mock_call.return_value = expected_result
 
             result = await rpc_client.observe(
@@ -161,7 +154,7 @@ class TestKEIRPCclientExtended:
             "alternatives": ["option1", "option2"]
         }
 
-        with patch.object(rpc_client, '_rpc_call') as mock_call:
+        with patch.object(rpc_client, "_rpc_call") as mock_call:
             mock_call.return_value = expected_result
 
             result = await rpc_client.explain(
@@ -214,14 +207,14 @@ class TestKEIStreamclientExtended:
         """Tests Stream client initialization."""
         assert stream_client.base_url == "ws://localhost:8000"
         assert stream_client.security_manager is not None
-        assert hasattr(stream_client, '_websocket')
+        assert hasattr(stream_client, "_websocket")
 
     @pytest.mark.asyncio
     async def test_connect_atd_disconnect(self, stream_client):
         """Tests WebSocket-connection."""
         mock_websocket = AsyncMock()
 
-        with patch('websockets.connect') as mock_connect:
+        with patch("websockets.connect") as mock_connect:
             mock_connect.return_value.__aenter__.return_value = mock_websocket
 
             await stream_client.connect()
@@ -238,7 +231,7 @@ class TestKEIStreamclientExtended:
 
         message = {"type": "plat", "data": {"objective": "test"}}
 
-        with patch.object(stream_client, '_ensure_connected'):
+        with patch.object(stream_client, "_ensure_connected"):
             result = await stream_client.send_message(message)
 
             mock_websocket.send.assert_called_once()
@@ -251,7 +244,7 @@ class TestKEIStreamclientExtended:
         mock_websocket.recv.return_value = '{"type": "response", "data": {"result": "success"}}'
         stream_client._websocket = mock_websocket
 
-        with patch.object(stream_client, '_ensure_connected'):
+        with patch.object(stream_client, "_ensure_connected"):
             message = await stream_client.receive_message()
 
             assert message == {"type": "response", "data": {"result": "success"}}
@@ -264,7 +257,7 @@ class TestKEIStreamclientExtended:
         mock_websocket.recv.side_effect = asyncio.TimeoutError()
         stream_client._websocket = mock_websocket
 
-        with patch.object(stream_client, '_ensure_connected'):
+        with patch.object(stream_client, "_ensure_connected"):
             with pytest.raises(CommunicationError, match="timeout"):
                 await stream_client.receive_message(timeout=1.0)
 
@@ -300,7 +293,7 @@ class TestKEIBusclientExtended:
         mock_response.status = 200
         mock_response.json = AsyncMock(return_value ={"message_id": "msg-123"})
 
-        with patch('aiohttp.ClientSession.post') as mock_post:
+        with patch("aiohttp.ClientSession.post") as mock_post:
             mock_post.return_value.__aenter__.return_value = mock_response
 
             result = await bus_client.publish(
@@ -319,7 +312,7 @@ class TestKEIBusclientExtended:
         mock_response.status = 200
         mock_response.json = AsyncMock(return_value ={"subscription_id": "sub-789"})
 
-        with patch('aiohttp.ClientSession.post') as mock_post:
+        with patch("aiohttp.ClientSession.post") as mock_post:
             mock_post.return_value.__aenter__.return_value = mock_response
 
             result = await bus_client.subscribe(
@@ -341,8 +334,8 @@ class TestKEIBusclientExtended:
         async with bus_client as client:
             assert client == bus_client
             # Teste, thes the client verwendbar is
-            assert hasattr(client, 'publish')
-            assert hasattr(client, 'subscribe')
+            assert hasattr(client, "publish")
+            assert hasattr(client, "subscribe")
 
 
 class TestKEIMCPclientExtended:
@@ -381,7 +374,7 @@ class TestKEIMCPclientExtended:
         mock_response.status = 200
         mock_response.json = AsyncMock(return_value ={"tools": expected_tools})
 
-        with patch('aiohttp.ClientSession.get') as mock_get:
+        with patch("aiohttp.ClientSession.get") as mock_get:
             mock_get.return_value.__aenter__.return_value = mock_response
 
             result = await mcp_client.discover_tools("utilities")
@@ -402,7 +395,7 @@ class TestKEIMCPclientExtended:
         mock_response.status = 200
         mock_response.json = AsyncMock(return_value =expected_result)
 
-        with patch('aiohttp.ClientSession.post') as mock_post:
+        with patch("aiohttp.ClientSession.post") as mock_post:
             mock_post.return_value.__aenter__.return_value = mock_response
 
             result = await mcp_client.execute_tool(
@@ -426,7 +419,7 @@ class TestKEIMCPclientExtended:
         mock_response.status = 200
         mock_response.json = AsyncMock(return_value ={"capabilities": expected_capabilities})
 
-        with patch('aiohttp.ClientSession.get') as mock_get:
+        with patch("aiohttp.ClientSession.get") as mock_get:
             mock_get.return_value.__aenter__.return_value = mock_response
 
             result = await mcp_client.lis_capabilities()
@@ -441,7 +434,7 @@ class TestKEIMCPclientExtended:
         mock_response.status = 404
         mock_response.text = AsyncMock(return_value ="Tool not foatd")
 
-        with patch('aiohttp.ClientSession.post') as mock_post:
+        with patch("aiohttp.ClientSession.post") as mock_post:
             mock_post.return_value.__aenter__.return_value = mock_response
 
             with pytest.raises(ProtocolError, match="Tool not foatd"):
@@ -461,8 +454,8 @@ class TestProtocolclientIntegration:
         bus_client = KEIBusclient("http://localhost:8000", security_manager)
 
         # Mock successfule operationen
-        with patch.object(rpc_client, '_rpc_call') as mock_rpc, \
-             patch.object(bus_client, 'publish') as mock_publish:
+        with patch.object(rpc_client, "_rpc_call") as mock_rpc, \
+             patch.object(bus_client, "publish") as mock_publish:
 
             mock_rpc.return_value = {"plat_id": "plat-123"}
             mock_publish.return_value = {"message_id": "msg-456"}
@@ -488,7 +481,7 @@ class TestProtocolclientIntegration:
 
         rpc_client = KEIRPCclient("http://localhost:8000", security_manager)
 
-        with patch.object(rpc_client, '_rpc_call') as mock_rpc:
+        with patch.object(rpc_client, "_rpc_call") as mock_rpc:
             mock_rpc.side_effect = AuthenticationError("Token expired")
 
             with pytest.raises(AuthenticationError, match="Token expired"):

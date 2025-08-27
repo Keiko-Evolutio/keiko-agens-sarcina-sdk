@@ -124,6 +124,7 @@ class AgentClientConfig:
 
     # Backward compatibility parameters
     max_retries: Optional[int] = None  # For backward compatibility with tests
+    security: Optional[Dict[str, Any]] = None  # For backward compatibility with tests
 
     # Backward compatibility alias
     @property

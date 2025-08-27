@@ -10,16 +10,16 @@ These tests validate system resilience under configuration failures:
 """
 
 import asyncio
-import pytest
-import time
 import json
-import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+import tempfile
+from unittest.mock import MagicMock
+
+import pytest
 
 try:
     from kei_agent.config_manager import ConfigManager, get_config_manager
-    from kei_agent.unified_client import UnifiedKeiAgentClient, AgentClientConfig
+    from kei_agent.unified_client import AgentClientConfig, UnifiedKeiAgentClient
 except ImportError:
     # Mock classes for testing when modules don't exist
     class ConfigManager:
@@ -40,7 +40,7 @@ except ImportError:
         def add_config_file(self, file_path):
             self.watched_files.append(file_path)
 
-        async def _apply_config_change(self, config, source='test'):
+        async def _apply_config_change(self, config, source="test"):
             return True
 
         async def _load_config_file(self, file_path):
@@ -64,7 +64,7 @@ except ImportError:
         async def close(self):
             pass
 
-from tests.chaos.chaos_framework import chaos_test_context, ChaosTest
+from tests.chaos.chaos_framework import chaos_test_context
 from tests.chaos.chaos_metrics import get_chaos_metrics_collector
 
 
@@ -125,7 +125,7 @@ class ConfigurationChaosInjector:
         }
 
         # This should fail validation
-        await config_manager._apply_config_change(invalid_config, source='chaos')
+        await config_manager._apply_config_change(invalid_config, source="chaos")
 
     async def _corrupt_config_files(self) -> None:
         """Corrupt configuration files."""
@@ -134,11 +134,11 @@ class ConfigurationChaosInjector:
         for file_path in config_manager.watched_files:
             if file_path.exists():
                 # Backup original content
-                with open(file_path, 'r') as f:
+                with open(file_path) as f:
                     original_content = f.read()
 
                 # Write corrupted content
-                with open(file_path, 'w') as f:
+                with open(file_path, "w") as f:
                     f.write("{ invalid json content }")
 
                 self.corrupted_files.append((file_path, original_content))
@@ -150,7 +150,7 @@ class ConfigurationChaosInjector:
         for file_path in config_manager.watched_files:
             if file_path.exists():
                 # Backup original content
-                with open(file_path, 'r') as f:
+                with open(file_path) as f:
                     original_content = f.read()
 
                 # Delete file
@@ -180,12 +180,12 @@ class ConfigurationChaosInjector:
         # Restore config manager state
         if self.original_config:
             config_manager = get_config_manager()
-            await config_manager._apply_config_change(self.original_config, source='chaos_restore')
+            await config_manager._apply_config_change(self.original_config, source="chaos_restore")
 
         # Restore corrupted files
         for file_path, original_content in self.corrupted_files:
             try:
-                with open(file_path, 'w') as f:
+                with open(file_path, "w") as f:
                     f.write(original_content)
             except Exception:
                 print(f"Error restoring file {file_path}: {e}")
@@ -211,7 +211,7 @@ class TestConfigurationChaos:
             "port": 8080
         }
 
-        with open(self.test_config_file, 'w') as f:
+        with open(self.test_config_file, "w") as f:
             json.dump(self.test_config, f)
 
         self.config_manager.add_config_file(self.test_config_file)
@@ -231,7 +231,7 @@ class TestConfigurationChaos:
 
             try:
                 # Set up valid initial configuration
-                await self.config_manager._apply_config_change(self.test_config, source='initial')
+                await self.config_manager._apply_config_change(self.test_config, source="initial")
 
                 # Inject invalid configuration
                 await chaos_test.inject_chaos(invalid_config=True)
@@ -249,15 +249,14 @@ class TestConfigurationChaos:
                         if self._is_config_valid(current_config):
                             chaos_test.record_operation(True)
                             operations_with_invalid_config += 1
+                        # Should fall back to previous valid configuration
+                        elif self.config_manager.config_backup:
+                            fallback_usage += 1
+                            chaos_test.record_operation(True)
                         else:
-                            # Should fall back to previous valid configuration
-                            if self.config_manager.config_backup:
-                                fallback_usage += 1
-                                chaos_test.record_operation(True)
-                            else:
-                                validation_failures += 1
-                                chaos_test.record_operation(False)
-                                chaos_test.record_error()
+                            validation_failures += 1
+                            chaos_test.record_operation(False)
+                            chaos_test.record_error()
 
                         await asyncio.sleep(0.1)
 
@@ -367,7 +366,7 @@ class TestConfigurationChaos:
             try:
                 # Set up initial valid configuration
                 initial_config = {"version": 1, "timeout": 5.0, "retries": 3}
-                await self.config_manager._apply_config_change(initial_config, source='initial')
+                await self.config_manager._apply_config_change(initial_config, source="initial")
 
                 rollback_scenarios = [
                     {"version": 2, "timeout": "invalid"},  # Invalid type
@@ -383,7 +382,7 @@ class TestConfigurationChaos:
                         # Try to apply invalid configuration
                         success = await self.config_manager._apply_config_change(
                             invalid_config,
-                            source='chaos_test'
+                            source="chaos_test"
                         )
 
                         if not success:
@@ -451,7 +450,7 @@ class TestConfigurationChaos:
 
             try:
                 # Set up initial configuration
-                await self.config_manager._apply_config_change(self.test_config, source='initial')
+                await self.config_manager._apply_config_change(self.test_config, source="initial")
 
                 # Inject concurrent updates
                 await chaos_test.inject_chaos(concurrent_updates=True)
@@ -528,7 +527,7 @@ class TestConfigurationChaos:
                         modified_config = self.test_config.copy()
                         modified_config["version"] = i + 1
 
-                        with open(self.test_config_file, 'w') as f:
+                        with open(self.test_config_file, "w") as f:
                             json.dump(modified_config, f)
 
                         file_changes += 1

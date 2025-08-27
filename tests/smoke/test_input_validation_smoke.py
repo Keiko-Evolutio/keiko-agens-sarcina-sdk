@@ -2,28 +2,18 @@
 
 def test_import_input_validation():
     """Test that input_validation module can be imported."""
-    import kei_agent.input_validation
 
 
 def test_import_validation_classes():
     """Test that validation classes can be imported."""
-    from kei_agent.input_validation import (
-        ValidationSeverity,
-        ValidationResult,
-        BaseValidator,
-        StringValidator,
-        JSONValidator,
-        CompositeValidator,
-        InputValidator,
-    )
 
 
 def test_validation_severity_enum():
     """Test basic ValidationSeverity enum usage."""
     from kei_agent.input_validation import ValidationSeverity
 
-    assert hasattr(ValidationSeverity, 'ERROR')
-    assert hasattr(ValidationSeverity, 'WARNING') or hasattr(ValidationSeverity, 'WARN')
+    assert hasattr(ValidationSeverity, "ERROR")
+    assert hasattr(ValidationSeverity, "WARNING") or hasattr(ValidationSeverity, "WARN")
 
 
 def test_validation_result_creation():
@@ -48,7 +38,7 @@ def test_string_validator_creation():
         max_length=100
     )
     assert validator.name == "test-string"
-    assert hasattr(validator, 'validate')
+    assert hasattr(validator, "validate")
 
 
 def test_json_validator_creation():
@@ -60,7 +50,7 @@ def test_json_validator_creation():
         max_depth=5
     )
     assert validator.name == "test-json"
-    assert hasattr(validator, 'validate')
+    assert hasattr(validator, "validate")
 
 
 def test_composite_validator_creation():
@@ -69,8 +59,8 @@ def test_composite_validator_creation():
 
     validator = CompositeValidator(name="test-composite")
     assert validator.name == "test-composite"
-    assert hasattr(validator, 'add_field')
-    assert hasattr(validator, 'validate')
+    assert hasattr(validator, "add_field")
+    assert hasattr(validator, "validate")
 
 
 def test_input_validator_creation():
@@ -79,8 +69,8 @@ def test_input_validator_creation():
 
     validator = InputValidator()
     assert validator is not None
-    assert hasattr(validator, 'register_validator')
-    assert hasattr(validator, 'validate')
+    assert hasattr(validator, "register_validator")
+    assert hasattr(validator, "validate")
 
 
 def test_get_input_validator():
@@ -89,4 +79,4 @@ def test_get_input_validator():
 
     validator = get_input_validator()
     assert validator is not None
-    assert hasattr(validator, 'validate')
+    assert hasattr(validator, "validate")

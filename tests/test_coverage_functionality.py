@@ -10,10 +10,10 @@ This test validates that:
 """
 
 import os
+from pathlib import Path
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -28,7 +28,7 @@ class TestCoverageReporting:
             sys.executable, "-m", "pytest",
             "tests/test_import_system.py::TestImportSystem::test_main_package_import",
             "--cov=kei_agent", "--cov-report=term", "-v"
-        ], capture_output=True, text=True, cwd=Path.cwd())
+        ], check=False, capture_output=True, text=True, cwd=Path.cwd())
 
         # Check that coverage was collected
         assert "coverage:" in result.stdout.lower()
@@ -45,7 +45,7 @@ class TestCoverageReporting:
             "--cov-report=xml",
             "--cov-report=term-missing",
             "-v"
-        ], capture_output=True, text=True, cwd=Path.cwd())
+        ], check=False, capture_output=True, text=True, cwd=Path.cwd())
 
         # Check that HTML report was generated
         html_report_path = Path("htmlcov/index.html")
@@ -56,7 +56,7 @@ class TestCoverageReporting:
         assert xml_report_path.exists(), "XML coverage report not generated"
 
         # Verify HTML report contains expected content
-        with open(html_report_path, 'r') as f:
+        with open(html_report_path) as f:
             html_content = f.read()
             assert "KEI-Agent Python SDK Coverage Report" in html_content
             assert "kei_agent" in html_content
@@ -64,8 +64,8 @@ class TestCoverageReporting:
     def test_coverage_threshold_enforcement(self):
         """Test that coverage threshold is properly enforced."""
         # Create a temporary test file with minimal coverage
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py',
-                                       dir='tests', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py",
+                                       dir="tests", delete=False) as f:
             f.write("""
 import pytest
 
@@ -82,7 +82,7 @@ def test_minimal():
                 "--cov=kei_agent",
                 # Coverage threshold now configured in pyproject.toml only
                 "-v"
-            ], capture_output=True, text=True, cwd=Path.cwd())
+            ], check=False, capture_output=True, text=True, cwd=Path.cwd())
 
             # Should fail due to low coverage
             assert result.returncode != 0
@@ -98,7 +98,7 @@ def test_minimal():
         pyproject_path = Path("pyproject.toml")
         assert pyproject_path.exists()
 
-        with open(pyproject_path, 'r') as f:
+        with open(pyproject_path) as f:
             content = f.read()
 
         # Verify coverage configuration sections exist
@@ -118,7 +118,7 @@ def test_minimal():
             sys.executable, "-m", "pytest",
             "tests/test_import_system.py::TestImportSystem::test_main_package_import",
             "--cov=kei_agent", "--cov-report=term", "-v"
-        ], capture_output=True, text=True, cwd=Path.cwd())
+        ], check=False, capture_output=True, text=True, cwd=Path.cwd())
 
         # Test files should not appear in coverage report
         assert "tests/" not in result.stdout or "0%" in result.stdout
@@ -129,7 +129,7 @@ def test_minimal():
             sys.executable, "-m", "pytest",
             "tests/test_import_system.py::TestImportSystem::test_main_package_import",
             "--cov=kei_agent", "--cov-report=term", "--cov-branch", "-v"
-        ], capture_output=True, text=True, cwd=Path.cwd())
+        ], check=False, capture_output=True, text=True, cwd=Path.cwd())
 
         # Should show branch coverage columns
         assert "Branch" in result.stdout
@@ -142,7 +142,7 @@ def test_minimal():
         result = subprocess.run([
             sys.executable, "-c",
             "import coverage; import importlib_metadata; print('OK')"
-        ], capture_output=True, text=True)
+        ], check=False, capture_output=True, text=True)
 
         # Should not have KeyError
         assert result.returncode == 0
@@ -156,7 +156,7 @@ def test_minimal():
             sys.executable, "-m", "pytest",
             "tests/test_import_system.py::TestImportSystem::test_main_package_import",
             "--cov=kei_agent", "--cov-report=html:htmlcov", "-v"
-        ], capture_output=True, text=True, cwd=Path.cwd())
+        ], check=False, capture_output=True, text=True, cwd=Path.cwd())
 
         htmlcov_dir = Path("htmlcov")
         assert htmlcov_dir.exists()

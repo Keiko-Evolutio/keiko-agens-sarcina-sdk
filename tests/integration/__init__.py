@@ -14,10 +14,10 @@ Integration tests require external services and are designed to run
 in CI/CD environments with proper test infrastructure setup.
 """
 
-import os
 import asyncio
-from typing import Dict, Any, Optional
+import os
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 # Test configuration
 INTEGRATION_TEST_CONFIG = {
@@ -98,12 +98,10 @@ class IntegrationTestBase:
     async def setup_test_environment(self):
         """Set up test environment and services."""
         # This would typically start test containers or connect to test services
-        pass
 
     async def teardown_test_environment(self):
         """Clean up test environment."""
         # This would typically stop test containers or clean up test data
-        pass
 
     def get_test_config(self, **overrides) -> Dict[str, Any]:
         """Get test configuration with optional overrides."""
@@ -212,22 +210,18 @@ class TestServiceManager:
     async def start_mock_api_server(self, port: int = 8000):
         """Start mock API server for testing."""
         # Implementation would start a mock server
-        pass
 
     async def start_mock_auth_server(self, port: int = 8080):
         """Start mock authentication server."""
         # Implementation would start a mock auth server
-        pass
 
     async def start_mock_websocket_server(self, port: int = 8001):
         """Start mock WebSocket server."""
         # Implementation would start a mock WebSocket server
-        pass
 
     async def stop_all_services(self):
         """Stop all test services."""
         # Implementation would stop all mock services
-        pass
 
 
 # Export commonly used items

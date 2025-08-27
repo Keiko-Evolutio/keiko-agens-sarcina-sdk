@@ -11,18 +11,19 @@ These benchmarks measure performance characteristics of:
 - Connection pooling efficiency
 """
 
-import asyncio
 import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from kei_agent import UnifiedKeiAgentClient, AgentClientConfig
-from kei_agent.protocol_types import ProtocolConfig, Protocoltypee
+from kei_agent import AgentClientConfig, UnifiedKeiAgentClient
+from kei_agent.protocol_types import ProtocolConfig
+
 from . import (
-    skip_if_performance_disabled, performance_test,
-    PerformanceBenchmark, PerformanceBaseline,
-    PERFORMANCE_CONFIG
+    PerformanceBaseline,
+    PerformanceBenchmark,
+    performance_test,
+    skip_if_performance_disabled,
 )
 
 
@@ -59,7 +60,7 @@ class RPCPerformanceBenchmark(PerformanceBenchmark):
 
     async def run_single_iteration(self):
         """Run single RPC call."""
-        with patch.object(self.client, '_make_rpc_call') as mock_rpc:
+        with patch.object(self.client, "_make_rpc_call") as mock_rpc:
             mock_rpc.return_value = {
                 "result": "success",
                 "data": {"message": "RPC benchmark response"},
@@ -105,7 +106,7 @@ class StreamPerformanceBenchmark(PerformanceBenchmark):
 
     async def run_single_iteration(self):
         """Run single stream operation."""
-        with patch.object(self.client, '_create_stream_connection', return_value=self.stream):
+        with patch.object(self.client, "_create_stream_connection", return_value=self.stream):
             # Send data through stream
             await self.client.send_stream_data(self.stream, {
                 "type": "benchmark",
@@ -145,8 +146,8 @@ class BusPerformanceBenchmark(PerformanceBenchmark):
 
     async def run_single_iteration(self):
         """Run single bus operation."""
-        with patch.object(self.client, '_publish_to_topic') as mock_publish:
-            with patch.object(self.client, '_subscribe_to_topic') as mock_subscribe:
+        with patch.object(self.client, "_publish_to_topic") as mock_publish:
+            with patch.object(self.client, "_subscribe_to_topic") as mock_subscribe:
                 mock_publish.return_value = True
 
                 # Publish message
@@ -188,7 +189,7 @@ class MCPPerformanceBenchmark(PerformanceBenchmark):
 
     async def run_single_iteration(self):
         """Run single MCP tool execution."""
-        with patch.object(self.client, '_execute_mcp_tool') as mock_execute:
+        with patch.object(self.client, "_execute_mcp_tool") as mock_execute:
             mock_execute.return_value = {
                 "result": "success",
                 "output": "Benchmark tool executed successfully",
@@ -235,7 +236,7 @@ class ProtocolSwitchingBenchmark(PerformanceBenchmark):
         current_protocol = self.protocols[self.current_protocol_index]
         next_protocol = self.protocols[(self.current_protocol_index + 1) % len(self.protocols)]
 
-        with patch.object(self.client, '_switch_protocol') as mock_switch:
+        with patch.object(self.client, "_switch_protocol") as mock_switch:
             mock_switch.return_value = True
 
             # Simulate protocol switch
@@ -284,7 +285,7 @@ class TestProtocolPerformance:
         # Calculate RPC-specific metrics
         rpc_calls_per_second = metrics.iterations / metrics.duration
 
-        print(f"\n📊 RPC Protocol Performance:")
+        print("\n📊 RPC Protocol Performance:")
         print(f"   Duration: {metrics.duration:.3f}s")
         print(f"   Memory: {metrics.memory_usage_mb:.1f}MB")
         print(f"   RPC calls per second: {rpc_calls_per_second:.1f}")
@@ -316,7 +317,7 @@ class TestProtocolPerformance:
         # Calculate stream-specific metrics
         data_throughput_mb = (metrics.iterations * 1024) / (1024 * 1024) / metrics.duration  # MB/s
 
-        print(f"\n📊 Stream Protocol Performance:")
+        print("\n📊 Stream Protocol Performance:")
         print(f"   Duration: {metrics.duration:.3f}s")
         print(f"   Memory: {metrics.memory_usage_mb:.1f}MB")
         print(f"   Data throughput: {data_throughput_mb:.2f} MB/s")
@@ -348,7 +349,7 @@ class TestProtocolPerformance:
         # Calculate bus-specific metrics
         messages_per_second = metrics.iterations / metrics.duration
 
-        print(f"\n📊 Bus Protocol Performance:")
+        print("\n📊 Bus Protocol Performance:")
         print(f"   Duration: {metrics.duration:.3f}s")
         print(f"   Memory: {metrics.memory_usage_mb:.1f}MB")
         print(f"   Messages per second: {messages_per_second:.1f}")
@@ -380,7 +381,7 @@ class TestProtocolPerformance:
         # Calculate MCP-specific metrics
         tool_executions_per_second = metrics.iterations / metrics.duration
 
-        print(f"\n📊 MCP Protocol Performance:")
+        print("\n📊 MCP Protocol Performance:")
         print(f"   Duration: {metrics.duration:.3f}s")
         print(f"   Memory: {metrics.memory_usage_mb:.1f}MB")
         print(f"   Tool executions per second: {tool_executions_per_second:.1f}")
@@ -413,7 +414,7 @@ class TestProtocolPerformance:
         avg_switch_time = metrics.duration / metrics.iterations
         switches_per_second = metrics.iterations / metrics.duration
 
-        print(f"\n📊 Protocol Switching Performance:")
+        print("\n📊 Protocol Switching Performance:")
         print(f"   Duration: {metrics.duration:.3f}s")
         print(f"   Memory: {metrics.memory_usage_mb:.1f}MB")
         print(f"   Average switch time: {avg_switch_time:.3f}s")
@@ -445,7 +446,7 @@ class TestProtocolPerformance:
             }
 
         # Print comparison
-        print(f"\n📊 Protocol Performance Comparison:")
+        print("\n📊 Protocol Performance Comparison:")
         print(f"{'Protocol':<10} {'Duration':<10} {'Memory':<10} {'Throughput':<12}")
         print("-" * 50)
 
@@ -453,11 +454,11 @@ class TestProtocolPerformance:
             print(f"{protocol:<10} {data['duration']:<10.3f} {data['memory']:<10.1f} {data['throughput']:<12.1f}")
 
         # Find best performing protocol for each metric
-        fastest = min(results.items(), key=lambda x: x[1]['duration'])
-        most_efficient = min(results.items(), key=lambda x: x[1]['memory'])
-        highest_throughput = max(results.items(), key=lambda x: x[1]['throughput'])
+        fastest = min(results.items(), key=lambda x: x[1]["duration"])
+        most_efficient = min(results.items(), key=lambda x: x[1]["memory"])
+        highest_throughput = max(results.items(), key=lambda x: x[1]["throughput"])
 
-        print(f"\n🏆 Performance Leaders:")
+        print("\n🏆 Performance Leaders:")
         print(f"   Fastest: {fastest[0]} ({fastest[1]['duration']:.3f}s)")
         print(f"   Most memory efficient: {most_efficient[0]} ({most_efficient[1]['memory']:.1f}MB)")
         print(f"   Highest throughput: {highest_throughput[0]} ({highest_throughput[1]['throughput']:.1f} ops/s)")

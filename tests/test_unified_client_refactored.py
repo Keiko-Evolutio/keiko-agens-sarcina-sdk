@@ -3,18 +3,19 @@
 Architektur, vollständigen typee Hints and enterprise features.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from kei_agent.unified_client import UnifiedKeiAgentClient
+import pytest
+
 from kei_agent.client import AgentClientConfig
-from kei_agent.protocol_types import (
-    Protocoltypee,
-    ProtocolConfig,
-    SecurityConfig,
-    Authtypee,
-)
 from kei_agent.exceptions import KeiSDKError, ProtocolError
+from kei_agent.protocol_types import (
+    Authtypee,
+    ProtocolConfig,
+    Protocoltypee,
+    SecurityConfig,
+)
+from kei_agent.unified_client import UnifiedKeiAgentClient
 
 # Markiere all Tests in theser File als tests
 pytestmark = pytest.mark.refactored

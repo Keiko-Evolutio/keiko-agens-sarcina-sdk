@@ -1,10 +1,10 @@
 import re
 
 from kei_agent.utils import (
-    validate_capability,
-    format_trace_id,
     calculate_backoff,
+    format_trace_id,
     sanitize_agent_name,
+    validate_capability,
 )
 
 

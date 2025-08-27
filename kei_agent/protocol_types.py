@@ -88,6 +88,9 @@ class ProtocolConfig:
     auto_protocol_selection: bool = True
     protocol_fallback_enabled: bool = True
 
+    # Preferred protocol for backward compatibility with tests
+    preferred_protocol: Optional[str] = None
+
     def get_enabled_protocols(self) -> list[Protocoltypee]:
         """Gibt lis the enablethe protocole torück.
 

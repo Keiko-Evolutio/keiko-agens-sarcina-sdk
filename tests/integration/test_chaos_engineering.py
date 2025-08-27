@@ -14,20 +14,21 @@ These tests validate system resilience under failure conditions including:
 import asyncio
 import random
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import List, Dict, Any
+from unittest.mock import patch
 
 import pytest
 
-from kei_agent import UnifiedKeiAgentClient, AgentClientConfig
-from kei_agent.protocol_types import SecurityConfig, AuthType
+from kei_agent import AgentClientConfig, UnifiedKeiAgentClient
 from kei_agent.exceptions import (
-    CommunicationError, SecurityError, ProtocolError,
-    CircuitBreakerOpenError, RetryExhaustedError
+    CircuitBreakerOpenError,
+    CommunicationError,
+    SecurityError,
 )
+from kei_agent.protocol_types import SecurityConfig
+
 from . import (
-    skip_if_no_integration_env, IntegrationTestBase,
-    integration_test_base, INTEGRATION_TEST_CONFIG
+    INTEGRATION_TEST_CONFIG,
+    skip_if_no_integration_env,
 )
 
 
@@ -47,7 +48,7 @@ class TestNetworkChaos:
 
         async with UnifiedKeiAgentClient(config) as client:
             # Simulate network partition
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # First few requests fail due to network partition
                 mock_request.side_effect = [
                     ConnectionError("Network unreachable"),
@@ -75,7 +76,7 @@ class TestNetworkChaos:
             success_count = 0
             failure_count = 0
 
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Simulate intermittent connectivity (50% failure rate)
                 def intermittent_response(*args, **kwargs):
                     if random.random() < 0.5:
@@ -122,7 +123,7 @@ class TestNetworkChaos:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Simulate slow network responses
                 async def slow_response(*args, **kwargs):
                     await asyncio.sleep(2)  # 2 second delay
@@ -153,7 +154,7 @@ class TestServiceChaos:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Service unavailable, then recovers
                 mock_request.side_effect = [
                     CommunicationError("Service unavailable"),
@@ -183,7 +184,7 @@ class TestServiceChaos:
         )
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client.security_manager, '_fetch_oidc_token') as mock_auth:
+            with patch.object(client.security_manager, "_fetch_oidc_token") as mock_auth:
                 # Auth service fails, then recovers
                 mock_auth.side_effect = [
                     ConnectionError("Auth service down"),
@@ -203,14 +204,13 @@ class TestServiceChaos:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Some endpoints work, others fail
                 def degraded_service(*args, **kwargs):
-                    url = args[1] if len(args) > 1 else kwargs.get('url', '')
-                    if 'status' in url:
+                    url = args[1] if len(args) > 1 else kwargs.get("url", "")
+                    if "status" in url:
                         return {"status": "degraded_but_working"}
-                    else:
-                        raise CommunicationError("Endpoint unavailable")
+                    raise CommunicationError("Endpoint unavailable")
 
                 mock_request.side_effect = degraded_service
 
@@ -239,7 +239,7 @@ class TestResourceChaos:
 
         async with UnifiedKeiAgentClient(config) as client:
             # Simulate memory pressure by creating large responses
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Return large response to simulate memory pressure
                 large_data = {"data": "x" * 1000000}  # 1MB of data
                 mock_request.return_value = large_data
@@ -257,7 +257,7 @@ class TestResourceChaos:
 
         async with UnifiedKeiAgentClient(config) as client:
             # Make many concurrent requests to exhaust connection pool
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 mock_request.return_value = {"status": "ok"}
 
                 # Create more concurrent requests than typical pool size
@@ -283,7 +283,7 @@ class TestResourceChaos:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Simulate CPU-intensive response processing
                 def cpu_intensive_response(*args, **kwargs):
                     # Simulate CPU work
@@ -326,8 +326,8 @@ class TestConcurrentChaos:
         )
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
-                with patch.object(client.security_manager, '_refresh_bearer_token') as mock_refresh:
+            with patch.object(client, "_make_request") as mock_request:
+                with patch.object(client.security_manager, "_refresh_bearer_token") as mock_refresh:
                     # Both network and auth fail initially, then recover
                     mock_request.side_effect = [
                         ConnectionError("Network down"),
@@ -354,7 +354,7 @@ class TestConcurrentChaos:
                 {"status": "all_services_recovered"}
             ]
 
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 mock_request.side_effect = failure_sequence
 
                 # Should recover after all services come back online
@@ -369,7 +369,7 @@ class TestConcurrentChaos:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Simulate high failure rate to trigger circuit breaker
                 mock_request.side_effect = [
                     CommunicationError("Service error") for _ in range(10)
@@ -404,7 +404,7 @@ class TestRecoveryMechanisms:
         )
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Fail 4 times, then succeed
                 mock_request.side_effect = [
                     CommunicationError("Retry 1"),
@@ -429,8 +429,8 @@ class TestRecoveryMechanisms:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_health_check') as mock_health:
-                with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_health_check") as mock_health:
+                with patch.object(client, "_make_request") as mock_request:
                     # Health check fails, then passes
                     mock_health.side_effect = [False, False, True]
                     mock_request.return_value = {"status": "healthy"}

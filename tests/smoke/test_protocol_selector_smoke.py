@@ -2,13 +2,10 @@
 
 def test_import_protocol_selector():
     """Test that protocol_selector module can be imported."""
-    import kei_agent.protocol_selector
 
 
 def test_import_protocol_selector_classes():
     """Test that protocol selector classes can be imported."""
-    from kei_agent.protocol_selector import ProtocolSelector
-    from kei_agent.protocol_types import ProtocolConfig, Protocoltypee
 
 
 def test_protocol_config_creation():
@@ -28,7 +25,7 @@ def test_protocol_config_creation():
 def test_protocol_selector_creation():
     """Test basic ProtocolSelector instantiation."""
     from kei_agent.protocol_selector import ProtocolSelector
-    from kei_agent.protocol_types import ProtocolConfig, Protocoltypee
+    from kei_agent.protocol_types import ProtocolConfig
 
     config = ProtocolConfig(
         rpc_enabled=True,
@@ -39,8 +36,8 @@ def test_protocol_selector_creation():
     selector = ProtocolSelector(config)
     assert selector is not None
     assert selector.config == config
-    assert hasattr(selector, 'select_protocol')
-    assert hasattr(selector, '_operation_patterns')
+    assert hasattr(selector, "select_protocol")
+    assert hasattr(selector, "_operation_patterns")
 
 
 def test_protocol_selector_methods():

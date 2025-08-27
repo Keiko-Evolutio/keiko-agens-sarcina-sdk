@@ -5,13 +5,13 @@ with vollständiger Valitherung and Edge Cases.
 
 import pytest
 
+from kei_agent.exceptions import ValidationError
 from kei_agent.protocol_types import (
-    Protocoltypee,
     Authtypee,
     ProtocolConfig,
+    Protocoltypee,
     SecurityConfig,
 )
-from kei_agent.exceptions import ValidationError
 
 # Markiere all Tests in theser File als protocol-Tests
 pytestmark = pytest.mark.protocol

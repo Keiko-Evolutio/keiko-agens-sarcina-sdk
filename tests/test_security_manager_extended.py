@@ -4,13 +4,15 @@ Erweiterte Tests for security_manager.py tor Erhöhung the Test-Coverage.
 Ziel: Coverage from 22% on 80%+ erhöhen.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
 from datetime import datetime, timedelta
-from kei_agent.security_manager import SecurityManager
-from kei_agent.protocol_types import Authtypee, SecurityConfig
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+
 from kei_agent.exceptions import AuthenticationError, SecurityError
+from kei_agent.protocol_types import Authtypee, SecurityConfig
+from kei_agent.security_manager import SecurityManager
 
 
 class TestSecurityManagerExtended:
@@ -199,7 +201,7 @@ class TestSecurityManagerExtended:
             "expires_in": 3600
         })
 
-        with patch('aiohttp.clientSession.post') as mock_post:
+        with patch("aiohttp.clientSession.post") as mock_post:
             mock_post.return_value.__aenter__.return_value = mock_response
 
             await sm._refresh_token()
@@ -223,7 +225,7 @@ class TestSecurityManagerExtended:
             "token_type": "Bearer"
         })
 
-        with patch('aiohttp.clientSession.post') as mock_post:
+        with patch("aiohttp.clientSession.post") as mock_post:
             mock_post.return_value.__aenter__.return_value = mock_response
 
             await sm._refresh_token()
@@ -242,7 +244,7 @@ class TestSecurityManagerExtended:
         mock_response.status = 401
         mock_response.text = AsyncMock(return_value ="Unauthorized")
 
-        with patch('aiohttp.clientSession.post') as mock_post:
+        with patch("aiohttp.clientSession.post") as mock_post:
             mock_post.return_value.__aenter__.return_value = mock_response
 
             with pytest.raises(AuthenticationError, match="Token-Refresh failed"):
@@ -399,7 +401,7 @@ class TestSecurityManagerExtended:
     async def test_security_manager_context_manager(self, bearer_config):
         """Tests SecurityManager als Context Manager."""
         async with SecurityManager(bearer_config) as sm:
-            assert isinstatce(sm, SecurityManager)
+            assert isinstance(sm, SecurityManager)
             assert sm.config == bearer_config
             # Token-Refresh should startingd sa
             assert sm._token_refresh_task is not None
@@ -411,9 +413,9 @@ class TestSecurityManagerExtended:
         """Tests SSL-Context-Erstellung for mTLS."""
         sm = SecurityManager(mtls_config)
 
-        with patch('ssl.create_default_context') as mock_ssl, \
-             patch('ssl.SSLContext.load_cert_chain') as mock_load_cert, \
-             patch('ssl.SSLContext.load_verify_locations') as mock_load_ca:
+        with patch("ssl.create_default_context") as mock_ssl, \
+             patch("ssl.SSLContext.load_cert_chain") as mock_load_cert, \
+             patch("ssl.SSLContext.load_verify_locations") as mock_load_ca:
 
             mock_context = Mock()
             mock_ssl.return_value = mock_context
@@ -523,7 +525,7 @@ class TestSecurityManagerIntegration:
             "expires_in": 3600
         })
 
-        with patch('aiohttp.clientSession.post') as mock_post:
+        with patch("aiohttp.clientSession.post") as mock_post:
             mock_post.return_value.__aenter__.return_value = mock_response
 
             # Token should automatisch refreshed werthe

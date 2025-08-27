@@ -1,10 +1,8 @@
+from io import StringIO
 import json
 import logging
-from io import StringIO
 
-import pytest
-
-from kei_agent.enterprise_logging import StructuredFormatter, RedactingFilter, EnterpriseLogger
+from kei_agent.enterprise_logging import RedactingFilter, StructuredFormatter
 
 
 def make_record(logger: logging.Logger, level=logging.INFO, msg="test", **extra):

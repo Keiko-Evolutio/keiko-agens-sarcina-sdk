@@ -6,9 +6,9 @@ to ensure all tests have valid credentials that pass validation.
 """
 
 import os
-import pytest
 from unittest.mock import patch
 
+import pytest
 
 # Valid test credentials that pass validation
 TEST_ENV_VARS = {
@@ -41,7 +41,7 @@ def setup_test_environment():
     for key, value in TEST_ENV_VARS.items():
         if key not in os.environ:
             env_patch[key] = value
-    
+
     if env_patch:
         with patch.dict(os.environ, env_patch):
             yield

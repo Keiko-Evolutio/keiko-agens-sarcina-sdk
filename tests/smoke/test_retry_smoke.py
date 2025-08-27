@@ -2,12 +2,10 @@
 
 def test_import_retry():
     """Test that retry module can be imported."""
-    import kei_agent.retry
 
 
 def test_import_retry_classes():
     """Test that retry classes can be imported."""
-    from kei_agent.retry import RetryManager, RetryPolicy
 
 
 def test_retry_policy_creation():

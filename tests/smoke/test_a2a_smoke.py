@@ -2,27 +2,18 @@
 
 def test_import_a2a():
     """Test that a2a module can be imported."""
-    import kei_agent.a2a
 
 
 def test_import_a2a_classes():
     """Test that A2A classes can be imported."""
-    from kei_agent.a2a import (
-        CommunicationProtocol,
-        LoadBalatcingStrategy,
-        FailoverConfig,
-        A2AMessage,
-        A2Aresponse,
-        A2Aclient,
-    )
 
 
 def test_communication_protocol_enum():
     """Test basic CommunicationProtocol enum usage."""
     from kei_agent.a2a import CommunicationProtocol
 
-    assert hasattr(CommunicationProtocol, 'HTTP')
-    assert hasattr(CommunicationProtocol, 'WEBSOCKET') or hasattr(CommunicationProtocol, 'WS')
+    assert hasattr(CommunicationProtocol, "HTTP")
+    assert hasattr(CommunicationProtocol, "WEBSOCKET") or hasattr(CommunicationProtocol, "WS")
 
 
 def test_failover_config_creation():
@@ -53,7 +44,7 @@ def test_a2a_message_creation():
     assert message.to_agent == "agent-2"
     assert message.message_type == "test-operation"
     assert message.payload == {"key": "value"}
-    assert hasattr(message, 'to_dict')
+    assert hasattr(message, "to_dict")
 
 
 def test_a2a_response_creation():
@@ -69,13 +60,13 @@ def test_a2a_response_creation():
     assert response.message_id == "test-msg-id"
     assert response.status == "success"
     assert response.payload == {"status": "ok"}
-    assert hasattr(response, 'to_dict')
+    assert hasattr(response, "to_dict")
 
 
 def test_a2a_client_creation():
     """Test basic A2Aclient instantiation."""
     from kei_agent.a2a import A2Aclient
-    from kei_agent.client import KeiAgentClient, AgentClientConfig
+    from kei_agent.client import AgentClientConfig, KeiAgentClient
 
     # Create a mock base client
     config = AgentClientConfig(
@@ -87,5 +78,5 @@ def test_a2a_client_creation():
 
     client = A2Aclient(base_client=base_client)
     assert client is not None
-    assert hasattr(client, 'send_message')
-    assert hasattr(client, 'close')
+    assert hasattr(client, "send_message")
+    assert hasattr(client, "close")

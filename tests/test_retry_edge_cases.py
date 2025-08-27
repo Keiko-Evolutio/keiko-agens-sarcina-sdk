@@ -10,10 +10,9 @@ import pytest
 
 from kei_agent.client import (
     AgentClientConfig,
-    RetryConfig,
-    RetryStrategy,
     TracingConfig,
 )
+from kei_agent.protocol_types import ProtocolConfig, RetryConfig, RetryStrategy
 from kei_agent.unified_client import UnifiedKeiAgentClient
 
 
@@ -37,7 +36,6 @@ async def test_max_delay_cap(monkeypatch):
 
     async def fake_sleep(delay: float):
         delays.append(round(delay, 2))
-        return None
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
 
@@ -73,7 +71,6 @@ async def test_exponential_base_edge_cases(monkeypatch):
 
     async def fake_sleep(delay: float):
         delays.append(round(delay, 2))
-        return None
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
 
@@ -130,7 +127,6 @@ async def test_jitter_behavior(monkeypatch):
 
     async def fake_sleep(delay: float):
         delays.append(delay)
-        return None
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
     random.seed(42)
@@ -141,11 +137,11 @@ async def test_jitter_behavior(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(
+            "rpc": RetryConfig(
                 max_attempts =4,
                 base_delay =1.0,
                 jitter=True,
-                strategy=retryStrategy.FIXED_DELAY,
+                strategy=RetryStrategy.FIXED_DELAY,
             )
         },
     )
@@ -169,11 +165,11 @@ async def test_max_attempts_boatdaries(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(
-                max_attempts =1,
-                base_delay =1.0,
+            "rpc": RetryConfig(
+                max_attempts=1,
+                base_delay=1.0,
                 jitter=False,
-                strategy=retryStrategy.FIXED_DELAY,
+                strategy=RetryStrategy.FIXED_DELAY,
             )
         },
     )
@@ -187,7 +183,6 @@ async def test_max_attempts_boatdaries(monkeypatch):
 
     async def fake_sleep(delay: float):
         delays.append(delay)
-        return None
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
 
@@ -197,11 +192,11 @@ async def test_max_attempts_boatdaries(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(
-                max_attempts =100,
-                base_delay =0.01,
+            "rpc": RetryConfig(
+                max_attempts=100,
+                base_delay=0.01,
                 jitter=False,
-                strategy=retryStrategy.FIXED_DELAY,
+                strategy=RetryStrategy.FIXED_DELAY,
             )
         },
     )

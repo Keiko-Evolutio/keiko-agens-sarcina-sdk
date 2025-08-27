@@ -5,7 +5,7 @@ Provides valid test credentials that pass validation but are not real secrets.
 """
 
 import os
-from typing import Dict, Any
+from typing import Any, Dict
 
 # Valid test credentials that pass validation
 TEST_CREDENTIALS = {
@@ -40,7 +40,7 @@ def get_test_credentials() -> Dict[str, str]:
 def get_test_config() -> Dict[str, Any]:
     """Get complete test configuration."""
     credentials = get_test_credentials()
-    
+
     return {
         "base_url": os.getenv("KEI_API_URL", TEST_CREDENTIALS["base_url"]),
         "api_token": credentials["api_token"],
@@ -60,7 +60,7 @@ def setup_test_environment():
         env_key = f"KEI_{key.upper()}" if not key.startswith("oidc") else key.upper()
         if env_key not in os.environ:
             os.environ[env_key] = value
-    
+
     # Set integration test flags
     os.environ.setdefault("USE_MOCK_SERVICES", "true")
     os.environ.setdefault("ENABLE_CHAOS_TESTING", "false")

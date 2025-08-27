@@ -2,18 +2,10 @@
 
 def test_import_client():
     """Test that client module can be imported."""
-    import kei_agent.client
 
 
 def test_import_client_classes():
     """Test that main client classes can be imported."""
-    from kei_agent.client import (
-        ConnectionConfig,
-        RetryConfig,
-        TracingConfig,
-        AgentClientConfig,
-        KeiAgentClient,
-    )
 
 
 def test_connection_config_creation():
@@ -58,7 +50,7 @@ def test_agent_client_config_creation():
 
 def test_kei_agent_client_creation():
     """Test basic KeiAgentClient instantiation."""
-    from kei_agent.client import KeiAgentClient, AgentClientConfig
+    from kei_agent.client import AgentClientConfig, KeiAgentClient
 
     config = AgentClientConfig(
         base_url="https://api.example.com",

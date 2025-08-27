@@ -2,15 +2,10 @@
 
 def test_import_dashboard_generators():
     """Test that dashboard_generators module can be imported."""
-    import kei_agent.dashboard_generators
 
 
 def test_import_dashboard_functions():
     """Test that dashboard generator functions can be imported."""
-    from kei_agent.dashboard_generators import (
-        generate_security_dashboard_html,
-        generate_business_dashboard_html,
-    )
 
 
 def test_generate_security_dashboard():

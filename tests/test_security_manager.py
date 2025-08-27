@@ -4,13 +4,14 @@ with aroatdfassenthe Mock-Szenarien and Edge Cases.
 """
 
 import asyncio
-import pytest
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from kei_agent.security_manager import SecurityManager
-from kei_agent.protocol_types import SecurityConfig, Authtypee
+import pytest
+
 from kei_agent.exceptions import SecurityError, ValidationError
+from kei_agent.protocol_types import Authtypee, SecurityConfig
+from kei_agent.security_manager import SecurityManager
 
 # Markiere all Tests in theser File als Security-Tests
 pytestmark = pytest.mark.security

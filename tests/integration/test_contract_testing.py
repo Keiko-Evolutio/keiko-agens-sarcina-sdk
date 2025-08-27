@@ -11,21 +11,16 @@ These tests validate that the SDK correctly implements API contracts including:
 - Data format consistency
 """
 
-import json
-import jsonschema
-from typing import Dict, Any, List
 from unittest.mock import AsyncMock, patch
 
+import jsonschema
 import pytest
 
-from kei_agent import UnifiedKeiAgentClient, AgentClientConfig
-from kei_agent.protocol_types import SecurityConfig, Authtypee
-from kei_agent.exceptions import ValidationError, CommunicationError
-from . import (
-    skip_if_no_integration_env, IntegrationTestBase,
-    integration_test_base, test_endpoints
-)
+from kei_agent import AgentClientConfig, UnifiedKeiAgentClient
+from kei_agent.exceptions import CommunicationError
+from kei_agent.protocol_types import Authtypee, SecurityConfig
 
+from . import skip_if_no_integration_env
 
 # API Contract Schemas
 API_SCHEMAS = {
@@ -110,7 +105,7 @@ class TestAPIContractCompliance:
                 "metadata": {"region": "us-west-2"}
             }
 
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 mock_request.return_value = mock_response
 
                 response = await client.get_agent_status()
@@ -138,7 +133,7 @@ class TestAPIContractCompliance:
                 "metadata": {"source": "test"}
             }
 
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 mock_request.return_value = {"status": "sent"}
 
                 # This should validate the request internally
@@ -147,7 +142,7 @@ class TestAPIContractCompliance:
                 # Verify the request was made with valid data
                 mock_request.assert_called_once()
                 call_args = mock_request.call_args
-                request_data = call_args[1].get('json', {})
+                request_data = call_args[1].get("json", {})
 
                 # Validate request against schema
                 try:
@@ -172,14 +167,14 @@ class TestAPIContractCompliance:
                 }
             }
 
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 mock_request.side_effect = CommunicationError("API Error", details=error_response)
 
                 try:
                     await client.get_agent_status()
                 except CommunicationError as e:
                     # Validate error response schema
-                    if hasattr(e, 'details') and e.details:
+                    if hasattr(e, "details") and e.details:
                         try:
                             jsonschema.validate(e.details, API_SCHEMAS["error_response"])
                         except jsonschema.ValidationError as schema_error:
@@ -211,7 +206,7 @@ class TestAPIContractCompliance:
                 "scope": "openid profile email"
             }
 
-            with patch.object(client.security_manager, '_fetch_oidc_token') as mock_auth:
+            with patch.object(client.security_manager, "_fetch_oidc_token") as mock_auth:
                 mock_auth.return_value = auth_response
 
                 # Trigger authentication
@@ -235,21 +230,21 @@ class TestAPIVersioningCompliance:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 mock_request.return_value = {"status": "ok"}
 
                 await client.get_agent_status()
 
                 # Verify API version header was included
                 call_args = mock_request.call_args
-                headers = call_args[1].get('headers', {})
+                headers = call_args[1].get("headers", {})
 
-                assert 'API-Version' in headers or 'X-API-Version' in headers
+                assert "API-Version" in headers or "X-API-Version" in headers
 
                 # Verify version format
-                version = headers.get('API-Version') or headers.get('X-API-Version')
+                version = headers.get("API-Version") or headers.get("X-API-Version")
                 assert version is not None
-                assert '.' in version  # Should be semantic version format
+                assert "." in version  # Should be semantic version format
 
     @pytest.mark.contract
     @skip_if_no_integration_env()
@@ -269,7 +264,7 @@ class TestAPIVersioningCompliance:
                 "new_field": "new_value"
             }
 
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 mock_request.return_value = legacy_response
 
                 # Should handle response gracefully even with deprecated fields
@@ -286,7 +281,7 @@ class TestAPIVersioningCompliance:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Mock response with deprecation warning
                 mock_response = AsyncMock()
                 mock_response.json.return_value = {"status": "ok"}
@@ -315,7 +310,7 @@ class TestRateLimitingCompliance:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Mock response with rate limit headers
                 mock_response = {
                     "status": "ok",
@@ -340,7 +335,7 @@ class TestRateLimitingCompliance:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Mock 429 Too Many Requests response
                 rate_limit_error = CommunicationError(
                     "Rate limit exceeded",
@@ -373,7 +368,7 @@ class TestDataFormatConsistency:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Mock response with various timestamp fields
                 mock_response = {
                     "agent_id": "test-agent",
@@ -388,9 +383,9 @@ class TestDataFormatConsistency:
 
                 # Verify timestamp formats
                 import re
-                iso8601_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?([+-]\d{2}:\d{2}|Z)$'
+                iso8601_pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?([+-]\d{2}:\d{2}|Z)$"
 
-                for field in ['created_at', 'updated_at', 'last_heartbeat']:
+                for field in ["created_at", "updated_at", "last_heartbeat"]:
                     if field in response:
                         assert re.match(iso8601_pattern, response[field]), \
                             f"Timestamp field {field} does not match ISO 8601 format"
@@ -402,7 +397,7 @@ class TestDataFormatConsistency:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Mock response with UUID fields
                 mock_response = {
                     "agent_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -415,9 +410,9 @@ class TestDataFormatConsistency:
 
                 # Verify UUID formats
                 import re
-                uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 
-                for field in ['agent_id', 'session_id', 'request_id']:
+                for field in ["agent_id", "session_id", "request_id"]:
                     if field in response:
                         assert re.match(uuid_pattern, response[field], re.IGNORECASE), \
                             f"UUID field {field} does not match expected format"
@@ -429,7 +424,7 @@ class TestDataFormatConsistency:
         config = AgentClientConfig(**integration_test_base.get_test_config())
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 # Mock paginated response
                 mock_response = {
                     "data": [

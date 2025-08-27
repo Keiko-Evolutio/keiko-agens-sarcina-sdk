@@ -295,7 +295,7 @@ class KEIStreamclient(BaseProtocolclient):
             await self._websocket.send(json.dumps(subscribe_msg))
 
             # Starting Message-Loop
-            asyncio.create_task(self._message_loop(callback))
+            self._message_task = asyncio.create_task(self._message_loop(callback))
 
             self._logger.info(f"Topic abonniert: {topic}")
 

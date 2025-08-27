@@ -9,23 +9,25 @@ This module provides integration capabilities for chaos engineering tests:
 - Test orchestration and scheduling
 """
 
-import asyncio
-import json
-import os
-import sys
-from pathlib import Path
-from typing import Dict, List, Any, Optional
-import logging
 import argparse
+import asyncio
 from datetime import datetime, timezone
+import json
+import logging
+import os
+from pathlib import Path
+import sys
+from typing import Any, Dict, List
 
-from tests.chaos.chaos_framework import ChaosTest, chaos_test_context
-from tests.chaos.chaos_metrics import ChaosMetricsCollector, get_chaos_metrics_collector, reset_chaos_metrics_collector
-from tests.chaos.test_network_chaos import TestNetworkChaos
-from tests.chaos.test_service_dependency_chaos import TestServiceDependencyChaos
-from tests.chaos.test_resource_exhaustion_chaos import TestResourceExhaustionChaos
+from tests.chaos.chaos_metrics import (
+    get_chaos_metrics_collector,
+    reset_chaos_metrics_collector,
+)
 from tests.chaos.test_configuration_chaos import TestConfigurationChaos
+from tests.chaos.test_network_chaos import TestNetworkChaos
+from tests.chaos.test_resource_exhaustion_chaos import TestResourceExhaustionChaos
 from tests.chaos.test_security_chaos import TestSecurityChaos
+from tests.chaos.test_service_dependency_chaos import TestServiceDependencyChaos
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +48,11 @@ class ChaosTestSuite:
 
         # Test categories and their classes
         self.test_categories = {
-            'network': TestNetworkChaos,
-            'service_dependency': TestServiceDependencyChaos,
-            'resource_exhaustion': TestResourceExhaustionChaos,
-            'configuration': TestConfigurationChaos,
-            'security': TestSecurityChaos
+            "network": TestNetworkChaos,
+            "service_dependency": TestServiceDependencyChaos,
+            "resource_exhaustion": TestResourceExhaustionChaos,
+            "configuration": TestConfigurationChaos,
+            "security": TestSecurityChaos
         }
 
     async def run_chaos_tests(self,
@@ -116,7 +118,7 @@ class ChaosTestSuite:
         # Get all test methods
         test_methods = [
             method for method in dir(test_instance)
-            if method.startswith('test_') and callable(getattr(test_instance, method))
+            if method.startswith("test_") and callable(getattr(test_instance, method))
         ]
 
         # Filter by test names if specified
@@ -132,7 +134,7 @@ class ChaosTestSuite:
                 logger.info(f"Running {category}.{test_method_name}")
 
                 # Setup test instance
-                if hasattr(test_instance, 'setup_method'):
+                if hasattr(test_instance, "setup_method"):
                     test_instance.setup_method()
 
                 # Get test method
@@ -145,7 +147,7 @@ class ChaosTestSuite:
                     await test_method()
 
                 # Teardown test instance
-                if hasattr(test_instance, 'teardown_method'):
+                if hasattr(test_instance, "teardown_method"):
                     test_instance.teardown_method()
 
                 logger.info(f"Completed {category}.{test_method_name}")
@@ -190,7 +192,7 @@ class ChaosTestSuite:
             # Check system resources
             memory = psutil.virtual_memory()
             cpu = psutil.cpu_percent(interval=1)
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
 
             # Safety thresholds
             if memory.percent > 90:
@@ -248,17 +250,17 @@ class ChaosTestSuite:
 
         # Add execution metadata
         execution_report = {
-            'execution_metadata': {
-                'start_time': start_time.isoformat(),
-                'end_time': end_time.isoformat(),
-                'duration_seconds': (end_time - start_time).total_seconds(),
-                'environment': self._get_environment_info(),
-                'configuration': self.config,
-                'failed_tests': self.failed_tests
+            "execution_metadata": {
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "duration_seconds": (end_time - start_time).total_seconds(),
+                "environment": self._get_environment_info(),
+                "configuration": self.config,
+                "failed_tests": self.failed_tests
             },
-            'chaos_test_results': summary_report,
-            'recommendations': self._generate_recommendations(summary_report),
-            'next_steps': self._generate_next_steps(summary_report)
+            "chaos_test_results": summary_report,
+            "recommendations": self._generate_recommendations(summary_report),
+            "next_steps": self._generate_next_steps(summary_report)
         }
 
         return execution_report
@@ -267,21 +269,22 @@ class ChaosTestSuite:
         """Get environment information for the report."""
         try:
             import platform
+
             import psutil
 
             return {
-                'platform': platform.platform(),
-                'python_version': platform.python_version(),
-                'cpu_count': psutil.cpu_count(),
-                'memory_total_gb': psutil.virtual_memory().total / (1024**3),
-                'disk_total_gb': psutil.disk_usage('/').total / (1024**3),
-                'hostname': platform.node(),
-                'ci_environment': os.getenv('CI', 'false').lower() == 'true',
-                'environment_type': os.getenv('CHAOS_ENV', 'development')
+                "platform": platform.platform(),
+                "python_version": platform.python_version(),
+                "cpu_count": psutil.cpu_count(),
+                "memory_total_gb": psutil.virtual_memory().total / (1024**3),
+                "disk_total_gb": psutil.disk_usage("/").total / (1024**3),
+                "hostname": platform.node(),
+                "ci_environment": os.getenv("CI", "false").lower() == "true",
+                "environment_type": os.getenv("CHAOS_ENV", "development")
             }
         except Exception as e:
             logger.error(f"Error getting environment info: {e}")
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def _generate_recommendations(self, summary_report: Dict[str, Any]) -> List[str]:
         """Generate recommendations based on test results.
@@ -295,7 +298,7 @@ class ChaosTestSuite:
         recommendations = []
 
         # Get overall resilience score
-        overall_score = summary_report.get('summary', {}).get('overall_resilience_score', 0)
+        overall_score = summary_report.get("summary", {}).get("overall_resilience_score", 0)
 
         if overall_score < 70:
             recommendations.append("Overall system resilience is below acceptable threshold (70%)")
@@ -303,27 +306,27 @@ class ChaosTestSuite:
             recommendations.append("Review and strengthen error handling mechanisms")
 
         # Check for specific weak points
-        weak_points = summary_report.get('weak_points', [])
+        weak_points = summary_report.get("weak_points", [])
         for weak_point in weak_points:
-            component = weak_point.get('component', 'unknown')
-            issues = weak_point.get('issues', [])
+            component = weak_point.get("component", "unknown")
+            issues = weak_point.get("issues", [])
 
-            if 'low_availability' in issues:
+            if "low_availability" in issues:
                 recommendations.append(f"Improve {component} availability through redundancy and failover")
 
-            if 'slow_recovery' in issues:
+            if "slow_recovery" in issues:
                 recommendations.append(f"Optimize {component} recovery time with faster health checks")
 
-            if 'poor_error_handling' in issues:
+            if "poor_error_handling" in issues:
                 recommendations.append(f"Enhance {component} error handling and logging")
 
         # Performance impact recommendations
-        performance_impact = summary_report.get('performance_impact', {})
+        performance_impact = summary_report.get("performance_impact", {})
 
-        if performance_impact.get('cpu', {}).get('impact_level') == 'high':
+        if performance_impact.get("cpu", {}).get("impact_level") == "high":
             recommendations.append("High CPU impact detected - consider optimizing resource usage")
 
-        if performance_impact.get('memory', {}).get('impact_level') == 'high':
+        if performance_impact.get("memory", {}).get("impact_level") == "high":
             recommendations.append("High memory impact detected - review memory management")
 
         return recommendations
@@ -345,7 +348,7 @@ class ChaosTestSuite:
             next_steps.append("Re-run failed tests after fixes are implemented")
 
         # Resilience improvements
-        overall_score = summary_report.get('summary', {}).get('overall_resilience_score', 0)
+        overall_score = summary_report.get("summary", {}).get("overall_resilience_score", 0)
 
         if overall_score < 80:
             next_steps.append("Implement resilience improvements based on recommendations")
@@ -368,7 +371,7 @@ class ChaosTestSuite:
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 json.dump(report, f, indent=2, default=str)
 
             logger.info(f"Chaos engineering report saved to {output_path}")
@@ -382,42 +385,42 @@ async def main():
     parser = argparse.ArgumentParser(description="KEI-Agent Chaos Engineering Test Suite")
 
     parser.add_argument(
-        '--categories',
-        nargs='+',
-        choices=['network', 'service_dependency', 'resource_exhaustion', 'configuration', 'security'],
-        help='Test categories to run'
+        "--categories",
+        nargs="+",
+        choices=["network", "service_dependency", "resource_exhaustion", "configuration", "security"],
+        help="Test categories to run"
     )
 
     parser.add_argument(
-        '--tests',
-        nargs='+',
-        help='Specific test names to run'
+        "--tests",
+        nargs="+",
+        help="Specific test names to run"
     )
 
     parser.add_argument(
-        '--safe-mode',
-        action='store_true',
+        "--safe-mode",
+        action="store_true",
         default=True,
-        help='Run in safe mode with limited chaos (default: True)'
+        help="Run in safe mode with limited chaos (default: True)"
     )
 
     parser.add_argument(
-        '--output',
+        "--output",
         type=Path,
-        default=Path('chaos_test_report.json'),
-        help='Output file for test report'
+        default=Path("chaos_test_report.json"),
+        help="Output file for test report"
     )
 
     parser.add_argument(
-        '--config',
+        "--config",
         type=Path,
-        help='Configuration file for chaos testing'
+        help="Configuration file for chaos testing"
     )
 
     parser.add_argument(
-        '--verbose',
-        action='store_true',
-        help='Enable verbose logging'
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging"
     )
 
     args = parser.parse_args()
@@ -426,7 +429,7 @@ async def main():
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
         level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
     # Load configuration
@@ -457,7 +460,7 @@ async def main():
         print("CHAOS ENGINEERING TEST SUMMARY")
         print("="*60)
 
-        summary = report.get('chaos_test_results', {}).get('summary', {})
+        summary = report.get("chaos_test_results", {}).get("summary", {})
         print(f"Total Tests: {summary.get('total_tests', 0)}")
         print(f"Overall Resilience Score: {summary.get('overall_resilience_score', 0):.1f}%")
         print(f"Failed Tests: {len(test_suite.failed_tests)}")
@@ -467,7 +470,7 @@ async def main():
             for test in test_suite.failed_tests:
                 print(f"  - {test}")
 
-        recommendations = report.get('recommendations', [])
+        recommendations = report.get("recommendations", [])
         if recommendations:
             print("\nRecommendations:")
             for rec in recommendations[:5]:  # Show top 5

@@ -61,10 +61,10 @@ except ImportError:
     class NoOpTracer:
         """NoOp Tracer-Implementierung."""
 
-        def start_spat(self, name, **kwargs):
+        def start_spat(self, name, **kwargs):  # noqa: ARG002
             return NoOpSpat()
 
-        def start_as_current_spat(self, name, **kwargs):
+        def start_as_current_spat(self, name, **kwargs):  # noqa: ARG002
             return NoOpSpat()
 
         class SpatKind:
@@ -88,7 +88,7 @@ except ImportError:
         def __init__(self, resource=None):
             pass
 
-        def get_tracer(self, name, version=None):
+        def get_tracer(self, name, version=None):  # noqa: ARG002
             return NoOpTracer()
 
         def add_spat_processor(self, processor):
@@ -100,11 +100,11 @@ except ImportError:
     class NoOpMeter:
         """NoOp Meter-Implementierung."""
 
-        def create_coatthe(self, name, **kwargs):
-            return lambda **kw: None
+        def create_coatthe(self, name, **kwargs):  # noqa: ARG002
+            return lambda **kw: None  # noqa: ARG005
 
-        def create_hisogram(self, name, **kwargs):
-            return lambda **kw: None
+        def create_hisogram(self, name, **kwargs):  # noqa: ARG002
+            return lambda **kw: None  # noqa: ARG005
 
     class NoOpMeterProvithe:
         """NoOp MeterProvithe-Implementierung."""
@@ -112,7 +112,7 @@ except ImportError:
         def __init__(self, resource=None, metric_reathes=None):
             pass
 
-        def get_meter(self, name, version=None):
+        def get_meter(self, name, version=None):  # noqa: ARG002
             return NoOpMeter()
 
     # Daroatdmy-classn and functionen
@@ -124,8 +124,8 @@ except ImportError:
         (),
         {
             "get_current_spat": lambda: NoOpSpat(),
-            "set_tracer_provithe": lambda provithe: None,
-            "get_tracer": lambda name, version=None: NoOpTracer(),
+            "set_tracer_provithe": lambda provithe: None,  # noqa: ARG005
+            "get_tracer": lambda name, version=None: NoOpTracer(),  # noqa: ARG005
         },
     )()
     metrics = type(
@@ -133,8 +133,8 @@ except ImportError:
         (),
         {
             "get_meter_provithe": lambda: NoOpMeterProvithe(),
-            "set_meter_provithe": lambda provithe: None,
-            "get_meter": lambda name, version=None: NoOpMeter(),
+            "set_meter_provithe": lambda provithe: None,  # noqa: ARG005
+            "get_meter": lambda name, version=None: NoOpMeter(),  # noqa: ARG005
         },
     )()
 
@@ -150,7 +150,7 @@ except ImportError:
         def inject(self, carrier, context=None):
             pass
 
-        def extract(self, carrier, context=None):
+        def extract(self, carrier, context=None):  # noqa: ARG002
             return None
 
     class NoOpSpatExporter:
@@ -176,21 +176,21 @@ except ImportError:
     TraceContextTextMapPropagator = NoOpPropagator
     W3CBaggagePropagator = NoOpPropagator
 
-    def CompositeHTTPPropagator(propagators):
+    def CompositeHTTPPropagator(propagators):  # noqa: N802
         """NoOp CompositeHTTPPropagator function."""
         return NoOpPropagator()
 
     ConsoleSpatExporter = NoOpSpatExporter
 
-    def JaegerExporter(**kwargs):
+    def JaegerExporter(**kwargs):  # noqa: N802
         """NoOp JaegerExporter function."""
         return NoOpSpatExporter()
 
-    def ZipkinExporter(**kwargs):
+    def ZipkinExporter(**kwargs):  # noqa: N802
         """NoOp ZipkinExporter function."""
         return NoOpSpatExporter()
 
-    def BatchSpatProcessor(exporter, **kwargs):
+    def BatchSpatProcessor(exporter, **kwargs):  # noqa: N802
         """NoOp BatchSpatProcessor function."""
         return NoOpSpatProcessor()
 

@@ -10,13 +10,17 @@ This test validates that:
 """
 
 import os
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from kei_agent.secrets_manager import (
-    SecretsManager, SecretConfig, get_secrets_manager, configure_secrets
-)
+import pytest
+
 from kei_agent.exceptions import SecurityError
+from kei_agent.secrets_manager import (
+    SecretConfig,
+    SecretsManager,
+    configure_secrets,
+    get_secrets_manager,
+)
 
 
 class TestSecretsManager:
@@ -250,15 +254,15 @@ class TestSecretsIntegration:
 
     def test_no_hardcoded_secrets_in_production_code(self):
         """Test that production code doesn't contain hardcoded secrets."""
+        from pathlib import Path
         import subprocess
         import sys
-        from pathlib import Path
 
         # Run the secrets validation script
         script_path = Path(__file__).parent.parent / "scripts" / "validate_no_secrets.py"
         result = subprocess.run([
             sys.executable, str(script_path)
-        ], capture_output=True, text=True)
+        ], check=False, capture_output=True, text=True)
 
         # Should pass (return code 0)
         assert result.returncode == 0, f"Secrets validation failed: {result.stdout}"

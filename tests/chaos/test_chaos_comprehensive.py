@@ -7,20 +7,16 @@ a comprehensive suite of chaos tests to measure overall system resilience.
 """
 
 import asyncio
-import pytest
-import time
+import json
 from pathlib import Path
 import tempfile
-import json
+import time
 
-from tests.chaos.chaos_framework import chaos_test_context, ChaosTest
-from tests.chaos.chaos_metrics import get_chaos_metrics_collector, reset_chaos_metrics_collector
+import pytest
+
+from tests.chaos.chaos_framework import chaos_test_context
 from tests.chaos.chaos_integration import ChaosTestSuite
-from tests.chaos.test_network_chaos import TestNetworkChaos
-from tests.chaos.test_service_dependency_chaos import TestServiceDependencyChaos
-from tests.chaos.test_resource_exhaustion_chaos import TestResourceExhaustionChaos
-from tests.chaos.test_configuration_chaos import TestConfigurationChaos
-from tests.chaos.test_security_chaos import TestSecurityChaos
+from tests.chaos.chaos_metrics import get_chaos_metrics_collector, reset_chaos_metrics_collector
 
 
 class TestChaosFramework:
@@ -169,11 +165,7 @@ class TestComprehensiveChaosScenarios:
                 total_operations += 1
 
                 # Simulate different types of failures
-                if i % 5 == 0:  # Network issues
-                    chaos_events += 1
-                    chaos_test.record_operation(False)
-                    chaos_test.record_error()
-                elif i % 5 == 1:  # Service failures
+                if i % 5 == 0 or i % 5 == 1:  # Network issues
                     chaos_events += 1
                     chaos_test.record_operation(False)
                     chaos_test.record_error()

@@ -473,7 +473,7 @@ _alert_manager: Optional[AlertManager] = None
 
 def get_alert_manager() -> AlertManager:
     """Get the global alert manager instance."""
-    global _alert_manager
+    global _alert_manager  # noqa: PLW0603
     if _alert_manager is None:
         _alert_manager = AlertManager()
     return _alert_manager
@@ -485,6 +485,6 @@ def initialize_alerting() -> AlertManager:
     Returns:
         Initialized alert manager
     """
-    global _alert_manager
+    global _alert_manager  # noqa: PLW0603
     _alert_manager = AlertManager()
     return _alert_manager

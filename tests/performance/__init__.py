@@ -10,14 +10,15 @@ This package contains comprehensive performance tests that establish:
 - Performance budgets and SLA validation
 """
 
-import os
-import time
-import psutil
 import asyncio
-from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, field
-from pathlib import Path
 import json
+import os
+from pathlib import Path
+import time
+from typing import Any, Callable, Dict, List, Optional
+
+import psutil
 
 # Performance test configuration
 PERFORMANCE_CONFIG = {
@@ -66,7 +67,7 @@ class PerformanceMetrics:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PerformanceMetrics':
+    def from_dict(cls, data: Dict[str, Any]) -> "PerformanceMetrics":
         """Create metrics from dictionary."""
         return cls(**data)
 
@@ -140,11 +141,9 @@ class PerformanceBenchmark:
 
     async def setup(self):
         """Setup benchmark environment."""
-        pass
 
     async def teardown(self):
         """Cleanup benchmark environment."""
-        pass
 
     async def run_single_iteration(self) -> Any:
         """Run a single benchmark iteration. Override in subclasses."""
@@ -203,10 +202,10 @@ class PerformanceBenchmark:
         if not budget:
             return True  # No budget defined
 
-        if metrics.duration > budget.get("max_time", float('inf')):
+        if metrics.duration > budget.get("max_time", float("inf")):
             return False
 
-        if metrics.memory_usage_mb > budget.get("max_memory_mb", float('inf')):
+        if metrics.memory_usage_mb > budget.get("max_memory_mb", float("inf")):
             return False
 
         return True
@@ -230,7 +229,7 @@ class PerformanceBaseline:
             return {}
 
         try:
-            with open(self.baseline_file, 'r') as f:
+            with open(self.baseline_file) as f:
                 data = json.load(f)
 
             baselines = {}
@@ -251,7 +250,7 @@ class PerformanceBaseline:
             for operation, metrics in self.baselines.items():
                 data[operation] = metrics.to_dict()
 
-            with open(self.baseline_file, 'w') as f:
+            with open(self.baseline_file, "w") as f:
                 json.dump(data, f, indent=2)
 
         except Exception as e:

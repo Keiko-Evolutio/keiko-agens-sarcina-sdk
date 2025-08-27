@@ -202,15 +202,15 @@ def _parse_mock_report(
 
     # Extrahiere Werte aus Mock-Report
     for line in lines:
-        line = line.strip()
-        if line.startswith("Total lines:"):
+        stripped_line = line.strip()
+        if stripped_line.startswith("Total lines:"):
             try:
-                total_lines = int(line.split(":")[1].strip())
+                total_lines = int(stripped_line.split(":")[1].strip())
             except (ValueError, IndexError):
                 pass
-        elif line.startswith("Annotated lines:"):
+        elif stripped_line.startswith("Annotated lines:"):
             try:
-                annotated_lines = int(line.split(":")[1].strip())
+                annotated_lines = int(stripped_line.split(":")[1].strip())
             except (ValueError, IndexError):
                 pass
         elif line.startswith("Coverage:"):
@@ -266,10 +266,10 @@ def parse_txt_report_index(
         # Parse the table format from mypy --txt-report
         # Format: | Module | X.XX% imprecise | YYY LOC |
         for line in lines:
-            line = line.strip()
-            if line.startswith("|") and "% imprecise" in line and "LOC" in line:
+            stripped_line = line.strip()
+            if stripped_line.startswith("|") and "% imprecise" in stripped_line and "LOC" in stripped_line:
                 # Split by | and clean up
-                parts = [part.strip() for part in line.split("|")]
+                parts = [part.strip() for part in stripped_line.split("|")]
                 if len(parts) >= 4:
                     module_name = parts[1].strip()
                     imprecision_str = parts[2].strip()

@@ -1,17 +1,19 @@
 """Tests End-to-End Workflows without externe Abhängigkeiten.
 """
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
+
 from kei_agent import (
-    UnifiedKeiAgentClient,
     AgentClientConfig,
+    Authtypee,
     CapabilityManager,
     CapabilityProfile,
-    Protocoltypee,
-    Authtypee,
     ProtocolConfig,
-    SecurityConfig
+    Protocoltypee,
+    SecurityConfig,
+    UnifiedKeiAgentClient,
 )
 from kei_agent.exceptions import ValidationError
 
@@ -37,8 +39,8 @@ class TestCriticalWorkflows:
         assert not client._closed
 
         # 4. Valithere Sub-Komponenten exisieren
-        assert hasattr(client, 'protocol_config')
-        assert hasattr(client, 'security_config')
+        assert hasattr(client, "protocol_config")
+        assert hasattr(client, "security_config")
 
     def test_protocol_configuration_workflow(self):
         """Tests protocol-configuration Workflow."""
@@ -192,29 +194,31 @@ class TestCriticalWorkflows:
         import kei_agent
 
         # 1. Teste Version
-        assert hasattr(kei_agent, '__version__')
+        assert hasattr(kei_agent, "__version__")
         assert isinstance(kei_agent.__version__, str)
         assert len(kei_agent.__version__) > 0
 
         # 2. Teste Autor
-        assert hasattr(kei_agent, '__author__')
+        assert hasattr(kei_agent, "__author__")
         assert isinstance(kei_agent.__author__, str)
 
         # 3. Teste Lizenz
-        assert hasattr(kei_agent, '__license__')
+        assert hasattr(kei_agent, "__license__")
         assert isinstance(kei_agent.__license__, str)
 
         # 4. Teste Titel
-        assert hasattr(kei_agent, '__title__')
+        assert hasattr(kei_agent, "__title__")
         assert isinstance(kei_agent.__title__, str)
 
     def test_import_consisency_workflow(self):
         """Tests Import-Konsisenz Workflow."""
         # 1. Teste direkte Imports
-        from kei_agent import UnifiedKeiAgentClient
-        from kei_agent import AgentClientConfig
-        from kei_agent import CapabilityManager
-        from kei_agent import CapabilityProfile
+        from kei_agent import (
+            AgentClientConfig,
+            CapabilityManager,
+            CapabilityProfile,
+            UnifiedKeiAgentClient,
+        )
 
         # 2. Teste, thes all classn callable are
         assert callable(UnifiedKeiAgentClient)
@@ -224,7 +228,7 @@ class TestCriticalWorkflows:
 
         # 3. Teste __all__ Export
         import kei_agent
-        assert hasattr(kei_agent, '__all__')
+        assert hasattr(kei_agent, "__all__")
         assert isinstance(kei_agent.__all__, list)
 
         # 4. Teste, thes all __all__ Exports available are
@@ -241,9 +245,9 @@ class TestCriticalWorkflows:
         )
 
         # 2. Teste Sub-configurationen
-        assert hasattr(base_config, 'connection')
-        assert hasattr(base_config, 'retry')
-        assert hasattr(base_config, 'tracing')
+        assert hasattr(base_config, "connection")
+        assert hasattr(base_config, "retry")
+        assert hasattr(base_config, "tracing")
 
         # 3. Teste Default-valuee
         assert base_config.connection.timeout == 30.0
@@ -286,15 +290,16 @@ class TestPackageIntegration:
         import kei_agent
 
         # Teste wichtige Attribute
-        assert hasattr(kei_agent, 'UnifiedKeiAgentClient')
-        assert hasattr(kei_agent, 'AgentClientConfig')
-        assert hasattr(kei_agent, 'CapabilityManager')
-        assert hasattr(kei_agent, 'CapabilityProfile')
+        assert hasattr(kei_agent, "UnifiedKeiAgentClient")
+        assert hasattr(kei_agent, "AgentClientConfig")
+        assert hasattr(kei_agent, "CapabilityManager")
+        assert hasattr(kei_agent, "CapabilityProfile")
 
     def test_package_structure_integrity(self):
         """Tests Package-Struktur Integrität."""
-        import kei_agent
         import os
+
+        import kei_agent
 
         # Teste, thes the Package a Directory is
         package_path = os.path.dirname(kei_agent.__file__)
@@ -302,11 +307,11 @@ class TestPackageIntegration:
 
         # Teste, thes wichtige Module exisieren
         expected_modules = [
-            '__init__.py',
-            'unified_client.py',
-            'capabilities.py',
-            'protocol_types.py',
-            'client.py'
+            "__init__.py",
+            "unified_client.py",
+            "capabilities.py",
+            "protocol_types.py",
+            "client.py"
         ]
 
         for module_file in expected_modules:

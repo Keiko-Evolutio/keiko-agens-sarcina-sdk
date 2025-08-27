@@ -3,9 +3,9 @@ from typing import Any, Dict, List
 import httpx
 import pytest
 
-from kei_agent.security_manager import SecurityManager
-from kei_agent.protocol_types import SecurityConfig, Authtypee
 from kei_agent.exceptions import SecurityError
+from kei_agent.protocol_types import Authtypee, SecurityConfig
+from kei_agent.security_manager import SecurityManager
 
 
 class DummyResponse:

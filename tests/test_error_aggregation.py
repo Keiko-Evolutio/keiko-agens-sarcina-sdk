@@ -10,21 +10,32 @@ This test validates that:
 5. Integration with metrics collection works
 """
 
-import asyncio
 import time
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from kei_agent.error_aggregation import (
-    ErrorAggregator, ErrorEvent, ErrorCategory, ErrorSeverity, AlertRule,
-    get_error_aggregator, initialize_error_aggregation, record_error,
-    record_authentication_error, record_security_error, record_network_error
-)
 from kei_agent.alerting import (
-    AlertManager, NotificationConfig, NotificationChannel,
-    WebhookNotificationHandler, SlackNotificationHandler,
-    get_alert_manager, initialize_alerting
+    AlertManager,
+    NotificationChannel,
+    NotificationConfig,
+    SlackNotificationHandler,
+    WebhookNotificationHandler,
+    get_alert_manager,
+    initialize_alerting,
+)
+from kei_agent.error_aggregation import (
+    AlertRule,
+    ErrorAggregator,
+    ErrorCategory,
+    ErrorEvent,
+    ErrorSeverity,
+    get_error_aggregator,
+    initialize_error_aggregation,
+    record_authentication_error,
+    record_error,
+    record_network_error,
+    record_security_error,
 )
 
 
@@ -369,7 +380,7 @@ class TestAlertManager:
             severity=ErrorSeverity.HIGH
         )
 
-        with patch('aiohttp.ClientSession.post') as mock_post:
+        with patch("aiohttp.ClientSession.post") as mock_post:
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_post.return_value.__aenter__.return_value = mock_response

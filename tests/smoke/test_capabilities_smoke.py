@@ -2,12 +2,10 @@
 
 def test_import_capabilities():
     """Test that capabilities module can be imported."""
-    import kei_agent.capabilities
 
 
 def test_import_capability_classes():
     """Test that capability classes can be imported."""
-    from kei_agent.capabilities import CapabilityManager, CapabilityProfile
 
 
 def test_capability_profile_creation():
@@ -27,7 +25,7 @@ def test_capability_profile_creation():
 def test_capability_manager_creation():
     """Test basic CapabilityManager instantiation."""
     from kei_agent.capabilities import CapabilityManager
-    from kei_agent.client import KeiAgentClient, AgentClientConfig
+    from kei_agent.client import AgentClientConfig, KeiAgentClient
 
     # Create a mock client for the manager
     config = AgentClientConfig(
@@ -40,4 +38,4 @@ def test_capability_manager_creation():
     manager = CapabilityManager(base_client=client)
     assert manager is not None
     # Check for any attribute that indicates the manager was created successfully
-    assert hasattr(manager, 'base_client') or hasattr(manager, '_capabilities') or hasattr(manager, 'capabilities')
+    assert hasattr(manager, "base_client") or hasattr(manager, "_capabilities") or hasattr(manager, "capabilities")

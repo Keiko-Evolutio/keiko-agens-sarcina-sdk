@@ -10,16 +10,16 @@ These tests validate system resilience under security-related failures:
 """
 
 import asyncio
-import pytest
-import time
 import ssl
-from unittest.mock import patch, MagicMock
-from datetime import datetime, timedelta, timezone
+import time
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 try:
-    from kei_agent.unified_client import UnifiedKeiAgentClient, AgentClientConfig
-    from kei_agent.error_aggregation import get_error_aggregator, ErrorCategory, ErrorSeverity
+    from kei_agent.error_aggregation import ErrorCategory, ErrorSeverity, get_error_aggregator
     from kei_agent.security_manager import SecurityManager
+    from kei_agent.unified_client import AgentClientConfig, UnifiedKeiAgentClient
 except ImportError:
     # Mock classes for testing when modules don't exist
     from enum import Enum
@@ -53,7 +53,7 @@ except ImportError:
         def __init__(self):
             pass
 
-from tests.chaos.chaos_framework import chaos_test_context, ChaosTest
+from tests.chaos.chaos_framework import chaos_test_context
 from tests.chaos.chaos_metrics import get_chaos_metrics_collector
 
 
@@ -116,9 +116,9 @@ class SecurityChaosInjector:
             raise Exception("Token refresh service unavailable")
 
         # Apply patches
-        token_patch = patch('kei_agent.security_manager.SecurityManager.validate_token',
+        token_patch = patch("kei_agent.security_manager.SecurityManager.validate_token",
                            side_effect=mock_validate_token)
-        refresh_patch = patch('kei_agent.security_manager.SecurityManager.refresh_token',
+        refresh_patch = patch("kei_agent.security_manager.SecurityManager.refresh_token",
                              side_effect=mock_refresh_token)
 
         token_patch.start()
@@ -139,8 +139,8 @@ class SecurityChaosInjector:
             raise ssl.SSLError("Certificate verification failed")
 
         # Apply patches
-        ssl_patch = patch('ssl.create_default_context', side_effect=mock_ssl_context)
-        verify_patch = patch('ssl.match_hostname', side_effect=mock_ssl_verification_failure)
+        ssl_patch = patch("ssl.create_default_context", side_effect=mock_ssl_context)
+        verify_patch = patch("ssl.match_hostname", side_effect=mock_ssl_verification_failure)
 
         ssl_patch.start()
         verify_patch.start()
@@ -165,7 +165,7 @@ class SecurityChaosInjector:
                 raise SecurityError(f"Malicious pattern detected: {random.choice(malicious_patterns)}")
 
         # Apply patch to simulate attack detection
-        attack_patch = patch('kei_agent.unified_client.UnifiedKeiAgentClient._make_request',
+        attack_patch = patch("kei_agent.unified_client.UnifiedKeiAgentClient._make_request",
                             side_effect=mock_malicious_request)
         attack_patch.start()
         self.patches.append(attack_patch)
@@ -176,7 +176,7 @@ class SecurityChaosInjector:
         self.request_counts = {}
 
         def mock_rate_limited_request(self, *args, **kwargs):
-            client_id = getattr(self, 'agent_id', 'unknown')
+            client_id = getattr(self, "agent_id", "unknown")
             current_time = time.time()
 
             # Initialize tracking for this client
@@ -197,7 +197,7 @@ class SecurityChaosInjector:
                 raise Exception("Rate limit exceeded - potential bypass attempt detected")
 
         # Apply rate limiting patch
-        rate_patch = patch('kei_agent.unified_client.UnifiedKeiAgentClient._execute_operation',
+        rate_patch = patch("kei_agent.unified_client.UnifiedKeiAgentClient._execute_operation",
                           side_effect=mock_rate_limited_request)
         rate_patch.start()
         self.patches.append(rate_patch)
@@ -205,7 +205,6 @@ class SecurityChaosInjector:
 
 class SecurityError(Exception):
     """Custom security error for testing."""
-    pass
 
 
 class TestSecurityChaos:
@@ -262,13 +261,13 @@ class TestSecurityChaos:
 
                                 # Record security event
                                 self.error_aggregator.add_error({
-                                    'error_id': f'auth_fail_{i}',
-                                    'timestamp': time.time(),
-                                    'agent_id': self.config.agent_id,
-                                    'error_type': 'AuthenticationError',
-                                    'error_message': 'Token expired',
-                                    'category': ErrorCategory.AUTHENTICATION,
-                                    'severity': ErrorSeverity.HIGH
+                                    "error_id": f"auth_fail_{i}",
+                                    "timestamp": time.time(),
+                                    "agent_id": self.config.agent_id,
+                                    "error_type": "AuthenticationError",
+                                    "error_message": "Token expired",
+                                    "category": ErrorCategory.AUTHENTICATION,
+                                    "severity": ErrorSeverity.HIGH
                                 })
                         else:
                             # Later attempts succeed (token refreshed)
@@ -342,13 +341,13 @@ class TestSecurityChaos:
 
                                 # Record security event
                                 self.error_aggregator.add_error({
-                                    'error_id': f'ssl_fail_{i}',
-                                    'timestamp': time.time(),
-                                    'agent_id': self.config.agent_id,
-                                    'error_type': 'SSLError',
-                                    'error_message': 'Certificate verification failed',
-                                    'category': ErrorCategory.SECURITY,
-                                    'severity': ErrorSeverity.CRITICAL
+                                    "error_id": f"ssl_fail_{i}",
+                                    "timestamp": time.time(),
+                                    "agent_id": self.config.agent_id,
+                                    "error_type": "SSLError",
+                                    "error_message": "Certificate verification failed",
+                                    "category": ErrorCategory.SECURITY,
+                                    "severity": ErrorSeverity.CRITICAL
                                 })
                             else:  # Odd attempts: fallback to insecure (with warning)
                                 insecure_fallbacks += 1
@@ -356,13 +355,13 @@ class TestSecurityChaos:
 
                                 # Log security warning
                                 self.error_aggregator.add_error({
-                                    'error_id': f'ssl_warning_{i}',
-                                    'timestamp': time.time(),
-                                    'agent_id': self.config.agent_id,
-                                    'error_type': 'SecurityWarning',
-                                    'error_message': 'Using insecure connection due to certificate issues',
-                                    'category': ErrorCategory.SECURITY,
-                                    'severity': ErrorSeverity.MEDIUM
+                                    "error_id": f"ssl_warning_{i}",
+                                    "timestamp": time.time(),
+                                    "agent_id": self.config.agent_id,
+                                    "error_type": "SecurityWarning",
+                                    "error_message": "Using insecure connection due to certificate issues",
+                                    "category": ErrorCategory.SECURITY,
+                                    "severity": ErrorSeverity.MEDIUM
                                 })
                         else:
                             # Later attempts succeed (certificate issues resolved)
@@ -445,13 +444,13 @@ class TestSecurityChaos:
 
                                 # Record security event
                                 self.error_aggregator.add_error({
-                                    'error_id': f'attack_{i}',
-                                    'timestamp': time.time(),
-                                    'agent_id': self.config.agent_id,
-                                    'error_type': 'SecurityAttack',
-                                    'error_message': str(e),
-                                    'category': ErrorCategory.SECURITY,
-                                    'severity': ErrorSeverity.CRITICAL
+                                    "error_id": f"attack_{i}",
+                                    "timestamp": time.time(),
+                                    "agent_id": self.config.agent_id,
+                                    "error_type": "SecurityAttack",
+                                    "error_message": str(e),
+                                    "category": ErrorCategory.SECURITY,
+                                    "severity": ErrorSeverity.CRITICAL
                                 })
                         else:
                             # Normal requests after attack simulation
@@ -532,13 +531,13 @@ class TestSecurityChaos:
 
                                     # Record security event
                                     self.error_aggregator.add_error({
-                                        'error_id': f'rate_limit_{i}',
-                                        'timestamp': time.time(),
-                                        'agent_id': self.config.agent_id,
-                                        'error_type': 'RateLimitViolation',
-                                        'error_message': 'Rate limit exceeded',
-                                        'category': ErrorCategory.SECURITY,
-                                        'severity': ErrorSeverity.HIGH
+                                        "error_id": f"rate_limit_{i}",
+                                        "timestamp": time.time(),
+                                        "agent_id": self.config.agent_id,
+                                        "error_type": "RateLimitViolation",
+                                        "error_message": "Rate limit exceeded",
+                                        "category": ErrorCategory.SECURITY,
+                                        "severity": ErrorSeverity.HIGH
                                     })
                                 else:
                                     chaos_test.record_operation(False)

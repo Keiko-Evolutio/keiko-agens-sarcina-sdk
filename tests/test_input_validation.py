@@ -11,15 +11,15 @@ This test validates that:
 """
 
 import json
-import pytest
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
-from kei_agent.validation_models import (
-    SecurityConfigValidation, AgentClientConfigValidation,
-    ProtocolConfigValidation, validate_configuration
-)
-from kei_agent.input_sanitizer import InputSanitizer, RateLimiter, get_sanitizer
+import pytest
+
 from kei_agent.exceptions import ValidationError
+from kei_agent.input_sanitizer import InputSanitizer, RateLimiter
+from kei_agent.validation_models import (
+    validate_configuration,
+)
 
 
 class TestValidationModels:
@@ -28,135 +28,135 @@ class TestValidationModels:
     def test_security_config_validation_valid(self):
         """Test valid security configuration."""
         config = {
-            'auth_type': 'bearer',
-            'api_token': 'valid-token-123456',
-            'rbac_enabled': True,
-            'audit_enabled': True,
-            'token_cache_ttl': 3600
+            "auth_type": "bearer",
+            "api_token": "valid-token-123456",
+            "rbac_enabled": True,
+            "audit_enabled": True,
+            "token_cache_ttl": 3600
         }
 
-        validated = validate_configuration(config, 'security')
-        assert validated['auth_type'] == 'bearer'
-        assert validated['api_token'] == 'valid-token-123456'
+        validated = validate_configuration(config, "security")
+        assert validated["auth_type"] == "bearer"
+        assert validated["api_token"] == "valid-token-123456"
 
     def test_security_config_validation_invalid_token(self):
         """Test security configuration with invalid token."""
         config = {
-            'auth_type': 'bearer',
-            'api_token': 'your-token-here',  # Placeholder
-            'rbac_enabled': True
+            "auth_type": "bearer",
+            "api_token": "your-token-here",  # Placeholder
+            "rbac_enabled": True
         }
 
         with pytest.raises(ValidationError, match="placeholder value"):
-            validate_configuration(config, 'security')
+            validate_configuration(config, "security")
 
     def test_security_config_validation_weak_token(self):
         """Test security configuration with weak token."""
         config = {
-            'auth_type': 'bearer',
-            'api_token': 'weak',  # Too short
-            'rbac_enabled': True
+            "auth_type": "bearer",
+            "api_token": "weak",  # Too short
+            "rbac_enabled": True
         }
 
         with pytest.raises(ValidationError):
-            validate_configuration(config, 'security')
+            validate_configuration(config, "security")
 
     def test_security_config_oidc_validation(self):
         """Test OIDC configuration validation."""
         config = {
-            'auth_type': 'oidc',
-            'oidc_issuer': 'https://auth.example.com',
-            'oidc_client_id': 'client-123',
-            'oidc_client_secret': 'secret-456789',
-            'oidc_scope': 'openid profile'
+            "auth_type": "oidc",
+            "oidc_issuer": "https://auth.example.com",
+            "oidc_client_id": "client-123",
+            "oidc_client_secret": "secret-456789",
+            "oidc_scope": "openid profile"
         }
 
-        validated = validate_configuration(config, 'security')
-        assert validated['oidc_issuer'] == 'https://auth.example.com'
+        validated = validate_configuration(config, "security")
+        assert validated["oidc_issuer"] == "https://auth.example.com"
 
     def test_security_config_oidc_missing_fields(self):
         """Test OIDC configuration with missing fields."""
         config = {
-            'auth_type': 'oidc',
-            'oidc_issuer': 'https://auth.example.com',
+            "auth_type": "oidc",
+            "oidc_issuer": "https://auth.example.com",
             # Missing client_id and client_secret
         }
 
         with pytest.raises(ValidationError, match="OIDC authentication requires"):
-            validate_configuration(config, 'security')
+            validate_configuration(config, "security")
 
     def test_agent_config_validation_valid(self):
         """Test valid agent configuration."""
         config = {
-            'base_url': 'https://api.example.com',
-            'api_token': 'valid-token-123456',
-            'agent_id': 'test-agent',
-            'timeout': 30.0,
-            'max_retries': 3
+            "base_url": "https://api.example.com",
+            "api_token": "valid-token-123456",
+            "agent_id": "test-agent",
+            "timeout": 30.0,
+            "max_retries": 3
         }
 
-        validated = validate_configuration(config, 'agent')
-        assert validated['base_url'] == 'https://api.example.com'
-        assert validated['agent_id'] == 'test-agent'
+        validated = validate_configuration(config, "agent")
+        assert validated["base_url"] == "https://api.example.com"
+        assert validated["agent_id"] == "test-agent"
 
     def test_agent_config_validation_invalid_url(self):
         """Test agent configuration with invalid URL."""
         config = {
-            'base_url': 'http://insecure.example.com',  # HTTP not allowed
-            'api_token': 'valid-token-123456',
-            'agent_id': 'test-agent'
+            "base_url": "http://insecure.example.com",  # HTTP not allowed
+            "api_token": "valid-token-123456",
+            "agent_id": "test-agent"
         }
 
         with pytest.raises(ValidationError, match="must use HTTPS"):
-            validate_configuration(config, 'agent')
+            validate_configuration(config, "agent")
 
     def test_agent_config_validation_reserved_agent_id(self):
         """Test agent configuration with reserved agent ID."""
         config = {
-            'base_url': 'https://api.example.com',
-            'api_token': 'valid-token-123456',
-            'agent_id': 'admin'  # Reserved name
+            "base_url": "https://api.example.com",
+            "api_token": "valid-token-123456",
+            "agent_id": "admin"  # Reserved name
         }
 
         with pytest.raises(ValidationError, match="is reserved"):
-            validate_configuration(config, 'agent')
+            validate_configuration(config, "agent")
 
     def test_protocol_config_validation_valid(self):
         """Test valid protocol configuration."""
         config = {
-            'rpc_enabled': True,
-            'stream_enabled': True,
-            'bus_enabled': False,
-            'mcp_enabled': True,
-            'preferred_protocol': 'rpc',
-            'max_connections_per_protocol': 10
+            "rpc_enabled": True,
+            "stream_enabled": True,
+            "bus_enabled": False,
+            "mcp_enabled": True,
+            "preferred_protocol": "rpc",
+            "max_connections_per_protocol": 10
         }
 
-        validated = validate_configuration(config, 'protocol')
-        assert validated['preferred_protocol'] == 'rpc'
+        validated = validate_configuration(config, "protocol")
+        assert validated["preferred_protocol"] == "rpc"
 
     def test_protocol_config_validation_no_protocols(self):
         """Test protocol configuration with no protocols enabled."""
         config = {
-            'rpc_enabled': False,
-            'stream_enabled': False,
-            'bus_enabled': False,
-            'mcp_enabled': False
+            "rpc_enabled": False,
+            "stream_enabled": False,
+            "bus_enabled": False,
+            "mcp_enabled": False
         }
 
         with pytest.raises(ValidationError, match="At least one protocol must be enabled"):
-            validate_configuration(config, 'protocol')
+            validate_configuration(config, "protocol")
 
     def test_protocol_config_validation_invalid_preferred(self):
         """Test protocol configuration with invalid preferred protocol."""
         config = {
-            'rpc_enabled': False,
-            'stream_enabled': True,
-            'preferred_protocol': 'rpc'  # RPC not enabled
+            "rpc_enabled": False,
+            "stream_enabled": True,
+            "preferred_protocol": "rpc"  # RPC not enabled
         }
 
         with pytest.raises(ValidationError, match="Preferred protocol 'rpc' is not enabled"):
-            validate_configuration(config, 'protocol')
+            validate_configuration(config, "protocol")
 
 
 class TestInputSanitizer:

@@ -4,10 +4,11 @@ Basic chaos engineering framework test to verify functionality.
 """
 
 import asyncio
-import pytest
 import time
 
-from tests.chaos.chaos_framework import chaos_test_context, ChaosTest, ChaosMetrics
+import pytest
+
+from tests.chaos.chaos_framework import ChaosMetrics, chaos_test_context
 from tests.chaos.chaos_metrics import get_chaos_metrics_collector, reset_chaos_metrics_collector
 
 

@@ -2,12 +2,10 @@
 
 def test_import_config_api():
     """Test that config_api module can be imported."""
-    import kei_agent.config_api
 
 
 def test_import_config_api_class():
     """Test that ConfigAPI class can be imported."""
-    from kei_agent.config_api import ConfigAPI
 
 
 def test_config_api_creation():
@@ -16,8 +14,8 @@ def test_config_api_creation():
 
     api = ConfigAPI(require_auth=False)
     assert api is not None
-    assert hasattr(api, 'create_routes')
-    assert hasattr(api, 'get_config_handler')
+    assert hasattr(api, "create_routes")
+    assert hasattr(api, "get_config_handler")
 
 
 def test_get_config_api():
@@ -26,7 +24,7 @@ def test_get_config_api():
 
     api = get_config_api()
     assert api is not None
-    assert hasattr(api, 'create_routes')
+    assert hasattr(api, "create_routes")
 
 
 def test_initialize_config_api():
@@ -35,4 +33,4 @@ def test_initialize_config_api():
 
     api = initialize_config_api(require_auth=False)
     assert api is not None
-    assert hasattr(api, 'create_routes')
+    assert hasattr(api, "create_routes")

@@ -1,14 +1,14 @@
 """Integration tests for end-to-end client workflows."""
 
-import pytest
-import tempfile
 import json
 import os
+import tempfile
 from unittest.mock import AsyncMock, patch
 
-from kei_agent.client import KeiAgentClient, AgentClientConfig
+import pytest
+
+from kei_agent.client import AgentClientConfig, KeiAgentClient
 from kei_agent.unified_client import UnifiedKeiAgentClient
-from kei_agent.exceptions import KeiSDKError
 
 
 @pytest.mark.asyncio
@@ -32,7 +32,7 @@ async def test_client_register_authenticate_workflow():
         {"result": "success", "data": {"message": "Hello World"}}
     ]
 
-    with patch('aiohttp.ClientSession.request') as mock_request:
+    with patch("aiohttp.ClientSession.request") as mock_request:
         # Configure mock to return different responses for each call
         mock_request.return_value.__aenter__ = AsyncMock()
         mock_request.return_value.__aexit__ = AsyncMock()
@@ -78,7 +78,7 @@ async def test_unified_client_protocol_switching():
         agent_id="test-unified-client"
     )
 
-    with patch('aiohttp.ClientSession.request') as mock_request:
+    with patch("aiohttp.ClientSession.request") as mock_request:
         mock_request.return_value.__aenter__ = AsyncMock()
         mock_request.return_value.__aexit__ = AsyncMock()
 
@@ -114,7 +114,7 @@ def test_config_loading_validation():
         "max_connections": 50
     }
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(valid_config, f)
         temp_path = f.name
 
@@ -162,7 +162,7 @@ async def test_error_handling_scenarios():
     )
 
     # Test connection timeout
-    with patch('aiohttp.ClientSession.request') as mock_request:
+    with patch("aiohttp.ClientSession.request") as mock_request:
         mock_request.side_effect = Exception("Connection timeout")
 
         client = KeiAgentClient(config)
@@ -174,7 +174,7 @@ async def test_error_handling_scenarios():
             await client.close()
 
     # Test HTTP error responses
-    with patch('aiohttp.ClientSession.request') as mock_request:
+    with patch("aiohttp.ClientSession.request") as mock_request:
         mock_request.return_value.__aenter__ = AsyncMock()
         mock_request.return_value.__aexit__ = AsyncMock()
 

@@ -13,16 +13,19 @@ These benchmarks establish baseline performance metrics for:
 
 import asyncio
 import time
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from kei_agent import UnifiedKeiAgentClient, AgentClientConfig
-from kei_agent.protocol_types import SecurityConfig, Authtypee
+from kei_agent import AgentClientConfig, UnifiedKeiAgentClient
+from kei_agent.protocol_types import Authtypee, SecurityConfig
+
 from . import (
-    skip_if_performance_disabled, performance_test,
-    PerformanceBenchmark, PerformanceBaseline, PerformanceMetrics,
-    PERFORMANCE_CONFIG, PERFORMANCE_BUDGETS
+    PERFORMANCE_CONFIG,
+    PerformanceBaseline,
+    PerformanceBenchmark,
+    performance_test,
+    skip_if_performance_disabled,
 )
 
 
@@ -75,7 +78,7 @@ class SimpleRequestBenchmark(PerformanceBenchmark):
 
     async def run_single_iteration(self):
         """Run single request."""
-        with patch.object(self.client, '_make_request') as mock_request:
+        with patch.object(self.client, "_make_request") as mock_request:
             mock_request.return_value = {"status": "ok", "data": {"message": "benchmark"}}
             response = await self.client.get_agent_status()
             return response
@@ -169,7 +172,7 @@ class ConcurrentRequestsBenchmark(PerformanceBenchmark):
 
     async def run_single_iteration(self):
         """Run concurrent requests."""
-        with patch.object(self.client, '_make_request') as mock_request:
+        with patch.object(self.client, "_make_request") as mock_request:
             mock_request.return_value = {"status": "ok", "request_id": "benchmark"}
 
             # Create concurrent tasks
@@ -213,7 +216,7 @@ class TestCorePerformance:
             self.baseline.update_baseline(metrics)
 
         # Log performance metrics
-        print(f"\n📊 Client Initialization Performance:")
+        print("\n📊 Client Initialization Performance:")
         print(f"   Duration: {metrics.duration:.3f}s")
         print(f"   Memory: {metrics.memory_usage_mb:.1f}MB")
         print(f"   Iterations: {metrics.iterations}")
@@ -240,7 +243,7 @@ class TestCorePerformance:
             self.baseline.update_baseline(metrics)
 
         # Log performance metrics
-        print(f"\n📊 Simple Request Performance:")
+        print("\n📊 Simple Request Performance:")
         print(f"   Duration: {metrics.duration:.3f}s")
         print(f"   Memory: {metrics.memory_usage_mb:.1f}MB")
         print(f"   Requests per second: {metrics.iterations / metrics.duration:.1f}")
@@ -267,7 +270,7 @@ class TestCorePerformance:
             self.baseline.update_baseline(metrics)
 
         # Log performance metrics
-        print(f"\n📊 Authentication Performance:")
+        print("\n📊 Authentication Performance:")
         print(f"   Duration: {metrics.duration:.3f}s")
         print(f"   Memory: {metrics.memory_usage_mb:.1f}MB")
         print(f"   Auth operations per second: {metrics.iterations / metrics.duration:.1f}")
@@ -294,7 +297,7 @@ class TestCorePerformance:
             self.baseline.update_baseline(metrics)
 
         # Log performance metrics
-        print(f"\n📊 Message Serialization Performance:")
+        print("\n📊 Message Serialization Performance:")
         print(f"   Duration: {metrics.duration:.3f}s")
         print(f"   Memory: {metrics.memory_usage_mb:.1f}MB")
         print(f"   Serializations per second: {metrics.iterations / metrics.duration:.1f}")
@@ -326,7 +329,7 @@ class TestCorePerformance:
         throughput = total_requests / metrics.duration
 
         # Log performance metrics
-        print(f"\n📊 Concurrent Requests Performance:")
+        print("\n📊 Concurrent Requests Performance:")
         print(f"   Duration: {metrics.duration:.3f}s")
         print(f"   Memory: {metrics.memory_usage_mb:.1f}MB")
         print(f"   Concurrent users: {concurrent_count}")
@@ -354,7 +357,7 @@ class TestCorePerformance:
             monitor.record_measurement("client_created")
 
             # Mock multiple operations
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 mock_request.return_value = {"status": "ok"}
 
                 # Multiple requests
@@ -369,7 +372,7 @@ class TestCorePerformance:
         measurements = metrics.metadata["measurements"]
         max_memory_delta = max(m["memory_delta_mb"] for m in measurements)
 
-        print(f"\n📊 Memory Usage Analysis:")
+        print("\n📊 Memory Usage Analysis:")
         print(f"   Peak memory delta: {max_memory_delta:.1f}MB")
         print(f"   Final memory delta: {metrics.memory_usage_mb:.1f}MB")
         print(f"   Memory measurements: {len(measurements)}")
@@ -393,7 +396,7 @@ class TestCorePerformance:
         response_times = []
 
         async with UnifiedKeiAgentClient(config) as client:
-            with patch.object(client, '_make_request') as mock_request:
+            with patch.object(client, "_make_request") as mock_request:
                 mock_request.return_value = {"status": "ok"}
 
                 # Run requests for specified duration
@@ -413,7 +416,7 @@ class TestCorePerformance:
         max_response_time = max(response_times)
         throughput = request_count / duration
 
-        print(f"\n📊 Load Test Results:")
+        print("\n📊 Load Test Results:")
         print(f"   Duration: {duration}s")
         print(f"   Total requests: {request_count}")
         print(f"   Throughput: {throughput:.1f} requests/second")

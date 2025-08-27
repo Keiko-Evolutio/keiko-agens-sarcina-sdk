@@ -10,13 +10,12 @@ These tests validate system resilience under various network failure conditions:
 """
 
 import asyncio
-import pytest
 import time
-from unittest.mock import patch, MagicMock
-import socket
+
+import pytest
 
 try:
-    from kei_agent.unified_client import UnifiedKeiAgentClient, AgentClientConfig
+    from kei_agent.unified_client import AgentClientConfig, UnifiedKeiAgentClient
 except ImportError:
     # Mock classes for testing when modules don't exist
     class AgentClientConfig:
@@ -38,10 +37,7 @@ except ImportError:
         async def close(self):
             pass
 
-from tests.chaos.chaos_framework import (
-    chaos_test_context, NetworkChaosInjector, ChaosTest,
-    create_network_chaos
-)
+from tests.chaos.chaos_framework import NetworkChaosInjector, chaos_test_context
 from tests.chaos.chaos_metrics import get_chaos_metrics_collector
 
 
@@ -171,10 +167,9 @@ class TestNetworkChaos:
                                 if retry == 2:  # Last retry
                                     chaos_test.record_error()
                                 continue
-                            else:
-                                chaos_test.record_operation(True)
-                                successful_connections += 1
-                                break
+                            chaos_test.record_operation(True)
+                            successful_connections += 1
+                            break
 
                     except Exception:
                         chaos_test.record_error()
@@ -240,9 +235,7 @@ class TestNetworkChaos:
                             await asyncio.sleep(0.1)
 
                             # Simulate different failure rates for different protocols
-                            if protocol == "rpc" and i < 2:  # RPC fails first 2
-                                chaos_test.record_operation(False)
-                            elif protocol == "stream" and i < 1:  # Stream fails first 1
+                            if (protocol == "rpc" and i < 2) or (protocol == "stream" and i < 1):  # RPC fails first 2
                                 chaos_test.record_operation(False)
                             else:
                                 chaos_test.record_operation(True)

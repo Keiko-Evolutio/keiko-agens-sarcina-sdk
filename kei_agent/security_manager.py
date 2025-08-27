@@ -418,7 +418,7 @@ class SecurityManager:
             and not self._token_refresh_task.done(),
         }
 
-    def check_permission(self, user_id: str, resource: str, action: str) -> bool:
+    def check_permission(self, user_id: str, resource: str, action: str) -> bool:  # noqa: ARG002
         """Checks user permissions for RBAC (stub for backward compatibility).
 
         Args:
@@ -561,6 +561,26 @@ class SecurityManager:
             SSL context for mTLS
         """
         return await self._create_ssl_context()
+
+    async def _refresh_bearer_token(self) -> None:
+        """Refreshes the bearer token.
+
+        This method is called when the current bearer token is expired
+        or about to expire.
+        """
+        # Stub implementation for backward compatibility
+        # In a real implementation, this would make an API call to refresh the token
+        logger.debug("Bearer token refresh requested (stub implementation)")
+
+    async def _refresh_oidc_token(self) -> None:
+        """Refreshes the OIDC token using the refresh token.
+
+        This method is called when the current OIDC access token is expired
+        or about to expire.
+        """
+        # Stub implementation for backward compatibility
+        # In a real implementation, this would use the refresh token to get a new access token
+        logger.debug("OIDC token refresh requested (stub implementation)")
 
 
 __all__ = ["SecurityManager"]

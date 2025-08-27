@@ -2,12 +2,10 @@
 
 def test_import_validate_setup():
     """Test that validate_setup module can be imported."""
-    import kei_agent.validate_setup
 
 
 def test_import_validation_classes():
     """Test that validation classes can be imported."""
-    from kei_agent.validate_setup import ValidationResult, SetupValidator
 
 
 def test_validation_result_creation():
@@ -30,9 +28,9 @@ def test_setup_validator_creation():
 
     validator = SetupValidator()
     assert validator is not None
-    assert hasattr(validator, 'results')
-    assert hasattr(validator, 'validate_python_version')
-    assert hasattr(validator, 'run_all_validations')
+    assert hasattr(validator, "results")
+    assert hasattr(validator, "validate_python_version")
+    assert hasattr(validator, "run_all_validations")
 
 
 def test_main_function_exists():
@@ -49,10 +47,10 @@ def test_setup_validator_methods():
     validator = SetupValidator()
 
     # Check that key methods exist
-    assert hasattr(validator, 'validate_python_version')
-    assert hasattr(validator, 'validate_depenthecies')  # Note: typo in original
-    assert hasattr(validator, 'validate_file_structure')
-    assert hasattr(validator, 'run_all_validations')
+    assert hasattr(validator, "validate_python_version")
+    assert hasattr(validator, "validate_depenthecies")  # Note: typo in original
+    assert hasattr(validator, "validate_file_structure")
+    assert hasattr(validator, "run_all_validations")
 
 
 def test_validation_functions_exist():
@@ -61,6 +59,6 @@ def test_validation_functions_exist():
 
     # Test that the class has the expected validation methods
     validator = SetupValidator()
-    assert hasattr(validator, 'validate_imports')
-    assert hasattr(validator, 'validate_package_metadata')
-    assert hasattr(validator, 'validate_tests')
+    assert hasattr(validator, "validate_imports")
+    assert hasattr(validator, "validate_package_metadata")
+    assert hasattr(validator, "validate_tests")
