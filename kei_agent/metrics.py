@@ -406,7 +406,6 @@ class MetricsCollector:
         }
 
 
-
 # Global metrics collector instance
 _metrics_collector: Optional[MetricsCollector] = None
 

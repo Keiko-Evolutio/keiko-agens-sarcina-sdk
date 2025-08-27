@@ -11,7 +11,7 @@ def test_import_validation_classes():
         ValidationSeverity,
         ValidationResult,
         BaseValidator,
-        stringValidator,
+        StringValidator,
         JSONValidator,
         CompositeValidator,
         InputValidator,
@@ -39,10 +39,10 @@ def test_validation_result_creation():
 
 
 def test_string_validator_creation():
-    """Test basic stringValidator instantiation."""
-    from kei_agent.input_validation import stringValidator
+    """Test basic StringValidator instantiation."""
+    from kei_agent.input_validation import StringValidator
 
-    validator = stringValidator(
+    validator = StringValidator(
         name="test-string",
         min_length=1,
         max_length=100

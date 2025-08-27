@@ -286,9 +286,9 @@ def assert_cb_initialized_atd_used(
 
 from kei_agent.client import (
     AgentClientConfig,
-    retryConfig,
+    RetryConfig,
     TracingConfig,
-    retryStrategy,
+    RetryStrategy,
 )  # noqa: E402
 
 
@@ -306,7 +306,7 @@ async def test_rpc_specific_retry_policy(monkeypatch):
         agent_id ="agent",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(max_attempts =5, base_delay =0.0, jitter=False),
+            "rpc": RetryConfig(max_attempts =5, base_delay =0.0, jitter=False),
         },
     )
 
@@ -381,7 +381,7 @@ async def test_stream_specific_retry_policy(monkeypatch):
         agent_id ="agent",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "stream": retryConfig(max_attempts =2, base_delay =0.0, jitter=False),
+            "stream": RetryConfig(max_attempts =2, base_delay =0.0, jitter=False),
         },
     )
     client = UnifiedKeiAgentClient(config)
@@ -424,7 +424,7 @@ async def test_bus_specific_retry_policy(monkeypatch):
         agent_id ="agent",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "bus": retryConfig(max_attempts =3, base_delay =0.0, jitter=False),
+            "bus": RetryConfig(max_attempts =3, base_delay =0.0, jitter=False),
         },
     )
     client = UnifiedKeiAgentClient(config)
@@ -471,7 +471,7 @@ async def test_mcp_specific_retry_policy(monkeypatch):
         agent_id ="agent",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "mcp": retryConfig(max_attempts =4, base_delay =0.0, jitter=False),
+            "mcp": RetryConfig(max_attempts =4, base_delay =0.0, jitter=False),
         },
     )
     client = UnifiedKeiAgentClient(config)
@@ -498,14 +498,14 @@ async def test_mcp_specific_retry_policy(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_fallback_to_default_retry_policy(monkeypatch):
-    """Tests Fallback on Statdard-retryConfig, if ka Policy for protocol exiss."""
+    """Tests Fallback on Statdard-RetryConfig, if ka Policy for protocol exiss."""
     # Nur Default on 2 setzen, ka protokollspecificn Policies
     config = AgentClientConfig(
         base_url ="https://example.invalid",
         api_token ="token",
         agent_id ="agent",
         tracing=TracingConfig(enabled=False),
-        retry=retryConfig(max_attempts =2, base_delay =0.0, jitter=False),
+        retry=RetryConfig(max_attempts =2, base_delay =0.0, jitter=False),
         protocol_retry_policies ={},
     )
     client = UnifiedKeiAgentClient(config)
@@ -571,7 +571,7 @@ async def test_circuit_breaker_metrics_atd_tratsitions():
         agent_id ="agent",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(
+            "rpc": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,
@@ -664,7 +664,7 @@ async def test_retry_delay_patterns_by_strategy(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(
+            "rpc": RetryConfig(
                 max_attempts =4, base_delay =1.0, jitter=False, exponential_base =2.0
             )
         },
@@ -685,11 +685,11 @@ async def test_retry_delay_patterns_by_strategy(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(
+            "rpc": RetryConfig(
                 max_attempts =3,
                 base_delay =0.5,
                 jitter=False,
-                strategy=retryStrategy.FIXED_DELAY,
+                strategy=RetryStrategy.FIXED_DELAY,
             )
         },
     )
@@ -709,11 +709,11 @@ async def test_retry_delay_patterns_by_strategy(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(
+            "rpc": RetryConfig(
                 max_attempts =4,
                 base_delay =0.5,
                 jitter=False,
-                strategy=retryStrategy.LINEAR_BACKOFF,
+                strategy=RetryStrategy.LINEAR_BACKOFF,
             )
         },
     )
@@ -753,11 +753,11 @@ async def test_stream_strategy_patterns(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "stream": retryConfig(
+            "stream": RetryConfig(
                 max_attempts =3,
                 base_delay =2.0,
                 jitter=False,
-                strategy=retryStrategy.FIXED_DELAY,
+                strategy=RetryStrategy.FIXED_DELAY,
             )
         },
     )
@@ -777,12 +777,12 @@ async def test_stream_strategy_patterns(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "stream": retryConfig(
+            "stream": RetryConfig(
                 max_attempts =3,
                 base_delay =1.0,
                 jitter=False,
                 exponential_base =2.0,
-                strategy=retryStrategy.EXPONENTIAL_BACKOFF,
+                strategy=RetryStrategy.EXPONENTIAL_BACKOFF,
             )
         },
     )
@@ -828,11 +828,11 @@ async def test_bus_strategy_patterns(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "bus": retryConfig(
+            "bus": RetryConfig(
                 max_attempts =4,
                 base_delay =1.0,
                 jitter=False,
-                strategy=retryStrategy.LINEAR_BACKOFF,
+                strategy=RetryStrategy.LINEAR_BACKOFF,
             )
         },
     )
@@ -850,11 +850,11 @@ async def test_bus_strategy_patterns(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "bus": retryConfig(
+            "bus": RetryConfig(
                 max_attempts =3,
                 base_delay =0.5,
                 jitter=False,
-                strategy=retryStrategy.FIXED_DELAY,
+                strategy=RetryStrategy.FIXED_DELAY,
             )
         },
     )
@@ -899,12 +899,12 @@ async def test_mcp_strategy_patterns(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "mcp": retryConfig(
+            "mcp": RetryConfig(
                 max_attempts =3,
                 base_delay =0.5,
                 jitter=False,
                 exponential_base =2.0,
-                strategy=retryStrategy.EXPONENTIAL_BACKOFF,
+                strategy=RetryStrategy.EXPONENTIAL_BACKOFF,
             )
         },
     )
@@ -922,11 +922,11 @@ async def test_mcp_strategy_patterns(monkeypatch):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "mcp": retryConfig(
+            "mcp": RetryConfig(
                 max_attempts =3,
                 base_delay =1.5,
                 jitter=False,
-                strategy=retryStrategy.FIXED_DELAY,
+                strategy=RetryStrategy.FIXED_DELAY,
             )
         },
     )
@@ -949,7 +949,7 @@ async def test_circuit_breaker_precise_state_tratsitions():
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
             # threshold=2, recovery_timeout =0.1s, in HALF_OPEN nur 1 Call
-            "rpc": retryConfig(
+            "rpc": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,
@@ -1024,7 +1024,7 @@ async def test_stream_state_tratsitions(caplog):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "stream": retryConfig(
+            "stream": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,
@@ -1076,7 +1076,7 @@ async def test_bus_state_tratsitions(caplog):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "bus": retryConfig(
+            "bus": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,
@@ -1134,7 +1134,7 @@ async def test_mcp_state_tratsitions(caplog):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "mcp": retryConfig(
+            "mcp": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,
@@ -1189,7 +1189,7 @@ async def test_half_open_failure_reopens(caplog):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "rpc": retryConfig(
+            "rpc": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,
@@ -1241,7 +1241,7 @@ async def test_stream_half_open_failure_reopens(caplog):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "stream": retryConfig(
+            "stream": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,
@@ -1287,7 +1287,7 @@ async def test_bus_half_open_failure_reopens(caplog):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "bus": retryConfig(
+            "bus": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,
@@ -1340,7 +1340,7 @@ async def test_mcp_half_open_failure_reopens(caplog):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "mcp": retryConfig(
+            "mcp": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,
@@ -1390,7 +1390,7 @@ async def test_stream_half_open_success_closes(caplog):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "stream": retryConfig(
+            "stream": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,
@@ -1441,7 +1441,7 @@ async def test_bus_half_open_success_closes(caplog):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "bus": retryConfig(
+            "bus": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,
@@ -1497,7 +1497,7 @@ async def test_mcp_half_open_success_closes(caplog):
         agent_id ="a",
         tracing=TracingConfig(enabled=False),
         protocol_retry_policies ={
-            "mcp": retryConfig(
+            "mcp": RetryConfig(
                 max_attempts =1,
                 base_delay =0.0,
                 jitter=False,

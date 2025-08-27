@@ -278,7 +278,6 @@ class ServiceDiscovery:
         # In echter Implementierung: API-Call tom Regisry Service
         # agents = await self.client.lis_agents(capabilities=query.capabilities)
 
-
     def _create_cache_key(self, query: DiscoveryQuery) -> str:
         """Creates a Cache-Schlüssel for a Query."""
         return f"discovery:{hash(str(query.to_dict()))}"

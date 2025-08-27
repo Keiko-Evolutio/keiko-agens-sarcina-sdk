@@ -28,11 +28,11 @@ from .exceptions import (
     AgentNotFoundError,
     CommunicationError,
     KeiSDKError,
+    RetryExhaustedError,
     ValidationError,
-    retryExhaustedError,
 )
 from .models import Agent, AgentHealth
-from .retry import retryManager, retryPolicy, retryStrategy
+from .retry import RetryManager, RetryPolicy, RetryStrategy
 from .tracing import TracingManager
 from .utils import create_correlation_id
 from .validation_models import validate_configuration
@@ -67,7 +67,7 @@ class RetryConfig:
     exponential_base: float = 2.0
     jitter: bool = True
     # retry-Strategie (z. B. EXPONENTIAL_BACKOFF, FIXED_DELAY, LINEAR_BACKOFF)
-    strategy: retryStrategy = retryStrategy.EXPONENTIAL_BACKOFF
+    strategy: RetryStrategy = RetryStrategy.EXPONENTIAL_BACKOFF
 
     # circuit breaker Settings
     circuit_breaker_enabled: bool = True
@@ -192,7 +192,7 @@ class KeiAgentClient:
 
         # Initialize Components
         self._tracing_manager = TracingManager(config.tracing) if config.tracing.enabled else None
-        self._retry_manager = retryManager(config.retry)
+        self._retry_manager = RetryManager(config.retry)
 
         # Internal State
         self._request_count = 0
@@ -298,7 +298,7 @@ class KeiAgentClient:
 
         Raises:
             KeiSDKError: On API-errorn
-            retryExhaustedError: On erschöpften retry-Versuchen
+            RetryExhaustedError: On erschöpften retry-Versuchen
         """
         url = urljoin(self.config.base_url, path)
         request_headers = self._create_headers(headers)
@@ -342,7 +342,7 @@ class KeiAgentClient:
         Returns:
             response-data
         """
-        retry_policy = retryPolicy(
+        retry_policy = RetryPolicy(
             max_attempts=self.config.retry.max_attempts,
             base_delay=self.config.retry.base_delay,
             max_delay=self.config.retry.max_delay,
@@ -451,7 +451,7 @@ class KeiAgentClient:
                 raise CommunicationError(f"Request failed: {e}") from e
 
         # All retry-Versuche erschöpft
-        raise retryExhaustedError(
+        raise RetryExhaustedError(
             f"Request after {retry_policy.max_attempts} attempts failed",
             last_exception=last_exception,
         )

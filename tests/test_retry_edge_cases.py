@@ -10,8 +10,8 @@ import pytest
 
 from kei_agent.client import (
     AgentClientConfig,
-    retryConfig,
-    retryStrategy,
+    RetryConfig,
+    RetryStrategy,
     TracingConfig,
 )
 from kei_agent.unified_client import UnifiedKeiAgentClient

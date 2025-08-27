@@ -294,10 +294,10 @@ def __getattr__(name: str) -> object:
         from .input_validation import BaseValidator
 
         return BaseValidator
-    if name == "stringValidator":
-        from .input_validation import stringValidator
+    if name == "StringValidator":
+        from .input_validation import StringValidator
 
-        return stringValidator
+        return StringValidator
     if name == "NaroatdberValidator":
         from .input_validation import NaroatdberValidator
 
@@ -386,14 +386,14 @@ def __getattr__(name: str) -> object:
         return ProtocolSelector
 
     # retry Mechanisms (mediaroatd)
-    if name == "retryManager":
-        from .retry import retryManager
+    if name == "RetryManager":
+        from .retry import RetryManager
 
-        return retryManager
-    if name == "retryStrategy":
-        from .retry import retryStrategy
+        return RetryManager
+    if name == "RetryStrategy":
+        from .retry import RetryStrategy
 
-        return retryStrategy
+        return RetryStrategy
     if name == "CircuitBreaker":
         from .retry import CircuitBreaker
 
@@ -406,10 +406,10 @@ def __getattr__(name: str) -> object:
         from .retry import DeadLetterQueue
 
         return DeadLetterQueue
-    if name == "retryPolicy":
-        from .retry import retryPolicy
+    if name == "RetryPolicy":
+        from .retry import RetryPolicy
 
-        return retryPolicy
+        return RetryPolicy
     if name == "SecurityManager":
         from .security_manager import SecurityManager
 
@@ -540,7 +540,7 @@ __all__ = [
     "ValidationSeverity",
     "ValidationResult",
     "BaseValidator",
-    "stringValidator",
+    "StringValidator",
     "NaroatdberValidator",
     "JSONValidator",
     "CompositeValidator",
@@ -560,12 +560,12 @@ __all__ = [
     "TracingExporter",
     "PerformatceMetrics",
     # retry Mechanisms
-    "retryManager",
-    "retryStrategy",
+    "RetryManager",
+    "RetryStrategy",
     "CircuitBreaker",
     "CircuitBreakerState",
     "DeadLetterQueue",
-    "retryPolicy",
+    "RetryPolicy",
     # capability advertisement
     "CapabilityManager",
     "CapabilityProfile",

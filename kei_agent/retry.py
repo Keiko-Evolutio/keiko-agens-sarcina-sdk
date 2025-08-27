@@ -17,7 +17,7 @@ import time
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 import uuid
 
-from .exceptions import CircuitBreakerOpenError, retryExhaustedError
+from .exceptions import CircuitBreakerOpenError, RetryExhaustedError
 
 # Initializes Module-Logr for retry/CB
 _logger = logging.getLogger("kei_agent.retry")
@@ -635,7 +635,7 @@ class RetryManager:
             functions-result
 
         Raises:
-            retryExhaustedError: On erschöpften retry-Versuchen
+            RetryExhaustedError: On erschöpften retry-Versuchen
         """
         policy = retry_policy or self._default_policy
         last_exception: Optional[Exception] = None
@@ -718,7 +718,7 @@ class RetryManager:
                 failure_reason=f"Max retries exceeded: {last_exception}",
                 operation=circuit_breaker_name,
             )
-            raise retryExhaustedError(policy.max_attempts, last_exception=last_exception)
+            raise RetryExhaustedError(policy.max_attempts, last_exception=last_exception)
 
         # Statdard-retry-Mechatismus without circuit breaker
         for attempt in range(policy.max_attempts):
@@ -764,7 +764,7 @@ class RetryManager:
             operation=func.__name__ if hasattr(func, "__name__") else "unknown",
         )
 
-        raise retryExhaustedError(policy.max_attempts, last_exception=last_exception)
+        raise RetryExhaustedError(policy.max_attempts, last_exception=last_exception)
 
     def get_dead_letter_queue(self) -> DeadLetterQueue:
         """Gets Dead Letter Queue.

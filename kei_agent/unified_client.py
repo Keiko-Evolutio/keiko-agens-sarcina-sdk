@@ -26,7 +26,7 @@ from .metrics import (
 from .protocol_clients import KEIBusclient, KEIMCPclient, KEIRPCclient, KEIStreamclient
 from .protocol_selector import ProtocolSelector
 from .protocol_types import Authtypee, ProtocolConfig, Protocoltypee, SecurityConfig
-from .retry import retryManager
+from .retry import RetryManager
 from .security_manager import SecurityManager as _BaseSecurityManager
 from .tracing import TracingManager
 from .utils import create_correlation_id
@@ -100,17 +100,17 @@ class UnifiedKeiAgentClient:
         # Enterprise features
         self.tracing: Optional[TracingManager] = None
         # Compatibility and retry manager
-        # Default retryManager for generic use (compatibility: client.retry)
-        self.retry: retryManager = retryManager(self.config.retry)
-        # Protocol-specific retryManager (e.g. "rpc", "stream", "bus", "mcp")
-        self._retry_managers: Dict[str, retryManager] = {"default": self.retry}
+        # Default RetryManager for generic use (compatibility: client.retry)
+        self.retry: RetryManager = RetryManager(self.config.retry)
+        # Protocol-specific RetryManager (e.g. "rpc", "stream", "bus", "mcp")
+        self._retry_managers: Dict[str, RetryManager] = {"default": self.retry}
         if getattr(self.config, "protocol_retry_policies", None):
             for proto_key, retry_cfg in self.config.protocol_retry_policies.items():
                 # Only accept valid keys
                 if proto_key in {"rpc", "stream", "bus", "mcp"}:
-                    self._retry_managers[proto_key] = retryManager(retry_cfg)
+                    self._retry_managers[proto_key] = RetryManager(retry_cfg)
         # Retained field for legacy usage
-        self.retry_manager: Optional[retryManager] = self.retry
+        self.retry_manager: Optional[RetryManager] = self.retry
         self.capability_manager: Optional[CapabilityManager] = None
         self.service_discovery: Optional[ServiceDiscovery] = None
 
@@ -140,8 +140,8 @@ class UnifiedKeiAgentClient:
             },
         )
 
-    def _get_retry_manager(self, protocol_key: str) -> retryManager:
-        """Returns appropriate retryManager for protocol.
+    def _get_retry_manager(self, protocol_key: str) -> RetryManager:
+        """Returns appropriate RetryManager for protocol.
 
         Args:
             protocol_key: Protocol key (e.g. "rpc")

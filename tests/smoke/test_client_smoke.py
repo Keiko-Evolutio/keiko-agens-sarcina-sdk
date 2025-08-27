@@ -9,7 +9,7 @@ def test_import_client_classes():
     """Test that main client classes can be imported."""
     from kei_agent.client import (
         ConnectionConfig,
-        retryConfig,
+        RetryConfig,
         TracingConfig,
         AgentClientConfig,
         KeiAgentClient,
@@ -26,10 +26,10 @@ def test_connection_config_creation():
 
 
 def test_retry_config_creation():
-    """Test basic retryConfig instantiation."""
-    from kei_agent.client import retryConfig
+    """Test basic RetryConfig instantiation."""
+    from kei_agent.client import RetryConfig
 
-    config = retryConfig()
+    config = RetryConfig()
     assert config.max_attempts == 3
     assert config.base_delay == 1.0
 

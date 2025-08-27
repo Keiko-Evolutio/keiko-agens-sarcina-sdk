@@ -7,22 +7,22 @@ def test_import_retry():
 
 def test_import_retry_classes():
     """Test that retry classes can be imported."""
-    from kei_agent.retry import retryManager, retryPolicy
+    from kei_agent.retry import RetryManager, RetryPolicy
 
 
 def test_retry_policy_creation():
-    """Test basic retryPolicy instantiation."""
-    from kei_agent.retry import retryPolicy
+    """Test basic RetryPolicy instantiation."""
+    from kei_agent.retry import RetryPolicy
 
-    policy = retryPolicy()
+    policy = RetryPolicy()
     assert policy.max_attempts >= 1
     assert policy.base_delay >= 0
 
 
 def test_retry_manager_creation():
-    """Test basic retryManager instantiation."""
-    from kei_agent.retry import retryManager, retryPolicy
+    """Test basic RetryManager instantiation."""
+    from kei_agent.retry import RetryManager, RetryPolicy
 
-    policy = retryPolicy()
-    manager = retryManager(policy)
+    policy = RetryPolicy()
+    manager = RetryManager(policy)
     assert manager is not None

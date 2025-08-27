@@ -126,7 +126,9 @@ class AgentHeartbeatManager:
         self.auto_port = True
         self.port = 8080
 
-    async def start_heartbeat_server(self, port: Optional[int] = None, host: str = "127.0.0.1") -> str:
+    async def start_heartbeat_server(
+        self, port: Optional[int] = None, host: str = "127.0.0.1"
+    ) -> str:
         """Startet den Heartbeat-Server.
 
         Args:
