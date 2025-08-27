@@ -1,19 +1,19 @@
 """Tests the vollständige Integration allr Komponenten of the Unified clients.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, Any
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from kei_agent import (
-    UnifiedKeiAgentClient,
     AgentClientConfig,
-    Protocoltypee,
     Authtypee,
+    KeiSDKError,
     ProtocolConfig,
+    Protocoltypee,
     SecurityConfig,
-    KeiSDKError
+    UnifiedKeiAgentClient,
 )
 
 # Markiere als Integration Test
@@ -68,7 +68,7 @@ class TestUnifiedclientIntegration:
     @pytest.mark.asyncio
     async def test_context_manager(self, basic_config):
         """Tests Context Manager functionalität."""
-        with patch('kei_agent.unified_client.SecurityManager') as mock_security:
+        with patch("kei_agent.unified_client.SecurityManager") as mock_security:
             mock_security.return_value.start_token_refresh = AsyncMock()
             mock_security.return_value.stop_token_refresh = AsyncMock()
 
@@ -88,9 +88,9 @@ class TestUnifiedclientIntegration:
             mcp_enabled =False
         )
 
-        with patch('kei_agent.unified_client.SecurityManager') as mock_security, \
-             patch('kei_agent.unified_client.KEIRPCclient') as mock_rpc, \
-             patch('kei_agent.unified_client.KEIBusclient') as mock_bus:
+        with patch("kei_agent.unified_client.SecurityManager") as mock_security, \
+             patch("kei_agent.unified_client.KEIRPCclient") as mock_rpc, \
+             patch("kei_agent.unified_client.KEIBusclient") as mock_bus:
 
             mock_security.return_value.start_token_refresh = AsyncMock()
 
@@ -108,8 +108,8 @@ class TestUnifiedclientIntegration:
     @pytest.mark.asyncio
     async def test_plat_task_integration(self, basic_config):
         """Tests the Plat-Task Integration."""
-        with patch('kei_agent.unified_client.SecurityManager') as mock_security, \
-             patch('kei_agent.unified_client.KEIRPCclient') as mock_rpc_class:
+        with patch("kei_agent.unified_client.SecurityManager") as mock_security, \
+             patch("kei_agent.unified_client.KEIRPCclient") as mock_rpc_class:
 
             mock_security.return_value.start_token_refresh = AsyncMock()
             mock_rpc = Mock()
@@ -134,8 +134,8 @@ class TestUnifiedclientIntegration:
     @pytest.mark.asyncio
     async def test_capability_matagement_integration(self, basic_config):
         """Tests the Capability matagement Integration."""
-        with patch('kei_agent.unified_client.SecurityManager') as mock_security, \
-             patch('kei_agent.unified_client.CapabilityManager') as mock_cap_class:
+        with patch("kei_agent.unified_client.SecurityManager") as mock_security, \
+             patch("kei_agent.unified_client.CapabilityManager") as mock_cap_class:
 
             mock_security.return_value.start_token_refresh = AsyncMock()
             mock_cap = Mock()
@@ -146,12 +146,12 @@ class TestUnifiedclientIntegration:
             await client.initialize()
 
             # capability manager should available sa
-            assert hasattr(client, 'capability_manager')
+            assert hasattr(client, "capability_manager")
 
     @pytest.mark.asyncio
     async def test_error_hatdling(self, basic_config):
         """Tests Error Hatdling."""
-        with patch('kei_agent.unified_client.SecurityManager') as mock_security:
+        with patch("kei_agent.unified_client.SecurityManager") as mock_security:
             mock_security.return_value.start_token_refresh = AsyncMock(
                 side_effect =Exception("Security error")
             )
@@ -164,8 +164,8 @@ class TestUnifiedclientIntegration:
     @pytest.mark.asyncio
     async def test_protocol_selection(self, basic_config):
         """Tests the protocol-Auswahl."""
-        with patch('kei_agent.unified_client.SecurityManager') as mock_security, \
-             patch('kei_agent.unified_client.ProtocolSelector') as mock_selector_class:
+        with patch("kei_agent.unified_client.SecurityManager") as mock_security, \
+             patch("kei_agent.unified_client.ProtocolSelector") as mock_selector_class:
 
             mock_security.return_value.start_token_refresh = AsyncMock()
             mock_selector = Mock()
@@ -176,13 +176,13 @@ class TestUnifiedclientIntegration:
             await client.initialize()
 
             # Protocol Selector should available sa
-            assert hasattr(client, 'protocol_selector')
+            assert hasattr(client, "protocol_selector")
 
     @pytest.mark.asyncio
     async def test_tracing_integration(self, basic_config):
         """Tests the Tracing Integration."""
-        with patch('kei_agent.unified_client.SecurityManager') as mock_security, \
-             patch('kei_agent.unified_client.TracingManager') as mock_tracing_class:
+        with patch("kei_agent.unified_client.SecurityManager") as mock_security, \
+             patch("kei_agent.unified_client.TracingManager") as mock_tracing_class:
 
             mock_security.return_value.start_token_refresh = AsyncMock()
             mock_tracing = Mock()
@@ -193,13 +193,13 @@ class TestUnifiedclientIntegration:
             await client.initialize()
 
             # tracing manager should available sa
-            assert hasattr(client, 'tracing')
+            assert hasattr(client, "tracing")
 
     @pytest.mark.asyncio
     async def test_retry_mechatism_integration(self, basic_config):
         """Tests the retry-Mechatismus Integration."""
-        with patch('kei_agent.unified_client.SecurityManager') as mock_security, \
-             patch('kei_agent.unified_client.retryManager') as mock_retry_class:
+        with patch("kei_agent.unified_client.SecurityManager") as mock_security, \
+             patch("kei_agent.unified_client.retryManager") as mock_retry_class:
 
             mock_security.return_value.start_token_refresh = AsyncMock()
             mock_retry = Mock()
@@ -210,13 +210,13 @@ class TestUnifiedclientIntegration:
             await client.initialize()
 
             # retry manager should available sa
-            assert hasattr(client, 'retry_manager')
+            assert hasattr(client, "retry_manager")
 
     @pytest.mark.asyncio
     async def test_service_discovery_integration(self, basic_config):
         """Tests the service discovery Integration."""
-        with patch('kei_agent.unified_client.SecurityManager') as mock_security, \
-             patch('kei_agent.unified_client.ServiceDiscovery') as mock_discovery_class:
+        with patch("kei_agent.unified_client.SecurityManager") as mock_security, \
+             patch("kei_agent.unified_client.ServiceDiscovery") as mock_discovery_class:
 
             mock_security.return_value.start_token_refresh = AsyncMock()
             mock_discovery = Mock()
@@ -227,13 +227,13 @@ class TestUnifiedclientIntegration:
             await client.initialize()
 
             # service discovery should available sa
-            assert hasattr(client, 'discovery')
+            assert hasattr(client, "discovery")
 
     @pytest.mark.asyncio
     async def test_concurrent_operations(self, basic_config):
         """Tests gleichzeitige operationen."""
-        with patch('kei_agent.unified_client.SecurityManager') as mock_security, \
-             patch('kei_agent.unified_client.KEIRPCclient') as mock_rpc_class:
+        with patch("kei_agent.unified_client.SecurityManager") as mock_security, \
+             patch("kei_agent.unified_client.KEIRPCclient") as mock_rpc_class:
 
             mock_security.return_value.start_token_refresh = AsyncMock()
             mock_rpc = Mock()
@@ -258,7 +258,7 @@ class TestUnifiedclientIntegration:
     @pytest.mark.asyncio
     async def test_cleatup_on_error(self, basic_config):
         """Tests Cleatup on errorn."""
-        with patch('kei_agent.unified_client.SecurityManager') as mock_security:
+        with patch("kei_agent.unified_client.SecurityManager") as mock_security:
             mock_security.return_value.start_token_refresh = AsyncMock()
             mock_security.return_value.stop_token_refresh = AsyncMock()
 

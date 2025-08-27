@@ -8,12 +8,12 @@ Alerting and automatische Wietheherstellung in Production-Aroatdgebungen.
 
 from __future__ import annotations
 
-import asyncio
-import time
 from abc import ABC, abstractmethod
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+import time
 from typing import Any, Dict, List, Optional
 
 from .enterprise_logging import get_logger
@@ -111,7 +111,6 @@ class BaseHealthCheck(ABC):
         Returns:
             Health-Check-Result
         """
-        pass
 
     async def run_check(self) -> HealthCheckResult:
         """Executes Health-Check with Timeout and Error-Hatdling out.
@@ -145,7 +144,7 @@ class BaseHealthCheck(ABC):
             return HealthCheckResult(
                 name=self.name,
                 status=Healthstatus.UNHEALTHY,
-                message=f"Health-Check error: {str(e)}",
+                message=f"Health-Check error: {e!s}",
                 duration_ms=duration_ms,
                 error=str(e),
             )
@@ -201,7 +200,7 @@ class DatabaseHealthCheck(BaseHealthCheck):
             return HealthCheckResult(
                 name=self.name,
                 status=Healthstatus.UNHEALTHY,
-                message=f"databatkverbindung failed: {str(e)}",
+                message=f"databatkverbindung failed: {e!s}",
                 error=str(e),
             )
 
@@ -252,23 +251,22 @@ class APIHealthCheck(BaseHealthCheck):
                             "response_time_ms": response.elapsed.total_seconds() * 1000,
                         },
                     )
-                else:
-                    return HealthCheckResult(
-                        name=self.name,
-                        status=Healthstatus.DEGRADED,
-                        message=f"API unexpectedr status: {response.status_code}",
-                        details={
-                            "url": self.url,
-                            "status_code": response.status_code,
-                            "expected_status": self.expected_status,
-                        },
-                    )
+                return HealthCheckResult(
+                    name=self.name,
+                    status=Healthstatus.DEGRADED,
+                    message=f"API unexpectedr status: {response.status_code}",
+                    details={
+                        "url": self.url,
+                        "status_code": response.status_code,
+                        "expected_status": self.expected_status,
+                    },
+                )
 
         except Exception as e:
             return HealthCheckResult(
                 name=self.name,
                 status=Healthstatus.UNHEALTHY,
-                message=f"API not erreichbar: {str(e)}",
+                message=f"API not erreichbar: {e!s}",
                 error=str(e),
             )
 
@@ -337,7 +335,7 @@ class MemoryHealthCheck(BaseHealthCheck):
             return HealthCheckResult(
                 name=self.name,
                 status=Healthstatus.UNHEALTHY,
-                message=f"Speicher-Check failed: {str(e)}",
+                message=f"Speicher-Check failed: {e!s}",
                 error=str(e),
             )
 
@@ -449,7 +447,7 @@ class HealthCheckManager:
                     HealthCheckResult(
                         name=self.checks[i].name,
                         status=Healthstatus.UNHEALTHY,
-                        message=f"Health-Check Exception: {str(result)}",
+                        message=f"Health-Check Exception: {result!s}",
                         error=str(result),
                     )
                 )
@@ -498,9 +496,7 @@ class HealthCheckManager:
 
         return saroatdmary
 
-    def _calculate_overall_status(
-        self, results: List[HealthCheckResult]
-    ) -> Healthstatus:
+    def _calculate_overall_status(self, results: List[HealthCheckResult]) -> Healthstatus:
         """Berechnet Gesamtstatus basierend on azelnen Check-resultsen.
 
         Args:
@@ -510,9 +506,7 @@ class HealthCheckManager:
             Gesamtstatus of the Systems
         """
         # Prüfe kritische Checks
-        critical_checks = [
-            result for result, check in zip(results, self.checks) if check.critical
-        ]
+        critical_checks = [result for result, check in zip(results, self.checks) if check.critical]
 
         # If kritische Checks unhealthy are, is Gesamtstatus unhealthy
         if any(result.status == Healthstatus.UNHEALTHY for result in critical_checks):
@@ -561,13 +555,13 @@ def get_health_manager() -> HealthCheckManager:
 
 
 __all__ = [
-    "Healthstatus",
-    "HealthCheckResult",
+    "APIHealthCheck",
     "BaseHealthCheck",
     "DatabaseHealthCheck",
-    "APIHealthCheck",
-    "MemoryHealthCheck",
-    "HealthCheckSaroatdmary",
     "HealthCheckManager",
+    "HealthCheckResult",
+    "HealthCheckSaroatdmary",
+    "Healthstatus",
+    "MemoryHealthCheck",
     "get_health_manager",
 ]

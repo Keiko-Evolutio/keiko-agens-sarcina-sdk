@@ -9,21 +9,21 @@ and Dead Letter Queue for robuste Agent-Kommunikation.
 from __future__ import annotations
 
 import asyncio
-import time
-import uuid
+from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Callable, Awaitable
-from collections import deque
 import logging
+import time
+from typing import Any, Awaitable, Callable, Dict, List, Optional
+import uuid
 
-from .exceptions import retryExhaustedError, CircuitBreakerOpenError
+from .exceptions import CircuitBreakerOpenError, retryExhaustedError
 
 # Initializes Module-Logr for retry/CB
 _logger = logging.getLogger("kei_agent.retry")
 
 
-class retryStrategy(str, Enum):
+class RetryStrategy(str, Enum):
     """retry-Strategien."""
 
     FIXED_DELAY = "fixed_delay"
@@ -42,7 +42,7 @@ class CircuitBreakerState(str, Enum):
 
 
 @dataclass
-class retryPolicy:
+class RetryPolicy:
     """configuration for retry-Verhalten."""
 
     max_attempts: int = 3
@@ -50,13 +50,11 @@ class retryPolicy:
     max_delay: float = 60.0
     exponential_base: float = 2.0
     jitter: bool = True
-    strategy: retryStrategy = retryStrategy.EXPONENTIAL_BACKOFF
+    strategy: RetryStrategy = RetryStrategy.EXPONENTIAL_BACKOFF
 
     # Retry conditions
     retry_on_exceptions: List[type] = field(default_factory=list)
-    retry_on_status_codes: List[int] = field(
-        default_factory=lambda: [429, 502, 503, 504]
-    )
+    retry_on_status_codes: List[int] = field(default_factory=lambda: [429, 502, 503, 504])
 
     # Custom retry-function
     custom_retry_condition: Optional[Callable[[Exception], bool]] = None
@@ -82,9 +80,7 @@ class retryPolicy:
 
         # Exception-basierte retry-Bedingung
         if self.retry_on_exceptions:
-            return any(
-                isinstance(exception, exc_type) for exc_type in self.retry_on_exceptions
-            )
+            return any(isinstance(exception, exc_type) for exc_type in self.retry_on_exceptions)
 
         # status-Code-basierte retry-Bedingung (for HTTP-error)
         if hasattr(exception, "status_code"):
@@ -104,13 +100,13 @@ class retryPolicy:
         """
         if self.custom_delay_function:
             delay = self.custom_delay_function(attempt)
-        elif self.strategy == retryStrategy.FIXED_DELAY:
+        elif self.strategy == RetryStrategy.FIXED_DELAY:
             delay = self.base_delay
-        elif self.strategy == retryStrategy.EXPONENTIAL_BACKOFF:
+        elif self.strategy == RetryStrategy.EXPONENTIAL_BACKOFF:
             delay = self.base_delay * (self.exponential_base**attempt)
-        elif self.strategy == retryStrategy.LINEAR_BACKOFF:
+        elif self.strategy == RetryStrategy.LINEAR_BACKOFF:
             delay = self.base_delay * (attempt + 1)
-        elif self.strategy == retryStrategy.FIBONACCI_BACKOFF:
+        elif self.strategy == RetryStrategy.FIBONACCI_BACKOFF:
             delay = self.base_delay * self._fibonacci(attempt + 1)
         else:
             delay = self.base_delay
@@ -199,9 +195,7 @@ class CircuitBreaker:
         self._total_failures = 0
         self._state_chatges = 0
 
-    async def call(
-        self, func: Callable[..., Awaitable[Any]], *args: Any, **kwargs: Any
-    ) -> Any:
+    async def call(self, func: Callable[..., Awaitable[Any]], *args: Any, **kwargs: Any) -> Any:
         """Executes function with Circuit-Breaker-Schutz out.
 
         Args:
@@ -250,16 +244,19 @@ class CircuitBreaker:
         if self.state == CircuitBreakerState.CLOSED:
             return True
 
-        elif self.state == CircuitBreakerState.OPEN:
+        if self.state == CircuitBreakerState.OPEN:
             # Prüfe ob Recovery-Timeout erreicht
             if time.time() - self._last_failure_time >= self.config.recovery_timeout:
                 await self._tratsition_to_half_open()
                 return True
             return False
 
-        elif self.state == CircuitBreakerState.HALF_OPEN:
+        if self.state == CircuitBreakerState.HALF_OPEN:
             # Erlaube begrenzte Atzahl from Calls
             return self._half_open_calls < self.config.half_open_max_calls
+
+        return False
+        return None
 
     async def _on_success(self) -> None:
         """Behatdelt successfulen Call."""
@@ -361,9 +358,7 @@ class CircuitBreaker:
             Circuit-Breaker-Metrics
         """
         failure_rate = (
-            self._total_failures / max(self._total_calls, 1)
-            if self._total_calls > 0
-            else 0.0
+            self._total_failures / max(self._total_calls, 1) if self._total_calls > 0 else 0.0
         )
 
         return {
@@ -430,9 +425,7 @@ class DeadLetterQueue:
         self._message_order: deque[str] = deque()
 
         # callbacks
-        self.on_message_added: Optional[
-            Callable[[DeadLetterMessage], Awaitable[None]]
-        ] = None
+        self.on_message_added: Optional[Callable[[DeadLetterMessage], Awaitable[None]]] = None
         self.on_queue_full: Optional[Callable[[int], Awaitable[None]]] = None
 
     async def add_message(
@@ -560,15 +553,14 @@ class DeadLetterQueue:
             "max_size": self.max_size,
             "utilization": len(self._messages) / self.max_size,
             "oldest_message_age": (
-                time.time()
-                - min(msg.first_failure_time for msg in self._messages.values())
+                time.time() - min(msg.first_failure_time for msg in self._messages.values())
                 if self._messages
                 else 0.0
             ),
         }
 
 
-class retryManager:
+class RetryManager:
     """Manager for retry mechanisms."""
 
     def __init__(self, config: Any):
@@ -586,13 +578,13 @@ class retryManager:
         self._dead_letter_queue = DeadLetterQueue()
 
         # Default retry-Policy
-        self._default_policy = retryPolicy(
+        self._default_policy = RetryPolicy(
             max_attempts=config.max_attempts,
             base_delay=config.base_delay,
             max_delay=config.max_delay,
             exponential_base=config.exponential_base,
             jitter=config.jitter,
-            strategy=getattr(config, "strategy", retryStrategy.EXPONENTIAL_BACKOFF),
+            strategy=getattr(config, "strategy", RetryStrategy.EXPONENTIAL_BACKOFF),
         )
 
     def get_circuit_breaker(self, name: str) -> CircuitBreaker:
@@ -626,7 +618,7 @@ class retryManager:
         self,
         func: Callable[..., Awaitable[Any]],
         *args: Any,
-        retry_policy: Optional[retryPolicy] = None,
+        retry_policy: Optional[RetryPolicy] = None,
         circuit_breaker_name: Optional[str] = None,
         **kwargs: Any,
     ) -> Any:
@@ -726,9 +718,7 @@ class retryManager:
                 failure_reason=f"Max retries exceeded: {last_exception}",
                 operation=circuit_breaker_name,
             )
-            raise retryExhaustedError(
-                policy.max_attempts, last_exception=last_exception
-            )
+            raise retryExhaustedError(policy.max_attempts, last_exception=last_exception)
 
         # Statdard-retry-Mechatismus without circuit breaker
         for attempt in range(policy.max_attempts):
@@ -753,9 +743,7 @@ class retryManager:
 
                 # Letzter Versuch - ka weiterer retry
                 if attempt >= policy.max_attempts - 1:
-                    _logger.debug(
-                        "Letzter Versuch %d erreicht, ka weiterer retry", attempt + 1
-                    )
+                    _logger.debug("Letzter Versuch %d erreicht, ka weiterer retry", attempt + 1)
                     break
 
                 # Warte before nächstem Versuch

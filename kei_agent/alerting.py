@@ -10,12 +10,12 @@ This module provides:
 - Incident management and tracking
 """
 
-import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Any
 import logging
+import time
+from typing import Any, Dict, List, Optional
 
 try:
     import aiohttp
@@ -79,7 +79,6 @@ class NotificationHandler(ABC):
         Returns:
             True if notification was sent successfully
         """
-        pass
 
     def should_notify(self, error_event: ErrorEvent) -> bool:
         """Check if notification should be sent for this error.
@@ -132,21 +131,17 @@ class WebhookNotificationHandler(NotificationHandler):
         headers.update(custom_headers)
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    webhook_url,
-                    json=payload,
-                    headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=10),
-                ) as response:
-                    if response.status < 400:
-                        logger.info(
-                            f"Webhook notification sent successfully: {alert_name}"
-                        )
-                        return True
-                    else:
-                        logger.error(f"Webhook notification failed: {response.status}")
-                        return False
+            async with aiohttp.ClientSession() as session, session.post(
+                webhook_url,
+                json=payload,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status < 400:
+                    logger.info(f"Webhook notification sent successfully: {alert_name}")
+                    return True
+                logger.error(f"Webhook notification failed: {response.status}")
+                return False
 
         except Exception as e:
             logger.error(f"Error sending webhook notification: {e}")
@@ -225,18 +220,14 @@ class SlackNotificationHandler(NotificationHandler):
             )
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    webhook_url, json=message, timeout=aiohttp.ClientTimeout(total=10)
-                ) as response:
-                    if response.status < 400:
-                        logger.info(
-                            f"Slack notification sent successfully: {alert_name}"
-                        )
-                        return True
-                    else:
-                        logger.error(f"Slack notification failed: {response.status}")
-                        return False
+            async with aiohttp.ClientSession() as session, session.post(
+                webhook_url, json=message, timeout=aiohttp.ClientTimeout(total=10)
+            ) as response:
+                if response.status < 400:
+                    logger.info(f"Slack notification sent successfully: {alert_name}")
+                    return True
+                logger.error(f"Slack notification failed: {response.status}")
+                return False
 
         except Exception as e:
             logger.error(f"Error sending Slack notification: {e}")
@@ -289,23 +280,17 @@ class PagerDutyNotificationHandler(NotificationHandler):
         }
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    "https://events.pagerduty.com/v2/enqueue",
-                    json=event,
-                    headers={"Content-Type": "application/json"},
-                    timeout=aiohttp.ClientTimeout(total=10),
-                ) as response:
-                    if response.status < 400:
-                        logger.info(
-                            f"PagerDuty notification sent successfully: {alert_name}"
-                        )
-                        return True
-                    else:
-                        logger.error(
-                            f"PagerDuty notification failed: {response.status}"
-                        )
-                        return False
+            async with aiohttp.ClientSession() as session, session.post(
+                "https://events.pagerduty.com/v2/enqueue",
+                json=event,
+                headers={"Content-Type": "application/json"},
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status < 400:
+                    logger.info(f"PagerDuty notification sent successfully: {alert_name}")
+                    return True
+                logger.error(f"PagerDuty notification failed: {response.status}")
+                return False
 
         except Exception as e:
             logger.error(f"Error sending PagerDuty notification: {e}")
@@ -374,8 +359,7 @@ class AlertManager:
         config = NotificationConfig(
             channel=NotificationChannel.SLACK,
             config={"webhook_url": webhook_url},
-            severity_filter=severity_filter
-            or [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL],
+            severity_filter=severity_filter or [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL],
         )
         handler = SlackNotificationHandler(config)
         self.add_notification_handler(handler)
@@ -431,9 +415,7 @@ class AlertManager:
                             handler.__class__.__name__
                         )
                 except Exception as e:
-                    logger.error(
-                        f"Error in notification handler {handler.__class__.__name__}: {e}"
-                    )
+                    logger.error(f"Error in notification handler {handler.__class__.__name__}: {e}")
 
         # Suppress similar alerts
         self._suppress_alert(alert_name)
@@ -451,9 +433,8 @@ class AlertManager:
             suppressed_until = self.suppressed_alerts[alert_name]
             if time.time() < suppressed_until:
                 return True
-            else:
-                # Remove expired suppression
-                del self.suppressed_alerts[alert_name]
+            # Remove expired suppression
+            del self.suppressed_alerts[alert_name]
 
         return False
 

@@ -8,17 +8,17 @@ protocole with aheitlicher Interface-Abstraktion.
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 import asyncio
 import json
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Callable, Awaitable
 import logging
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import httpx
 import websockets
 
+from .exceptions import CommunicationError, ProtocolError
 from .security_manager import SecurityManager
-from .exceptions import ProtocolError, CommunicationError
 
 # Initializes Module-Logr
 _logger = logging.getLogger(__name__)
@@ -45,12 +45,10 @@ class BaseProtocolclient(ABC):
     @abstractmethod
     async def __aenter__(self):
         """async context manager entry."""
-        pass
 
     @abstractmethod
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """async context manager exit."""
-        pass
 
     async def _get_auth_heathes(self) -> Dict[str, str]:
         """Ruft authentications-Heathes ab.
@@ -130,13 +128,9 @@ class KEIRPCclient(BaseProtocolclient):
         Raises:
             ProtocolError: On RPC-Kommunikationsfehlern
         """
-        return await self._rpc_call(
-            "plat", {"objective": objective, "context": context or {}}
-        )
+        return await self._rpc_call("plat", {"objective": objective, "context": context or {}})
 
-    async def act(
-        self, action: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def act(self, action: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Executes Action-operation over KEI-RPC out.
 
         Args:
@@ -146,9 +140,7 @@ class KEIRPCclient(BaseProtocolclient):
         Returns:
             action response with result and status
         """
-        return await self._rpc_call(
-            "act", {"action": action, "parameters": parameters or {}}
-        )
+        return await self._rpc_call("act", {"action": action, "parameters": parameters or {}})
 
     async def observe(
         self, observation_type: str, data: Optional[Dict[str, Any]] = None
@@ -162,13 +154,9 @@ class KEIRPCclient(BaseProtocolclient):
         Returns:
             observe response with processed observations
         """
-        return await self._rpc_call(
-            "observe", {"type": observation_type, "data": data or {}}
-        )
+        return await self._rpc_call("observe", {"type": observation_type, "data": data or {}})
 
-    async def explain(
-        self, query: str, context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def explain(self, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Executes Explain-operation over KEI-RPC out.
 
         Args:
@@ -178,9 +166,7 @@ class KEIRPCclient(BaseProtocolclient):
         Returns:
             explain response with explatation and reasoning
         """
-        return await self._rpc_call(
-            "explain", {"query": query, "context": context or {}}
-        )
+        return await self._rpc_call("explain", {"query": query, "context": context or {}})
 
     async def _rpc_call(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
         """Executes generischen RPC-Call out.
@@ -258,9 +244,7 @@ class KEIStreamclient(BaseProtocolclient):
         """
         try:
             # Konvertiere HTTP(S) URL to WebSocket URL
-            ws_url = self.base_url.replace("http://", "ws://").replace(
-                "https://", "wss://"
-            )
+            ws_url = self.base_url.replace("http://", "ws://").replace("https://", "wss://")
             ws_url += "/api/v1/stream"
 
             # Füge Auth-Headers hinzu (falls WebSocket-Server sie unterstützt)
@@ -342,9 +326,7 @@ class KEIStreamclient(BaseProtocolclient):
             self._logger.error(f"Publish failed: {e}")
             raise ProtocolError(f"message-Publish failed: {e}") from e
 
-    async def _message_loop(
-        self, callback: Callable[[Dict[str, Any]], Awaitable[None]]
-    ) -> None:
+    async def _message_loop(self, callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> None:
         """Message-Loop for agehende WebSocket-messageen.
 
         Args:
@@ -427,9 +409,7 @@ class KEIBusclient(BaseProtocolclient):
         try:
             headers = await self._get_auth_heathes()
 
-            response = await self._client.post(
-                "/api/v1/bus/publish", json=message, headers=headers
-            )
+            response = await self._client.post("/api/v1/bus/publish", json=message, headers=headers)
 
             response.raise_for_status()
             import inspect
@@ -477,9 +457,7 @@ class KEIBusclient(BaseProtocolclient):
             return json_result
 
         except httpx.HTTPStatusError as e:
-            raise ProtocolError(
-                f"Bus-Subscribe failed: {e.response.status_code}"
-            ) from e
+            raise ProtocolError(f"Bus-Subscribe failed: {e.response.status_code}") from e
         except httpx.RequestError as e:
             raise CommunicationError(f"Bus-Subscribe Kommunikationsfehler: {e}") from e
 
@@ -522,9 +500,7 @@ class KEIMCPclient(BaseProtocolclient):
                 except Exception as e:
                     _logger.debug(f"Error during Closingn of the bus clients: {e}")
 
-    async def discover_tools(
-        self, category: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    async def discover_tools(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
         """discovers available MCP tools.
 
         Args:
@@ -544,25 +520,19 @@ class KEIMCPclient(BaseProtocolclient):
             params = {"category": category} if category else {}
 
             client = self._client
-            response = await client.get(
-                "/api/v1/mcp/tools", params=params, headers=headers
-            )
+            response = await client.get("/api/v1/mcp/tools", params=params, headers=headers)
 
             response.raise_for_status()
             return response.json()
 
         except httpx.HTTPStatusError as e:
             self._logger.error(f"MCP HTTP-error: {e.response.status_code}")
-            raise ProtocolError(
-                f"MCP-tool discovery failed: {e.response.status_code}"
-            ) from e
+            raise ProtocolError(f"MCP-tool discovery failed: {e.response.status_code}") from e
         except httpx.RequestError as e:
             self._logger.error(f"MCP Request-error: {e}")
             raise CommunicationError(f"MCP-Kommunikationsfehler: {e}") from e
 
-    async def use_tool(
-        self, tool_name: str, parameters: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def use_tool(self, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """executes MCP tool.
 
         Args:
@@ -589,19 +559,15 @@ class KEIMCPclient(BaseProtocolclient):
             return response.json()
 
         except httpx.HTTPstatusError as e:
-            raise ProtocolError(
-                f"MCP-tool execution failed: {e.response.status_code}"
-            ) from e
+            raise ProtocolError(f"MCP-tool execution failed: {e.response.status_code}") from e
         except httpx.RequestError as e:
-            raise CommunicationError(
-                f"MCP-tool execution Kommunikationsfehler: {e}"
-            ) from e
+            raise CommunicationError(f"MCP-tool execution Kommunikationsfehler: {e}") from e
 
 
 __all__ = [
     "BaseProtocolclient",
-    "KEIRPCclient",
-    "KEIStreamclient",
     "KEIBusclient",
     "KEIMCPclient",
+    "KEIRPCclient",
+    "KEIStreamclient",
 ]

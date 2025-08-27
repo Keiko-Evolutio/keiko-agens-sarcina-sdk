@@ -6,6 +6,7 @@ Definiert all datastrukturen for Agents, Discovery and metadata.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -133,7 +134,7 @@ class Agent:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Agent":
+    def from_dict(cls, data: Dict[str, Any]) -> Agent:
         """Creates Agent from dictionary."""
         return cls(
             agent_id=data.get("agent_id", ""),

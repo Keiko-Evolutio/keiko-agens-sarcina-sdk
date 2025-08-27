@@ -11,12 +11,12 @@ Provides domain-specific caches for:
 """
 
 import asyncio
+from dataclasses import dataclass
+from datetime import datetime
 import hashlib
 import logging
 import time
-from typing import Any, Dict, List, Optional, Callable
-from dataclasses import dataclass
-from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional
 
 from .cache_framework import CacheKeyGenerator, get_cache_event_manager
 from .multi_level_cache import MultiLevelCache
@@ -64,8 +64,8 @@ class ResponseCache:
         self,
         method: str,
         url: str,
-        params: Dict[str, Any] = None,
-        headers: Dict[str, str] = None,
+        params: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
         policy: CachePolicy = None,
     ) -> Optional[Dict[str, Any]]:
         """Get cached response.
@@ -105,8 +105,8 @@ class ResponseCache:
         method: str,
         url: str,
         response: Dict[str, Any],
-        params: Dict[str, Any] = None,
-        headers: Dict[str, str] = None,
+        params: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
         policy: CachePolicy = None,
     ) -> bool:
         """Cache response.
@@ -137,9 +137,7 @@ class ResponseCache:
 
         # Generate tags for invalidation
         tags = policy.invalidation_tags.copy()
-        tags.extend(
-            [f"url:{self._hash_url(url)}", f"method:{method.lower()}", "response_cache"]
-        )
+        tags.extend([f"url:{self._hash_url(url)}", f"method:{method.lower()}", "response_cache"])
 
         return await self.cache.set(cache_key, cached_response, policy.ttl, tags)
 
@@ -195,9 +193,7 @@ class ResponseCache:
                 self._background_refresh(cache_key, cached_response)
             )
 
-    async def _background_refresh(
-        self, cache_key: str, cached_response: Dict[str, Any]
-    ) -> None:
+    async def _background_refresh(self, cache_key: str, cached_response: Dict[str, Any]) -> None:
         """Background refresh of cached response."""
         try:
             # This would trigger the original request to refresh the cache
@@ -225,9 +221,7 @@ class AuthTokenCache:
         self._refresh_callbacks: Dict[str, Callable] = {}
         self._refresh_locks: Dict[str, asyncio.Lock] = {}
 
-    async def get_token(
-        self, user_id: str, scope: str = "default"
-    ) -> Optional[Dict[str, Any]]:
+    async def get_token(self, user_id: str, scope: str = "default") -> Optional[Dict[str, Any]]:
         """Get authentication token.
 
         Args:
@@ -323,7 +317,7 @@ class AuthTokenCache:
 
         if isinstance(expires_at, (int, float)):
             return time.time() >= expires_at
-        elif isinstance(expires_at, datetime):
+        if isinstance(expires_at, datetime):
             return datetime.now() >= expires_at
 
         return False
@@ -429,7 +423,7 @@ class ConfigCache:
 
         return await self.cache.set(cache_key, enhanced_config, ttl, tags)
 
-    async def invalidate_config(self, config_name: str, version: str = None) -> int:
+    async def invalidate_config(self, config_name: str, version: Optional[str] = None) -> int:
         """Invalidate configuration cache.
 
         Args:
@@ -449,9 +443,7 @@ class ConfigCache:
 
     def _generate_config_key(self, config_name: str, version: str) -> str:
         """Generate cache key for configuration."""
-        return CacheKeyGenerator.generate_key(
-            self.cache_key_prefix, config_name, version
-        )
+        return CacheKeyGenerator.generate_key(self.cache_key_prefix, config_name, version)
 
     async def _handle_config_change(self, **kwargs) -> None:
         """Handle configuration change events."""
@@ -478,7 +470,7 @@ class ProtocolCache:
         }
 
     async def get_protocol_data(
-        self, protocol: str, operation: str, params: Dict[str, Any] = None
+        self, protocol: str, operation: str, params: Optional[Dict[str, Any]] = None
     ) -> Optional[Any]:
         """Get cached protocol data.
 
@@ -498,7 +490,7 @@ class ProtocolCache:
         protocol: str,
         operation: str,
         data: Any,
-        params: Dict[str, Any] = None,
+        params: Optional[Dict[str, Any]] = None,
         custom_policy: CachePolicy = None,
     ) -> bool:
         """Cache protocol data.
@@ -533,13 +525,9 @@ class ProtocolCache:
         results = await self.cache.invalidate_by_tags(tags)
         return sum(results.values())
 
-    def _generate_protocol_key(
-        self, protocol: str, operation: str, params: Dict[str, Any]
-    ) -> str:
+    def _generate_protocol_key(self, protocol: str, operation: str, params: Dict[str, Any]) -> str:
         """Generate cache key for protocol data."""
-        return CacheKeyGenerator.generate_key(
-            "protocol", protocol, operation, params or {}
-        )
+        return CacheKeyGenerator.generate_key("protocol", protocol, operation, params or {})
 
 
 class MetricsCache:
@@ -600,15 +588,11 @@ class MetricsCache:
             self._pending_metrics.clear()
 
         # Cache the batch
-        cache_key = CacheKeyGenerator.generate_key(
-            self.cache_key_prefix, "batch", int(time.time())
-        )
+        cache_key = CacheKeyGenerator.generate_key(self.cache_key_prefix, "batch", int(time.time()))
 
         await self.cache.set(cache_key, batch, ttl=3600, tags=["metrics", "batch"])
 
-    async def get_metrics_batch(
-        self, start_time: float, end_time: float
-    ) -> List[Dict[str, Any]]:
+    async def get_metrics_batch(self, start_time: float, end_time: float) -> List[Dict[str, Any]]:
         """Get metrics batches within time range.
 
         Args:

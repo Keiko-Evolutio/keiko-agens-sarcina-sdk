@@ -13,18 +13,18 @@ This module provides:
 from __future__ import annotations
 
 import asyncio
-import json
-import time
-import threading
-from pathlib import Path
-from typing import Dict, Any, Optional, Callable, List, Union
 from dataclasses import dataclass
-import logging
 import hashlib
+import json
+import logging
+from pathlib import Path
+import threading
+import time
+from typing import Any, Callable, Dict, List, Optional
 
 try:
-    from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import Observer
 
     WATCHDOG_AVAILABLE = True
 except ImportError:
@@ -168,7 +168,7 @@ if WATCHDOG_AVAILABLE:
     class ConfigFileHandler(FileSystemEventHandler):
         """Handles configuration file system events."""
 
-        def __init__(self, config_manager: "ConfigManager"):
+        def __init__(self, config_manager: ConfigManager):
             """Initialize file handler.
 
             Args:
@@ -191,20 +191,17 @@ else:
     class ConfigFileHandler:
         """Fallback ConfigFileHandler when watchdog is not available."""
 
-        def __init__(self, config_manager: "ConfigManager"):
+        def __init__(self, config_manager: ConfigManager):
             """Initialize fallback handler.
 
             Args:
                 config_manager: Reference to the config manager
             """
             self.config_manager = config_manager
-            logger.warning(
-                "watchdog not available: ConfigFileHandler cannot watch files"
-            )
+            logger.warning("watchdog not available: ConfigFileHandler cannot watch files")
 
         def on_modified(self, event):
             """Fallback method - does nothing."""
-            pass
 
 
 class ConfigManager:
@@ -245,7 +242,7 @@ class ConfigManager:
         self.observer = Observer()
         self.file_handler = ConfigFileHandler(self)
 
-    def add_config_file(self, file_path: Union[str, Path]) -> None:
+    def add_config_file(self, file_path: str | Path) -> None:
         """Add a configuration file to watch.
 
         Args:
@@ -264,9 +261,7 @@ class ConfigManager:
 
         # Start watching the file's directory
         if self.observer and file_path.parent.exists():
-            self.observer.schedule(
-                self.file_handler, str(file_path.parent), recursive=False
-            )
+            self.observer.schedule(self.file_handler, str(file_path.parent), recursive=False)
 
             if not self.observer.is_alive():
                 self.observer.start()
@@ -282,7 +277,7 @@ class ConfigManager:
             True if loaded successfully
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Parse based on file extension
@@ -629,6 +624,4 @@ async def update_config_value(
 
     current[keys[-1]] = value
 
-    return await get_config_manager().update_config(
-        updates, user_id=user_id, reason=reason
-    )
+    return await get_config_manager().update_config(updates, user_id=user_id, reason=reason)

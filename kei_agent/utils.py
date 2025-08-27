@@ -6,9 +6,10 @@ Stellt nützliche Utility-functionen for the SDK bereit.
 """
 
 from __future__ import annotations
-import uuid
+
 import re
 from typing import Dict, Optional
+import uuid
 
 
 def create_correlation_id() -> str:
@@ -79,7 +80,9 @@ def format_trace_id(trace_id: str) -> str:
 
     # Format as UUID-like structure
     if len(clean_id) >= 32:
-        return f"{clean_id[:8]}-{clean_id[8:12]}-{clean_id[12:16]}-{clean_id[16:20]}-{clean_id[20:32]}"
+        return (
+            f"{clean_id[:8]}-{clean_id[8:12]}-{clean_id[12:16]}-{clean_id[16:20]}-{clean_id[20:32]}"
+        )
 
     return clean_id
 
@@ -109,9 +112,7 @@ def calculate_backoff(
         import secrets
 
         # Use cryptographically secure random for jitter
-        jitter_factor: float = 0.5 + (
-            float(secrets.randbelow(500)) / 1000.0
-        )  # 0.5..1.0
+        jitter_factor: float = 0.5 + (float(secrets.randbelow(500)) / 1000.0)  # 0.5..1.0
         delay = delay * jitter_factor
 
     return delay
@@ -173,14 +174,13 @@ def format_duration(seconds: float) -> str:
     """
     if seconds < 1:
         return f"{seconds * 1000:.1f}ms"
-    elif seconds < 60:
+    if seconds < 60:
         return f"{seconds:.1f}s"
-    elif seconds < 3600:
+    if seconds < 3600:
         minutes = seconds / 60
         return f"{minutes:.1f}min"
-    else:
-        hours = seconds / 3600
-        return f"{hours:.1f}h"
+    hours = seconds / 3600
+    return f"{hours:.1f}h"
 
 
 def truncate_string(text: str, max_length: int = 100, suffix: str = "...") -> str:

@@ -9,8 +9,8 @@ and size constraints for security.
 
 from __future__ import annotations
 
-import re
 import json
+import re
 import urllib.parse
 
 # Optional YAML support
@@ -21,9 +21,9 @@ try:
 except ImportError:
     yaml = None
     YAML_AVAILABLE = False
-from typing import Any, Dict, List, Optional
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, ClassVar, Dict, List, Optional
 
 from .exceptions import ValidationError
 
@@ -70,7 +70,7 @@ class InputSanitizer:
     MAX_ARRAY_LENGTH = 1000
 
     # Dangerous patterns to detect
-    DANGEROUS_PATTERNS = [
+    DANGEROUS_PATTERNS: ClassVar[List[str]] = [
         # Script injection
         r"<script[^>]*>.*?</script>",
         r"javascript:",
@@ -138,16 +138,12 @@ class InputSanitizer:
             raise ValidationError(f"{field_name} exceeds maximum length of {max_len}")
 
         # Remove null bytes and control characters (except common whitespace)
-        sanitized = "".join(
-            char for char in str_value if ord(char) >= 32 or char in "\t\n\r"
-        )
+        sanitized = "".join(char for char in str_value if ord(char) >= 32 or char in "\t\n\r")
 
         # Check for dangerous patterns
         for pattern in self.compiled_patterns:
             if pattern.search(sanitized):
-                raise ValidationError(
-                    f"{field_name} contains potentially dangerous content"
-                )
+                raise ValidationError(f"{field_name} contains potentially dangerous content")
 
         return sanitized.strip()
 
@@ -276,9 +272,7 @@ class InputSanitizer:
         if isinstance(value, str):
             sanitized_str = self.sanitize_string(value, self.MAX_FILE_SIZE, field_name)
             if not YAML_AVAILABLE:
-                raise ValidationError(
-                    "YAML parsing not available: pyyaml package not installed"
-                )
+                raise ValidationError("YAML parsing not available: pyyaml package not installed")
             try:
                 parsed = yaml.safe_load(sanitized_str)
             except yaml.YAMLError as e:
@@ -316,9 +310,7 @@ class InputSanitizer:
 
         return sanitized_args
 
-    def _validate_json_structure(
-        self, obj: Any, field_name: str, depth: int = 0
-    ) -> None:
+    def _validate_json_structure(self, obj: Any, field_name: str, depth: int = 0) -> None:
         """Validate JSON structure depth and size.
 
         Args:
@@ -330,9 +322,7 @@ class InputSanitizer:
             ValidationError: If validation fails
         """
         if depth > self.MAX_JSON_DEPTH:
-            raise ValidationError(
-                f"{field_name} exceeds maximum depth of {self.MAX_JSON_DEPTH}"
-            )
+            raise ValidationError(f"{field_name} exceeds maximum depth of {self.MAX_JSON_DEPTH}")
 
         if isinstance(obj, dict):
             if len(obj) > self.MAX_ARRAY_LENGTH:
@@ -387,13 +377,12 @@ def sanitize_input(value: Any, input_type: str = "string", **kwargs) -> Any:
 
     if input_type == "string":
         return sanitizer.sanitize_string(value, **kwargs)
-    elif input_type == "url":
+    if input_type == "url":
         return sanitizer.sanitize_url(value, **kwargs)
-    elif input_type == "file_path":
+    if input_type == "file_path":
         return sanitizer.sanitize_file_path(value, **kwargs)
-    elif input_type == "json":
+    if input_type == "json":
         return sanitizer.sanitize_json(value, **kwargs)
-    elif input_type == "yaml":
+    if input_type == "yaml":
         return sanitizer.sanitize_yaml(value, **kwargs)
-    else:
-        raise ValidationError(f"Unknown input type: {input_type}")
+    raise ValidationError(f"Unknown input type: {input_type}")

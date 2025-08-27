@@ -15,12 +15,11 @@ Netzwerkzugriffe deterministisch funktioniert und sich einfach mocken lässt.
 
 from __future__ import annotations
 
-import json
-import subprocess
 from dataclasses import dataclass
+import json
 from pathlib import Path
+import subprocess
 from typing import Dict, List, Optional
-
 
 toml_loader = None
 try:  # Python ≥ 3.11
@@ -74,7 +73,7 @@ class SBOMGenerator:
             except Exception:
                 # Fallback: Text lesen und über `loads` parsen (nützlich für gemocktes `open`)
                 try:
-                    with open(pyproject_path, "r", encoding="utf-8") as f_txt:
+                    with open(pyproject_path, encoding="utf-8") as f_txt:
                         text = f_txt.read()
                     # Beide Bibliotheken stellen `loads` bereit
                     data = toml_loader.loads(text)  # type: ignore[attr-defined]
@@ -107,7 +106,7 @@ class SBOMGenerator:
             return
 
         try:
-            with open(sbom_path, "r", encoding="utf-8") as f:
+            with open(sbom_path, encoding="utf-8") as f:
                 data = json.load(f)
         except Exception:
             return
@@ -242,9 +241,7 @@ class SBOMGenerator:
 
                 licenses.append(
                     {
-                        "package": getattr(
-                            dist, "project_name", getattr(dist, "key", "unknown")
-                        ),
+                        "package": getattr(dist, "project_name", getattr(dist, "key", "unknown")),
                         "version": getattr(dist, "version", ""),
                         "license": license_value or "",
                     }

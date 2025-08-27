@@ -5,10 +5,10 @@ Stellt sicher, thes all Imports korrekt funktionieren and the Package-Struktur
 the Enterprise-Statdards entspricht.
 """
 
-import pytest
 import importlib
 import sys
-from typing import Any
+
+import pytest
 
 
 @pytest.mark.unit
@@ -18,16 +18,16 @@ class TestImportSystem:
     def test_main_package_import(self):
         """Tests Import of the Hauptpackages."""
         import kei_agent
-        assert hasattr(kei_agent, '__version__')
-        assert hasattr(kei_agent, '__author__')
+        assert hasattr(kei_agent, "__version__")
+        assert hasattr(kei_agent, "__author__")
 
     def test_core_classes_import(self):
         """Tests Import the Kernklassen."""
         from kei_agent import (
-            UnifiedKeiAgentClient,
             AgentClientConfig,
             CapabilityManager,
-            CapabilityProfile
+            CapabilityProfile,
+            UnifiedKeiAgentClient,
         )
 
         # Prüfe, thes all classn available are
@@ -39,29 +39,20 @@ class TestImportSystem:
     def test_protocol_classes_import(self):
         """Tests Import the protocol-classn."""
         from kei_agent import (
-            Protocoltypee,
             Authtypee,
-            ProtocolConfig,
-            SecurityConfig,
-            KEIRPCclient,
-            KEIStreamclient,
-            KEIBusclient,
-            KEIMCPclient
+            Protocoltypee,
         )
 
         # Prüfe Enaroatds
-        assert hasattr(Protocoltypee, 'RPC')
-        assert hasattr(Authtypee, 'BEARER')
+        assert hasattr(Protocoltypee, "RPC")
+        assert hasattr(Authtypee, "BEARER")
 
     def test_enterprise_features_import(self):
         """Tests Import the enterprise features."""
         from kei_agent import (
-            get_logger,
             get_health_manager,
             get_input_validator,
-            TracingManager,
-            retryManager,
-            SecurityManager
+            get_logger,
         )
 
         # Prüfe, thes Factory-functionen available are
@@ -71,11 +62,7 @@ class TestImportSystem:
 
     def test_exception_classes_import(self):
         """Tests Import the Exception-classn."""
-        from kei_agent import (
-            KeiSDKError,
-            AgentNotFoundError,
-            CommunicationError
-        )
+        from kei_agent import AgentNotFoundError, CommunicationError, KeiSDKError
 
         # ValidationError is in input_validation, not direkt exportiert
         from kei_agent.exceptions import ValidationError
@@ -90,7 +77,7 @@ class TestImportSystem:
         import kei_agent
 
         # Prüfe, thes __all__ definiert is
-        assert hasattr(kei_agent, '__all__')
+        assert hasattr(kei_agent, "__all__")
         assert isinstance(kei_agent.__all__, list)
         assert len(kei_agent.__all__) > 0
 
@@ -102,14 +89,14 @@ class TestImportSystem:
         """Tests, thes ka zirkulären Imports exisieren."""
         # Importiere all Module and prüfe on error
         modules_to_test = [
-            'kei_agent.client',
-            'kei_agent.unified_client',
-            'kei_agent.capabilities',
-            'kei_agent.discovery',
-            'kei_agent.protocol_clients',
-            'kei_agent.security_manager',
-            'kei_agent.tracing',
-            'kei_agent.retry'
+            "kei_agent.client",
+            "kei_agent.unified_client",
+            "kei_agent.capabilities",
+            "kei_agent.discovery",
+            "kei_agent.protocol_clients",
+            "kei_agent.security_manager",
+            "kei_agent.tracing",
+            "kei_agent.retry"
         ]
 
         for module_name in modules_to_test:
@@ -130,8 +117,9 @@ class TestImportSystem:
 
     def test_package_structure(self):
         """Tests the Package-Struktur."""
-        import kei_agent
         import os
+
+        import kei_agent
 
         # Prüfe, thes the Package a Directory is
         package_path = os.path.dirname(kei_agent.__file__)
@@ -139,12 +127,12 @@ class TestImportSystem:
 
         # Prüfe, thes wichtige Module exisieren
         expected_modules = [
-            '__init__.py',
-            'client.py',
-            'unified_client.py',
-            'capabilities.py',
-            'exceptions.py',
-            'models.py'
+            "__init__.py",
+            "client.py",
+            "unified_client.py",
+            "capabilities.py",
+            "exceptions.py",
+            "models.py"
         ]
 
         for module_file in expected_modules:
@@ -156,31 +144,32 @@ class TestImportSystem:
         import kei_agent
 
         # Version should available sa
-        assert hasattr(kei_agent, '__version__')
+        assert hasattr(kei_agent, "__version__")
         assert isinstance(kei_agent.__version__, str)
         assert len(kei_agent.__version__) > 0
 
         # Version should a Pattern folgen (z.B. 0.1.0b7)
         import re
-        version_pattern = r'^\d+\.\d+\.\d+([ab]\d+)?$'
+        version_pattern = r"^\d+\.\d+\.\d+([ab]\d+)?$"
         assert re.match(version_pattern, kei_agent.__version__), \
             f"Version '{kei_agent.__version__}' folgt not the erwarteten Pattern"
 
     def test_typing_support(self):
         """Tests typee-Hint-Atthestüttong."""
-        import kei_agent
         import os
+
+        import kei_agent
 
         # Prüfe, thes py.typed exiss
         package_path = os.path.dirname(kei_agent.__file__)
-        py_typed_path = os.path.join(package_path, 'py.typed')
+        py_typed_path = os.path.join(package_path, "py.typed")
         assert os.path.exists(py_typed_path), "py.typed File fehlt for typee-Hint-Atthestüttong"
 
     def test_no_import_side_effects(self):
         """Tests, thes Imports ka unerwünschten Sinceeneffekte have."""
         # Capture stdout/stther before Import
-        import io
         import contextlib
+        import io
 
         stdout_capture = io.StringIO()
         stderr_capture = io.StringIO()
@@ -189,10 +178,10 @@ class TestImportSystem:
              contextlib.redirect_stderr(stderr_capture):
 
             # Re-import should minimal output have
-            importlib.reload(sys.modules['kei_agent'])
+            importlib.reload(sys.modules["kei_agent"])
 
         stdout_output = stdout_capture.getvalue()
-        stderr_output = stderr_capture.getvalue()
+        # stderr_output = stderr_capture.getvalue()  # Unused for now
 
         # Nur minimale Logging-Ausgaben are erlaubt
         assert len(stdout_output) < 1000, "To viel stdout Output onm Import"
@@ -204,17 +193,18 @@ class TestModuleIntegrity:
 
     def test_all_modules_have_docstrings(self):
         """Tests, thes all Module Docstrings have."""
-        import kei_agent
-        import os
         import ast
+        import os
+
+        import kei_agent
 
         package_path = os.path.dirname(kei_agent.__file__)
 
         for filename in os.listdir(package_path):
-            if filename.endswith('.py') and not filename.startswith('_'):
+            if filename.endswith(".py") and not filename.startswith("_"):
                 filepath = os.path.join(package_path, filename)
 
-                with open(filepath, 'r', encoding='utf-8') as f:
+                with open(filepath, encoding="utf-8") as f:
                     try:
                         tree = ast.parse(f.read())
                         docstring = ast.get_docstring(tree)
@@ -225,24 +215,25 @@ class TestModuleIntegrity:
 
     def test_no_star_imports(self):
         """Tests, thes ka Star-Imports verwendet werthe."""
-        import kei_agent
-        import os
         import ast
+        import os
+
+        import kei_agent
 
         package_path = os.path.dirname(kei_agent.__file__)
 
         for filename in os.listdir(package_path):
-            if filename.endswith('.py'):
+            if filename.endswith(".py"):
                 filepath = os.path.join(package_path, filename)
 
-                with open(filepath, 'r', encoding='utf-8') as f:
+                with open(filepath, encoding="utf-8") as f:
                     try:
                         tree = ast.parse(f.read())
 
                         for node in ast.walk(tree):
                             if isinstance(node, ast.ImportFrom):
                                 for alias in node.names:
-                                    assert alias.name != '*', \
+                                    assert alias.name != "*", \
                                         f"Star-Import gefatthe in {filename}: from {node.module} import *"
                     except SyntaxError:
                         pass  # Bereits in attheem Test gechecks

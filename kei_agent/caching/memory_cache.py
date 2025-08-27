@@ -10,24 +10,25 @@ High-performance in-memory cache with:
 """
 
 import asyncio
+from collections import OrderedDict
 import gc
 import logging
 import pickle
 import sys
 import threading
 import time
-from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Set
+
 import psutil
 
 from .cache_framework import (
-    CacheInterface,
-    CacheEntry,
-    CacheStats,
     CacheConfig,
-    InvalidationStrategy,
+    CacheEntry,
+    CacheInterface,
     CacheMetrics,
+    CacheStats,
     CircuitBreaker,
+    InvalidationStrategy,
     get_cache_event_manager,
 )
 
@@ -51,9 +52,7 @@ class MemoryCache(CacheInterface):
 
         self._lock = threading.RLock()
         self._metrics = CacheMetrics()
-        self._circuit_breaker = (
-            CircuitBreaker() if config.circuit_breaker_enabled else None
-        )
+        self._circuit_breaker = CircuitBreaker() if config.circuit_breaker_enabled else None
         self._event_manager = get_cache_event_manager()
 
         # Background cleanup task
@@ -170,7 +169,7 @@ class MemoryCache(CacheInterface):
             return entry.value
 
     async def set(
-        self, key: str, value: Any, ttl: Optional[float] = None, tags: List[str] = None
+        self, key: str, value: Any, ttl: Optional[float] = None, tags: Optional[List[str]] = None
     ) -> bool:
         """Set value in cache.
 
@@ -185,11 +184,8 @@ class MemoryCache(CacheInterface):
         """
         try:
             if self._circuit_breaker:
-                return self._circuit_breaker.call(
-                    self._set_internal, key, value, ttl, tags
-                )
-            else:
-                return self._set_internal(key, value, ttl, tags)
+                return self._circuit_breaker.call(self._set_internal, key, value, ttl, tags)
+            return self._set_internal(key, value, ttl, tags)
 
         except Exception as e:
             self._metrics.record_error()
@@ -197,9 +193,7 @@ class MemoryCache(CacheInterface):
             logger.error(f"Error setting cache key {key}: {e}")
             return False
 
-    def _set_internal(
-        self, key: str, value: Any, ttl: Optional[float], tags: List[str]
-    ) -> bool:
+    def _set_internal(self, key: str, value: Any, ttl: Optional[float], tags: List[str]) -> bool:
         """Internal set method without circuit breaker."""
         with self._lock:
             # Calculate entry size
@@ -240,9 +234,7 @@ class MemoryCache(CacheInterface):
             # Update metrics
             self._update_size_metrics()
 
-            self._event_manager.emit(
-                "cache_set", key=key, level="L1", size_bytes=size_bytes
-            )
+            self._event_manager.emit("cache_set", key=key, level="L1", size_bytes=size_bytes)
 
             return True
 
@@ -292,9 +284,7 @@ class MemoryCache(CacheInterface):
             if key in self.cache:
                 self._remove_entry(key)
                 self._metrics.record_eviction()
-                self._event_manager.emit(
-                    "cache_eviction", key=key, level="L1", reason=reason
-                )
+                self._event_manager.emit("cache_eviction", key=key, level="L1", reason=reason)
 
     def _select_eviction_candidate(self) -> Optional[str]:
         """Select a key for eviction based on strategy."""
@@ -303,11 +293,10 @@ class MemoryCache(CacheInterface):
 
         if self.config.invalidation_strategy == InvalidationStrategy.LRU:
             return self._select_lru_candidate()
-        elif self.config.invalidation_strategy == InvalidationStrategy.LFU:
+        if self.config.invalidation_strategy == InvalidationStrategy.LFU:
             return self._select_lfu_candidate()
-        else:
-            # Default to LRU
-            return self._select_lru_candidate()
+        # Default to LRU
+        return self._select_lru_candidate()
 
     def _select_lru_candidate(self) -> Optional[str]:
         """Select least recently used key."""

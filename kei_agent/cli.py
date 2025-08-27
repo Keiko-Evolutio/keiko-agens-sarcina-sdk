@@ -9,22 +9,21 @@ with vollständiger Integration in the KEI-Agent Framework.
 
 import asyncio
 import json
-import sys
 from pathlib import Path
+import sys
 from typing import Optional
 
 import click
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 
-from .unified_client import UnifiedKeiAgentClient
 from .client import AgentClientConfig
-from .secrets_manager import get_secrets_manager
-from .input_sanitizer import get_sanitizer
 from .exceptions import KeiSDKError
-
+from .input_sanitizer import get_sanitizer
+from .secrets_manager import get_secrets_manager
+from .unified_client import UnifiedKeiAgentClient
 
 # Rich Console for schöne Ausgaben
 console = Console()
@@ -44,9 +43,7 @@ class CLIContext:
 
         if config_file and config_file.exists():
             # Sanitize file path
-            safe_path = sanitizer.sanitize_file_path(
-                str(config_file), "config file path"
-            )
+            safe_path = sanitizer.sanitize_file_path(str(config_file), "config file path")
 
             with open(safe_path) as f:
                 # Sanitize JSON content
@@ -75,38 +72,37 @@ class CLIContext:
             # Validate configuration
             config.validate()
             return config
-        else:
-            # Fallback on Aroatdgebungsvariablen using secrets manager
-            secrets = get_secrets_manager()
+        # Fallback on Aroatdgebungsvariablen using secrets manager
+        secrets = get_secrets_manager()
 
-            # Get and sanitize values from environment
-            base_url = sanitizer.sanitize_url(
-                secrets.get_secret("API_URL", default="https://api.kei-framework.com"),
-                "base_url",
-            )
-            api_token = secrets.get_secret("API_TOKEN")
-            if api_token:
-                api_token = sanitizer.sanitize_string(api_token, field_name="api_token")
+        # Get and sanitize values from environment
+        base_url = sanitizer.sanitize_url(
+            secrets.get_secret("API_URL", default="https://api.kei-framework.com"),
+            "base_url",
+        )
+        api_token = secrets.get_secret("API_TOKEN")
+        if api_token:
+            api_token = sanitizer.sanitize_string(api_token, field_name="api_token")
 
-            agent_id = sanitizer.sanitize_string(
-                secrets.get_secret("AGENT_ID", default="cli-agent"),
-                field_name="agent_id",
-            )
+        agent_id = sanitizer.sanitize_string(
+            secrets.get_secret("AGENT_ID", default="cli-agent"),
+            field_name="agent_id",
+        )
 
-            tenant_id = secrets.get_secret("TENANT_ID")
-            if tenant_id:
-                tenant_id = sanitizer.sanitize_string(tenant_id, field_name="tenant_id")
+        tenant_id = secrets.get_secret("TENANT_ID")
+        if tenant_id:
+            tenant_id = sanitizer.sanitize_string(tenant_id, field_name="tenant_id")
 
-            config = AgentClientConfig(
-                base_url=base_url,
-                api_token=api_token,
-                agent_id=agent_id,
-                tenant_id=tenant_id,
-            )
+        config = AgentClientConfig(
+            base_url=base_url,
+            api_token=api_token,
+            agent_id=agent_id,
+            tenant_id=tenant_id,
+        )
 
-            # Validate configuration
-            config.validate()
-            return config
+        # Validate configuration
+        config.validate()
+        return config
 
     async def get_client(self) -> UnifiedKeiAgentClient:
         """Creates and initialized KEI-Agent client."""
@@ -222,9 +218,7 @@ def list_agents(status: Optional[str], capability: Optional[str], limit: int):
                 # Filter-parameters
                 capabilities = [capability] if capability else None
 
-                agents = await client.list_agents(
-                    capabilities=capabilities, status=status
-                )
+                agents = await client.list_agents(capabilities=capabilities, status=status)
 
                 progress.update(task, completed=True)
 
@@ -243,9 +237,7 @@ def list_agents(status: Optional[str], capability: Optional[str], limit: int):
             for agent in agents[:limit]:
                 # status-Farbe
                 status_color = (
-                    "green"
-                    if hasattr(agent, "status") and agent.status == "active"
-                    else "yellow"
+                    "green" if hasattr(agent, "status") and agent.status == "active" else "yellow"
                 )
 
                 # health status
@@ -293,9 +285,7 @@ def info(agent_id: str):
                 TextColumn("[progress.description]{task.description}"),
                 console=console,
             ) as progress:
-                task = progress.add_task(
-                    f"Lade Agent-informationen for {agent_id}...", total=None
-                )
+                task = progress.add_task(f"Lade Agent-informationen for {agent_id}...", total=None)
 
                 agent = await client.get_agent(agent_id)
 
@@ -308,7 +298,9 @@ def info(agent_id: str):
 
             if hasattr(agent, "status"):
                 status_color = "green" if agent.status == "active" else "yellow"
-                info_text += f"[bold]status:[/bold] [{status_color}]{agent.status}[/{status_color}]\n"
+                info_text += (
+                    f"[bold]status:[/bold] [{status_color}]{agent.status}[/{status_color}]\n"
+                )
 
             if hasattr(agent, "metadata") and agent.metadata:
                 info_text += f"[bold]Version:[/bold] {agent.metadata.version}\n"
@@ -367,9 +359,7 @@ def health():
             status = health_data.get("status", "unknown")
             status_color = "green" if status == "healthy" else "red"
 
-            health_text = (
-                f"[bold]status:[/bold] [{status_color}]{status}[/{status_color}]\n"
-            )
+            health_text = f"[bold]status:[/bold] [{status_color}]{status}[/{status_color}]\n"
 
             if "version" in health_data:
                 health_text += f"[bold]Version:[/bold] {health_data['version']}\n"
@@ -381,9 +371,7 @@ def health():
                 health_text += "[bold]Komponenten:[/bold]\n"
                 for component, comp_status in health_data["components"].items():
                     comp_color = "green" if comp_status == "healthy" else "red"
-                    health_text += (
-                        f"  • {component}: [{comp_color}]{comp_status}[/{comp_color}]\n"
-                    )
+                    health_text += f"  • {component}: [{comp_color}]{comp_status}[/{comp_color}]\n"
 
             console.print(
                 Panel(
@@ -444,11 +432,11 @@ def plat(objective: str, context: Optional[str]):
                     plat_text += f"  {i}. {step}\n"
 
             if "estimated_duration" in plat_result:
-                plat_text += f"\n[bold]Geschätzte Dauer:[/bold] {plat_result['estimated_duration']}\n"
+                plat_text += (
+                    f"\n[bold]Geschätzte Dauer:[/bold] {plat_result['estimated_duration']}\n"
+                )
 
-            console.print(
-                Panel(plat_text.rstrip(), title="Created Platform", border_style="blue")
-            )
+            console.print(Panel(plat_text.rstrip(), title="Created Platform", border_style="blue"))
 
         except KeiSDKError as e:
             console.print(f"[red]error on Plat-Erstellung: {e}[/red]")

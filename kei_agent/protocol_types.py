@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from .validation_models import validate_configuration
 from .exceptions import ValidationError
+from .validation_models import validate_configuration
 
 
 class Protocoltypee(str, Enum):
@@ -197,9 +197,7 @@ class SecurityConfig:
     audit_enabled: bool = True
     token_refresh_enabled: bool = True
     token_cache_ttl: int = 3600  # Sekatthe
-    token_refresh_interval: Optional[int] = (
-        None  # For backward compatibility with tests
-    )
+    token_refresh_interval: Optional[int] = None  # For backward compatibility with tests
 
     def validate(self) -> None:
         """Validates the security configuration using Pydantic models.
@@ -233,9 +231,7 @@ class SecurityConfig:
         except ValidationError:
             raise
         except Exception as e:
-            raise ValidationError(
-                f"Security configuration validation failed: {e}"
-            ) from e
+            raise ValidationError(f"Security configuration validation failed: {e}") from e
 
     def is_token_based(self) -> bool:
         """Checks ob Token-basierte authentication verwendet is.
@@ -255,10 +251,10 @@ class SecurityConfig:
 
 
 __all__ = [
-    "Protocoltypee",
-    "Authtypee",
-    "ProtocolType",
     "AuthType",
+    "Authtypee",
     "ProtocolConfig",
+    "ProtocolType",
+    "Protocoltypee",
     "SecurityConfig",
 ]

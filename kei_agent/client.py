@@ -9,10 +9,10 @@ wie retry mechanisms, Tracing and service discovery.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass, field
 import json
 import time
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Callable, Awaitable
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 from urllib.parse import urljoin
 
 import aiohttp
@@ -24,18 +24,18 @@ except ImportError:
     # Fallback for older OpenTelemetry versions
     from opentelemetry.trace.status import Status, StatusCode
 
-from .models import Agent, AgentHealth
 from .exceptions import (
-    KeiSDKError,
     AgentNotFoundError,
     CommunicationError,
+    KeiSDKError,
+    ValidationError,
     retryExhaustedError,
 )
-from .tracing import TracingManager
+from .models import Agent, AgentHealth
 from .retry import retryManager, retryPolicy, retryStrategy
+from .tracing import TracingManager
 from .utils import create_correlation_id
 from .validation_models import validate_configuration
-from .exceptions import ValidationError
 
 
 @dataclass
@@ -58,7 +58,7 @@ class ConnectionConfig:
 
 
 @dataclass
-class retryConfig:
+class RetryConfig:
     """configuration for retry mechanisms."""
 
     max_attempts: int = 3
@@ -76,9 +76,7 @@ class retryConfig:
     half_open_max_calls: int = 3
 
     # Retry conditions
-    retry_on_status_codes: List[int] = field(
-        default_factory=lambda: [429, 502, 503, 504]
-    )
+    retry_on_status_codes: List[int] = field(default_factory=lambda: [429, 502, 503, 504])
     retry_on_exceptions: List[type] = field(
         default_factory=lambda: [
             aiohttp.ClientTimeout,
@@ -135,9 +133,9 @@ class AgentClientConfig:
 
     # Sub-Configurations
     connection: ConnectionConfig = field(default_factory=ConnectionConfig)
-    retry: retryConfig = field(default_factory=retryConfig)
+    retry: RetryConfig = field(default_factory=RetryConfig)
     # protocol-specific retry-Policies (Schlüssel: "rpc", "stream", "bus", "mcp")
-    protocol_retry_policies: Dict[str, retryConfig] = field(default_factory=dict)
+    protocol_retry_policies: Dict[str, RetryConfig] = field(default_factory=dict)
     tracing: TracingConfig = field(default_factory=TracingConfig)
 
     # Feature Flags
@@ -176,9 +174,7 @@ class AgentClientConfig:
         except ValidationError:
             raise
         except Exception as e:
-            raise ValidationError(
-                f"Agent client configuration validation failed: {e}"
-            ) from e
+            raise ValidationError(f"Agent client configuration validation failed: {e}") from e
 
 
 class KeiAgentClient:
@@ -195,9 +191,7 @@ class KeiAgentClient:
         self._closed = False
 
         # Initialize Components
-        self._tracing_manager = (
-            TracingManager(config.tracing) if config.tracing.enabled else None
-        )
+        self._tracing_manager = TracingManager(config.tracing) if config.tracing.enabled else None
         self._retry_manager = retryManager(config.retry)
 
         # Internal State
@@ -371,18 +365,14 @@ class KeiAgentClient:
                     # Update span with response info
                     if span:
                         span.set_attribute("http.status_code", response.status)
-                        span.set_attribute(
-                            "http.response_size", len(await response.read())
-                        )
+                        span.set_attribute("http.response_size", len(await response.read()))
 
                     # Prüfe response-status
                     if response.status >= 400:
                         error_text = await response.text()
 
                         if span:
-                            span.set_status(
-                                Status(StatusCode.ERROR, f"HTTP {response.status}")
-                            )
+                            span.set_status(Status(StatusCode.ERROR, f"HTTP {response.status}"))
                             span.set_attribute("http.error_message", error_text)
 
                         # Check if retry is possible
@@ -396,9 +386,7 @@ class KeiAgentClient:
                             if self.config.on_retry_attempt:
                                 await self.config.on_retry_attempt(
                                     attempt + 1,
-                                    KeiSDKError(
-                                        f"HTTP {response.status}: {error_text}"
-                                    ),
+                                    KeiSDKError(f"HTTP {response.status}: {error_text}"),
                                 )
 
                             # Warte before nächstem Versuch
@@ -409,8 +397,7 @@ class KeiAgentClient:
                         # Erstelle specific Exception
                         if response.status == 404:
                             raise AgentNotFoundError(f"Agent not found: {error_text}")
-                        else:
-                            raise KeiSDKError(f"HTTP {response.status}: {error_text}")
+                        raise KeiSDKError(f"HTTP {response.status}: {error_text}")
 
                     # Successfule response
                     if span:
@@ -418,8 +405,7 @@ class KeiAgentClient:
 
                     # Parse JSON-response
                     try:
-                        response_data = await response.json()
-                        return response_data
+                        return await response.json()
                     except json.JSONDecodeError:
                         # Fallback for leere responses
                         return {}
@@ -557,9 +543,7 @@ class KeiAgentClient:
 
         return Agent.from_dict(response)
 
-    async def delete_agent(
-        self, agent_id: Optional[str] = None, force: bool = False
-    ) -> None:
+    async def delete_agent(self, agent_id: Optional[str] = None, force: bool = False) -> None:
         """Removes Agent from Registry.
 
         Args:
@@ -607,9 +591,7 @@ class KeiAgentClient:
             "GET", "/api/v1/registry/agents", params=params, trace_name="agent.list"
         )
 
-        return [
-            Agent.from_dict(agent_data) for agent_data in response.get("agents", [])
-        ]
+        return [Agent.from_dict(agent_data) for agent_data in response.get("agents", [])]
 
     # Health and status APIs
 
@@ -622,15 +604,11 @@ class KeiAgentClient:
         current_time = time.time()
 
         try:
-            response = await self._make_request(
-                "GET", "/api/v1/health", trace_name="health.check"
-            )
+            response = await self._make_request("GET", "/api/v1/health", trace_name="health.check")
 
             self._last_health_check = current_time
 
-            return AgentHealth(
-                status="healthy", timestamp=current_time, details=response
-            )
+            return AgentHealth(status="healthy", timestamp=current_time, details=response)
 
         except Exception as e:
             return AgentHealth(

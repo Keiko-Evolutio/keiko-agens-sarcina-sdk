@@ -66,8 +66,6 @@ def clean_build():
             path = Path(pattern)
             if path.exists():
                 if path.is_dir():
-                    import shutil
-
                     shutil.rmtree(path)
                     print(f"  Entfernt: {path}/")
                 else:

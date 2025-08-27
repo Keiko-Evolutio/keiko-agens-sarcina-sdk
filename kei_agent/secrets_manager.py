@@ -8,11 +8,11 @@ with support for environment variables, external secret stores, and validation.
 
 from __future__ import annotations
 
-import os
-import logging
-from typing import Dict, Optional, Any
 from dataclasses import dataclass
+import logging
+import os
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 from .exceptions import SecurityError
 
@@ -28,9 +28,7 @@ class SecretConfig:
 
     # External secret store configuration
     use_external_store: bool = False
-    store_type: Optional[str] = (
-        None  # "aws_secrets", "azure_keyvault", "hashicorp_vault"
-    )
+    store_type: Optional[str] = None  # "aws_secrets", "azure_keyvault", "hashicorp_vault"
     store_config: Optional[Dict[str, Any]] = None
 
     # Validation settings
@@ -168,9 +166,7 @@ class SecretsManager:
         client_secret = self.get_secret("OIDC_CLIENT_SECRET", required=True)
         if client_secret is None:
             raise ValueError("OIDC_CLIENT_SECRET is required but not found")
-        scope = (
-            self.get_secret("OIDC_SCOPE", default="openid profile") or "openid profile"
-        )
+        scope = self.get_secret("OIDC_SCOPE", default="openid profile") or "openid profile"
 
         return {
             "issuer": issuer,
@@ -227,9 +223,7 @@ class SecretsManager:
                 missing_secrets.append(f"{self.config.env_prefix}{secret}")
 
         if missing_secrets:
-            raise SecurityError(
-                f"Missing required secrets: {', '.join(missing_secrets)}"
-            )
+            raise SecurityError(f"Missing required secrets: {', '.join(missing_secrets)}")
 
         return True
 
@@ -257,7 +251,7 @@ class SecretsManager:
                 raise SecurityError(f"Token '{key}' appears to be a placeholder value")
 
         if "URL" in key.upper():
-            if not (value.startswith("http://") or value.startswith("https://")):
+            if not (value.startswith(("http://", "https://"))):
                 raise SecurityError(f"URL '{key}' must start with http:// or https://")
 
     def _get_from_external_store(self, key: str) -> Optional[str]:

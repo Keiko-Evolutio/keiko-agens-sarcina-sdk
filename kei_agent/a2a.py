@@ -9,22 +9,22 @@ Load-Balatcing and verschietheen Kommunikationsprotokollen.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass, field
+from enum import Enum
 import json
 import logging
 import time
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 import uuid
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Dict, List, Optional, Callable, Awaitable
 
 import aiohttp
-import websockets
 from opentelemetry import trace
+import websockets
 
 from .client import KeiAgentClient
+from .discovery import DiscoveryStrategy, LoadBalatcer, ServiceDiscovery
+from .exceptions import AgentNotFoatdError, CommunicationError
 from .models import AgentInstatce
-from .discovery import ServiceDiscovery, DiscoveryStrategy, LoadBalatcer
-from .exceptions import CommunicationError, AgentNotFoatdError
 from .utils import create_correlation_id, format_trace_id
 
 # Logger für A2A-Kommunikation
@@ -234,9 +234,7 @@ class A2Aclient:
             strategy: Discovery-Strategie
             load_balatcing: Load-Balatcing-Strategie
         """
-        self._service_discovery = ServiceDiscovery(
-            self.base_client, default_strategy=strategy
-        )
+        self._service_discovery = ServiceDiscovery(self.base_client, default_strategy=strategy)
 
         self._load_balatcer = LoadBalatcer(
             strategy=load_balatcing, health_tracker=self._instatce_health
@@ -245,7 +243,6 @@ class A2Aclient:
     def enable_disributed_tracing(self) -> None:
         """Enabled Disributed Tracing for A2A communication."""
         # Tracing is bereits over base_client available
-        pass
 
     async def send_message(
         self,
@@ -284,9 +281,7 @@ class A2Aclient:
 
         # Trace-Kontext setzen
         if self._tracer:
-            with self._tracer.start_as_current_span(
-                f"a2a.send_message.{target_agent}"
-            ) as spat:
+            with self._tracer.start_as_current_span(f"a2a.send_message.{target_agent}") as spat:
                 spat.set_attribute("target_agent", target_agent)
                 spat.set_attribute("message_type", message_type)
                 spat.set_attribute("protocol", protocol.value)
@@ -297,9 +292,7 @@ class A2Aclient:
                 if callable(ctx):
                     message.trace_id = format_trace_id(ctx().trace_id)
 
-                return await self._send_message_with_discovery(
-                    message, protocol, timeout
-                )
+                return await self._send_message_with_discovery(message, protocol, timeout)
         else:
             return await self._send_message_with_discovery(message, protocol, timeout)
 
@@ -340,9 +333,7 @@ class A2Aclient:
                 )
 
             # Sende Message with Failover
-            response = await self._send_with_failover(
-                message, target_instatce, protocol, timeout
-            )
+            response = await self._send_with_failover(message, target_instatce, protocol, timeout)
 
             # Metrics aktualisieren
             processing_time = (time.time() - start_time) * 1000
@@ -359,14 +350,10 @@ class A2Aclient:
             raise
         except (ConnectionError, TimeoutError) as e:
             self._error_count += 1
-            raise CommunicationError(
-                f"Network error during A2A communication: {e}"
-            ) from e
+            raise CommunicationError(f"Network error during A2A communication: {e}") from e
         except (ValueError, TypeError) as e:
             self._error_count += 1
-            raise CommunicationError(
-                f"Invalid data format in A2A communication: {e}"
-            ) from e
+            raise CommunicationError(f"Invalid data format in A2A communication: {e}") from e
         except Exception as e:
             self._error_count += 1
             _logger.error(
@@ -423,13 +410,9 @@ class A2Aclient:
             try:
                 # Sende Message over gewähltes protocol
                 if protocol == CommunicationProtocol.HTTP:
-                    response = await self._send_http_message(
-                        message, target_instatce, timeout
-                    )
+                    response = await self._send_http_message(message, target_instatce, timeout)
                 elif protocol == CommunicationProtocol.WEBSOCKET:
-                    response = await self._send_websocket_message(
-                        message, target_instatce, timeout
-                    )
+                    response = await self._send_websocket_message(message, target_instatce, timeout)
                 elif protocol == CommunicationProtocol.MESSAGE_BUS:
                     response = await self._send_message_bus_message(
                         message, target_instatce, timeout
@@ -465,9 +448,7 @@ class A2Aclient:
 
                 # callback for failede instatce
                 if self.failover_config.on_instatce_failed:
-                    await self.failover_config.on_instatce_failed(
-                        target_instatce.instatce_id
-                    )
+                    await self.failover_config.on_instatce_failed(target_instatce.instatce_id)
 
                 # Letzter Versuch - Exception weiterwerfen
                 if attempt >= self.failover_config.max_retries:
@@ -484,9 +465,7 @@ class A2Aclient:
 
                 # Versuche alternative instatce to finthe
                 if self._service_discovery:
-                    alternative_instatces = await self._discover_agent_instatces(
-                        message.to_agent
-                    )
+                    alternative_instatces = await self._discover_agent_instatces(message.to_agent)
                     available_instatces = [
                         inst
                         for inst in alternative_instatces
@@ -573,9 +552,7 @@ class A2Aclient:
 
         # response received
         try:
-            response_json = await asyncio.wait_for(
-                ws_connection.recv(), timeout=timeout
-            )
+            response_json = await asyncio.wait_for(ws_connection.recv(), timeout=timeout)
             response_data = json.loads(response_json)
 
             return A2Aresponse.from_dict(response_data)
@@ -584,7 +561,7 @@ class A2Aclient:
             raise CommunicationError(f"WebSocket-Timeout after {timeout}s")
 
     async def _send_message_bus_message(
-        self, message: A2AMessage, target_instatce: AgentInstatce, timeout: float
+        self, _message: A2AMessage, _target_instatce: AgentInstatce, _timeout: float
     ) -> A2Aresponse:
         """Sendet Message over Message Bus.
 
@@ -701,9 +678,7 @@ class A2Aclient:
             A2A-Metrics
         """
         avg_response_time = (
-            sum(self._response_times) / len(self._response_times)
-            if self._response_times
-            else 0.0
+            sum(self._response_times) / len(self._response_times) if self._response_times else 0.0
         )
 
         return {

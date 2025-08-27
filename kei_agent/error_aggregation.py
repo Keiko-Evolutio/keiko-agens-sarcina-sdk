@@ -10,15 +10,15 @@ This module provides:
 - Automated incident response and notification routing
 """
 
-import time
-import traceback
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Any, Callable
 import logging
+import time
+import traceback
+from typing import Any, Callable, Dict, List, Optional
 
-from .metrics import get_metrics_collector, MetricEvent
+from .metrics import MetricEvent, get_metrics_collector
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +203,7 @@ class ErrorAggregator:
             )
         )
 
-    def _get_recent_errors(self, minutes: int = None) -> List[ErrorEvent]:
+    def _get_recent_errors(self, minutes: Optional[int] = None) -> List[ErrorEvent]:
         """Get errors from recent time window.
 
         Args:
@@ -223,9 +223,7 @@ class ErrorAggregator:
 
         # High error rate alert
         def high_error_rate(errors: List[ErrorEvent]) -> bool:
-            recent_errors = [
-                e for e in errors if e.timestamp >= time.time() - 300
-            ]  # 5 minutes
+            recent_errors = [e for e in errors if e.timestamp >= time.time() - 300]  # 5 minutes
             return len(recent_errors) > 50  # More than 50 errors in 5 minutes
 
         self.alert_rules.append(
@@ -240,12 +238,8 @@ class ErrorAggregator:
 
         # Critical error alert
         def critical_errors(errors: List[ErrorEvent]) -> bool:
-            recent_errors = [
-                e for e in errors if e.timestamp >= time.time() - 60
-            ]  # 1 minute
-            critical_errors = [
-                e for e in recent_errors if e.severity == ErrorSeverity.CRITICAL
-            ]
+            recent_errors = [e for e in errors if e.timestamp >= time.time() - 60]  # 1 minute
+            critical_errors = [e for e in recent_errors if e.severity == ErrorSeverity.CRITICAL]
             return len(critical_errors) > 0
 
         self.alert_rules.append(
@@ -260,12 +254,8 @@ class ErrorAggregator:
 
         # Authentication failure spike
         def auth_failure_spike(errors: List[ErrorEvent]) -> bool:
-            recent_errors = [
-                e for e in errors if e.timestamp >= time.time() - 300
-            ]  # 5 minutes
-            auth_errors = [
-                e for e in recent_errors if e.category == ErrorCategory.AUTHENTICATION
-            ]
+            recent_errors = [e for e in errors if e.timestamp >= time.time() - 300]  # 5 minutes
+            auth_errors = [e for e in recent_errors if e.category == ErrorCategory.AUTHENTICATION]
             return len(auth_errors) > 10  # More than 10 auth failures in 5 minutes
 
         self.alert_rules.append(
@@ -280,12 +270,8 @@ class ErrorAggregator:
 
         # Security event alert
         def security_events(errors: List[ErrorEvent]) -> bool:
-            recent_errors = [
-                e for e in errors if e.timestamp >= time.time() - 60
-            ]  # 1 minute
-            security_errors = [
-                e for e in recent_errors if e.category == ErrorCategory.SECURITY
-            ]
+            recent_errors = [e for e in errors if e.timestamp >= time.time() - 60]  # 1 minute
+            security_errors = [e for e in recent_errors if e.category == ErrorCategory.SECURITY]
             return len(security_errors) > 0
 
         self.alert_rules.append(
@@ -328,9 +314,7 @@ class ErrorAggregator:
                 "rule_name": rule.name,
                 "rule_description": rule.description,
                 "triggered_by_count": len(errors),
-                "recent_errors": [
-                    e.error_id for e in errors[-10:]
-                ],  # Last 10 error IDs
+                "recent_errors": [e.error_id for e in errors[-10:]],  # Last 10 error IDs
             },
         )
 
@@ -370,12 +354,8 @@ class ErrorAggregator:
         recent_errors = self._get_recent_errors()
 
         # Calculate error rates
-        error_rate_1min = (
-            len([e for e in recent_errors if e.timestamp >= time.time() - 60]) / 1.0
-        )
-        error_rate_5min = (
-            len([e for e in recent_errors if e.timestamp >= time.time() - 300]) / 5.0
-        )
+        error_rate_1min = len([e for e in recent_errors if e.timestamp >= time.time() - 60]) / 1.0
+        error_rate_5min = len([e for e in recent_errors if e.timestamp >= time.time() - 300]) / 5.0
         error_rate_15min = (
             len([e for e in recent_errors if e.timestamp >= time.time() - 900]) / 15.0
         )
@@ -385,9 +365,7 @@ class ErrorAggregator:
         for error in recent_errors:
             error_type_counts[error.error_type] += 1
 
-        top_error_types = sorted(
-            error_type_counts.items(), key=lambda x: x[1], reverse=True
-        )[:10]
+        top_error_types = sorted(error_type_counts.items(), key=lambda x: x[1], reverse=True)[:10]
 
         # Category distribution
         category_distribution = {}
@@ -542,27 +520,19 @@ def record_error(
 # Convenience functions for common error categories
 def record_authentication_error(agent_id: str, error: Exception, **kwargs) -> str:
     """Record an authentication error."""
-    return record_error(
-        agent_id, error, ErrorCategory.AUTHENTICATION, ErrorSeverity.HIGH, **kwargs
-    )
+    return record_error(agent_id, error, ErrorCategory.AUTHENTICATION, ErrorSeverity.HIGH, **kwargs)
 
 
 def record_security_error(agent_id: str, error: Exception, **kwargs) -> str:
     """Record a security error."""
-    return record_error(
-        agent_id, error, ErrorCategory.SECURITY, ErrorSeverity.CRITICAL, **kwargs
-    )
+    return record_error(agent_id, error, ErrorCategory.SECURITY, ErrorSeverity.CRITICAL, **kwargs)
 
 
 def record_network_error(agent_id: str, error: Exception, **kwargs) -> str:
     """Record a network error."""
-    return record_error(
-        agent_id, error, ErrorCategory.NETWORK, ErrorSeverity.MEDIUM, **kwargs
-    )
+    return record_error(agent_id, error, ErrorCategory.NETWORK, ErrorSeverity.MEDIUM, **kwargs)
 
 
 def record_validation_error(agent_id: str, error: Exception, **kwargs) -> str:
     """Record a validation error."""
-    return record_error(
-        agent_id, error, ErrorCategory.VALIDATION, ErrorSeverity.LOW, **kwargs
-    )
+    return record_error(agent_id, error, ErrorCategory.VALIDATION, ErrorSeverity.LOW, **kwargs)

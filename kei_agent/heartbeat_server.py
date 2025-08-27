@@ -5,10 +5,11 @@ Einfacher HTTP-Server für Agent-Heartbeat-Checks.
 Läuft parallel zum Agent und antwortet auf Heartbeat-Requests der Platform.
 """
 
+import logging
 import time
 from typing import Optional
+
 from aiohttp import web
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 class AgentHeartbeatServer:
     """Einfacher Heartbeat-Server für Agents."""
 
-    def __init__(self, port: int = 8080, host: str = "0.0.0.0"):
+    def __init__(self, port: int = 8080, host: str = "127.0.0.1"):
         """Initialisiert den Heartbeat-Server.
 
         Args:
@@ -47,7 +48,7 @@ class AgentHeartbeatServer:
             "status": "running",
         }
 
-    async def heartbeat_handler(self, request):
+    async def heartbeat_handler(self, _request):
         """Handler für Heartbeat-Requests."""
         uptime = time.time() - self.start_time
 
@@ -61,7 +62,7 @@ class AgentHeartbeatServer:
         logger.debug(f"Heartbeat-Request beantwortet: {response_data}")
         return web.json_response(response_data)
 
-    async def health_handler(self, request):
+    async def health_handler(self, _request):
         """Handler für Health-Checks."""
         return web.json_response(
             {
@@ -110,7 +111,7 @@ class AgentHeartbeatServer:
 class AgentHeartbeatManager:
     """Manager für Agent-Heartbeat-Funktionalität."""
 
-    def __init__(self, agent_id: str, name: str = "", capabilities: list = None):
+    def __init__(self, agent_id: str, name: str = "", capabilities: Optional[list] = None):
         """Initialisiert den Heartbeat-Manager.
 
         Args:
@@ -125,9 +126,7 @@ class AgentHeartbeatManager:
         self.auto_port = True
         self.port = 8080
 
-    async def start_heartbeat_server(
-        self, port: int = None, host: str = "0.0.0.0"
-    ) -> str:
+    async def start_heartbeat_server(self, port: Optional[int] = None, host: str = "127.0.0.1") -> str:
         """Startet den Heartbeat-Server.
 
         Args:
@@ -151,9 +150,7 @@ class AgentHeartbeatManager:
         try:
             await self.server.start()
             heartbeat_url = self.server.get_heartbeat_url()
-            logger.info(
-                f"✅ Heartbeat-Server für Agent {self.agent_id} gestartet: {heartbeat_url}"
-            )
+            logger.info(f"✅ Heartbeat-Server für Agent {self.agent_id} gestartet: {heartbeat_url}")
             return heartbeat_url
         except Exception as e:
             logger.error(f"❌ Fehler beim Starten des Heartbeat-Servers: {e}")
@@ -167,9 +164,7 @@ class AgentHeartbeatManager:
             self.server = None
             logger.info(f"🛑 Heartbeat-Server für Agent {self.agent_id} gestoppt")
 
-    async def _find_free_port(
-        self, start_port: int = 8080, max_attempts: int = 100
-    ) -> int:
+    async def _find_free_port(self, start_port: int = 8080, max_attempts: int = 100) -> int:
         """Findet einen freien Port.
 
         Args:
@@ -209,9 +204,9 @@ class AgentHeartbeatManager:
 async def start_agent_heartbeat(
     agent_id: str,
     name: str = "",
-    capabilities: list = None,
-    port: int = None,
-    host: str = "0.0.0.0",
+    capabilities: Optional[list] = None,
+    port: Optional[int] = None,
+    host: str = "127.0.0.1",
 ) -> tuple[AgentHeartbeatManager, str]:
     """Startet einen Heartbeat-Server für einen Agent.
 

@@ -1,15 +1,15 @@
 """
-KEI-Agent Python SDK – Agent Skeleton, Lifecycle, capability advertisement
+KEI-Agent Python SDK - Agent Skeleton, Lifecycle, capability advertisement
 
 Kommentare in Deutsch, Ithetifier in Englisch.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Callable, Awaitable
 import asyncio
+from dataclasses import dataclass, field
 import json
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import aiohttp
 
@@ -58,9 +58,7 @@ class AgentSkeleton:
         }
         if self.cfg.tenant_id:
             headers["X-Tenant-Id"] = self.cfg.tenant_id
-        async with sess.request(
-            method, url, headers=headers, data=json.dumps(body or {})
-        ) as resp:
+        async with sess.request(method, url, headers=headers, data=json.dumps(body or {})) as resp:
             if resp.status >= 300:
                 text = await resp.text()
                 raise RuntimeError(f"HTTP {resp.status}: {text}")
@@ -131,8 +129,7 @@ class AgentSkeleton:
             f"/api/v1/agents-mgmt/{self.cfg.agent_id}/heartbeat",
             {
                 "health": health,
-                "readiness": readiness
-                or ("ready" if self._initialized else "starting"),
+                "readiness": readiness or ("ready" if self._initialized else "starting"),
                 "queue_length": queue_length,
                 "offered_concurrency": offered_concurrency,
                 "current_concurrency": current_concurrency,
@@ -140,9 +137,7 @@ class AgentSkeleton:
             },
         )
 
-    async def initialize(
-        self, warmup: Optional[Callable[[], Awaitable[None]]] = None
-    ) -> None:
+    async def initialize(self, warmup: Optional[Callable[[], Awaitable[None]]] = None) -> None:
         """Executes Warmup out, registers, advertised and starts Heartbeat-Loop."""
         if warmup:
             await warmup()

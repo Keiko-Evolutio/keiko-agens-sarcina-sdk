@@ -9,20 +9,20 @@ for the KEI-Agent SDK with Enterprise-Grade Security.
 from __future__ import annotations
 
 import asyncio
-import time
-from typing import Dict, Optional, Any
 import logging
+import time
+from typing import Any, Dict, Optional
 
 import httpx
 from tenacity import (
     AsyncRetrying,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_random_exponential,
-    retry_if_exception_type,
 )
 
-from .protocol_types import SecurityConfig, Authtypee
 from .exceptions import SecurityError
+from .protocol_types import Authtypee, SecurityConfig
 
 # Initializes Module-Logr
 _logger = logging.getLogger(__name__)
@@ -41,9 +41,7 @@ class SecurityManager:
         _refresh_lock: Lock for Thread-sichere Token-Erneuerung
     """
 
-    def __init__(
-        self, config: SecurityConfig, client_factory: Optional[Any] = None
-    ) -> None:
+    def __init__(self, config: SecurityConfig, client_factory: Optional[Any] = None) -> None:
         """Initializes security manager.
 
         Args:
@@ -96,12 +94,11 @@ class SecurityManager:
         try:
             if self.config.auth_type == Authtypee.BEARER:
                 return await self._get_bearer_heathes()
-            elif self.config.auth_type == Authtypee.OIDC:
+            if self.config.auth_type == Authtypee.OIDC:
                 return await self._get_oidc_heathes()
-            elif self.config.auth_type == Authtypee.MTLS:
+            if self.config.auth_type == Authtypee.MTLS:
                 return await self._get_mtls_heathes()
-            else:
-                raise SecurityError(f"Unbekatnter Auth-type: {self.config.auth_type}")
+            raise SecurityError(f"Unbekatnter Auth-type: {self.config.auth_type}")
 
         except SecurityError:
             # Re-raise SecurityError as-is
@@ -195,9 +192,7 @@ class SecurityManager:
                     "Network error during OIDC token fetch",
                     extra={"error": str(e), "issuer": self.config.oidc_issuer},
                 )
-                raise SecurityError(
-                    f"Network error during OIDC token fetch: {e}"
-                ) from e
+                raise SecurityError(f"Network error during OIDC token fetch: {e}") from e
             except (ValueError, KeyError) as e:
                 _logger.error(
                     "Invalid OIDC response format",
@@ -245,7 +240,7 @@ class SecurityManager:
 
         timeout = httpx.Timeout(10.0, connect=5.0)
         verify: Optional[bool | str] = True
-        verify = True if getattr(self.config, "tls_verify", True) else False
+        verify = bool(getattr(self.config, "tls_verify", True))
         ca_bundle = getattr(self.config, "tls_ca_bundle", None)
         if ca_bundle:
             verify = ca_bundle
@@ -259,9 +254,9 @@ class SecurityManager:
                 pinned = getattr(self.config, "tls_pinned_sha256", None)
                 if pinned and hasattr(response, "extensions"):
                     try:
-                        sslobj = response.extensions.get(
-                            "network_stream"
-                        ).get_extra_info("ssl_object")  # type: ignore[attr-defined]
+                        sslobj = response.extensions.get("network_stream").get_extra_info(
+                            "ssl_object"
+                        )  # type: ignore[attr-defined]
                         cert = sslobj.getpeercert(binary_form=True) if sslobj else None
                     except Exception:
                         cert = None
@@ -271,9 +266,7 @@ class SecurityManager:
                         fp = hashlib.sha256(cert).hexdigest()
                         normalized = pinned.replace(":", "").lower()
                         if fp != normalized:
-                            raise SecurityError(
-                                "TLS certificate pinning validation failed"
-                            )
+                            raise SecurityError("TLS certificate pinning validation failed")
 
                 # Support sowohl sync als auch async JSON-Methoden
                 import inspect
@@ -297,9 +290,7 @@ class SecurityManager:
                     # For HTTP 5xx and 429, retry; for 4xx (except 429), do not
                     status = e.response.status_code if e.response else None
                     if status and status not in (429,) and 400 <= status < 500:
-                        raise SecurityError(
-                            f"OIDC Token-Request failed: {status}"
-                        ) from e
+                        raise SecurityError(f"OIDC Token-Request failed: {status}") from e
                     raise
 
                 # Validate token response
@@ -319,9 +310,7 @@ class SecurityManager:
         """
         expires_in = token_data.get("expires_in", self.config.token_cache_ttl)
         # Puffer for Erneuerung, aber minof thetens 10 Sekatthe Cache-Zeit
-        buffer_time = min(
-            60, max(10, expires_in // 4)
-        )  # Max 60s, min 10s, or 25% the Lonzeit
+        buffer_time = min(60, max(10, expires_in // 4))  # Max 60s, min 10s, or 25% the Lonzeit
         expires_at = time.time() + expires_in - buffer_time
 
         self._token_cache[key] = {
@@ -445,9 +434,7 @@ class SecurityManager:
         # Stub implementation - always allow for backward compatibility
         return True
 
-    def log_audit_event(
-        self, event_type: str, user_id: str, details: Dict[str, Any]
-    ) -> None:
+    def log_audit_event(self, event_type: str, user_id: str, details: Dict[str, Any]) -> None:
         """Logs audit events (stub for backward compatibility).
 
         Args:

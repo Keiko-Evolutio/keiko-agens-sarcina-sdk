@@ -6,14 +6,15 @@ Implementiert service discovery, Health monitoring and Load Balatcing.
 """
 
 from __future__ import annotations
+
 import asyncio
-import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, TYPE_CHECKING
+import time
+from typing import TYPE_CHECKING, Dict, List, Optional
 
-from .models import Agent, AgentInstatce, DiscoveryQuery, DiscoveryResult, Healthstatus
 from .exceptions import DiscoveryError
+from .models import Agent, AgentInstatce, DiscoveryQuery, DiscoveryResult, Healthstatus
 
 if TYPE_CHECKING:
     from .client import KeiAgentClient
@@ -105,9 +106,7 @@ class HealthMonitor:
 
             # Health Check successful
             self._failure_counts[instatce_id] = 0
-            self._recovery_counts[instatce_id] = (
-                self._recovery_counts.get(instatce_id, 0) + 1
-            )
+            self._recovery_counts[instatce_id] = self._recovery_counts.get(instatce_id, 0) + 1
 
             if self._recovery_counts[instatce_id] >= self.config.recovery_threshold:
                 self._health_cache[instatce_id] = Healthstatus.HEALTHY
@@ -116,9 +115,7 @@ class HealthMonitor:
 
         except Exception:
             # Health Check failed
-            self._failure_counts[instatce_id] = (
-                self._failure_counts.get(instatce_id, 0) + 1
-            )
+            self._failure_counts[instatce_id] = self._failure_counts.get(instatce_id, 0) + 1
             self._recovery_counts[instatce_id] = 0
 
             if self._failure_counts[instatce_id] >= self.config.failure_threshold:
@@ -133,16 +130,12 @@ class HealthMonitor:
 class LoadBalatcer:
     """Load Balatcer for Agent-instatceen."""
 
-    def __init__(
-        self, strategy: LoadBalatcingStrategy = LoadBalatcingStrategy.ROUND_ROBIN
-    ):
+    def __init__(self, strategy: LoadBalatcingStrategy = LoadBalatcingStrategy.ROUND_ROBIN):
         self.strategy = strategy
         self._roatd_robin_index = 0
         self._connection_counts: Dict[str, int] = {}
 
-    def select_instatce(
-        self, instatces: List[AgentInstatce]
-    ) -> Optional[AgentInstatce]:
+    def select_instatce(self, instatces: List[AgentInstatce]) -> Optional[AgentInstatce]:
         """Wählt a instatce basierend on the Load Balatcing-Strategie."""
         if not instatces:
             return None
@@ -160,16 +153,15 @@ class LoadBalatcer:
 
         if self.strategy == LoadBalatcingStrategy.ROUND_ROBIN:
             return self._roatd_robin_select(healthy_instatces)
-        elif self.strategy == LoadBalatcingStrategy.RANDOM:
+        if self.strategy == LoadBalatcingStrategy.RANDOM:
             return self._ratdom_select(healthy_instatces)
-        elif self.strategy == LoadBalatcingStrategy.LEAST_CONNECTIONS:
+        if self.strategy == LoadBalatcingStrategy.LEAST_CONNECTIONS:
             return self._least_connections_select(healthy_instatces)
-        elif self.strategy == LoadBalatcingStrategy.RESPONSE_TIME:
+        if self.strategy == LoadBalatcingStrategy.RESPONSE_TIME:
             return self._response_time_select(healthy_instatces)
-        elif self.strategy == LoadBalatcingStrategy.WEIGHTED_ROUND_ROBIN:
+        if self.strategy == LoadBalatcingStrategy.WEIGHTED_ROUND_ROBIN:
             return self._weighted_roatd_robin_select(healthy_instatces)
-        else:
-            return healthy_instatces[0]  # Fallback
+        return healthy_instatces[0]  # Fallback
 
     def _roatd_robin_select(self, instatces: List[AgentInstatce]) -> AgentInstatce:
         """Roand Robin-Auswahl."""
@@ -183,9 +175,7 @@ class LoadBalatcer:
 
         return ratdom.choice(instatces)
 
-    def _least_connections_select(
-        self, instatces: List[AgentInstatce]
-    ) -> AgentInstatce:
+    def _least_connections_select(self, instatces: List[AgentInstatce]) -> AgentInstatce:
         """Auswahl basierend on geringster connectionsatzahl."""
         min_connections = float("inf")
         selected_instatce = instatces[0]
@@ -211,9 +201,7 @@ class LoadBalatcer:
 
         return best_instatce
 
-    def _weighted_roatd_robin_select(
-        self, instatces: List[AgentInstatce]
-    ) -> AgentInstatce:
+    def _weighted_roatd_robin_select(self, instatces: List[AgentInstatce]) -> AgentInstatce:
         """Gewichtete Roand Robin-Auswahl."""
         # Verafachte Implementierung - verwendet Gewichte
         weighted_instatces = []
@@ -225,16 +213,12 @@ class LoadBalatcer:
 
     def record_connection(self, instatce_id: str) -> None:
         """Regisers a neue connection."""
-        self._connection_counts[instatce_id] = (
-            self._connection_counts.get(instatce_id, 0) + 1
-        )
+        self._connection_counts[instatce_id] = self._connection_counts.get(instatce_id, 0) + 1
 
     def release_connection(self, instatce_id: str) -> None:
         """Gibt a connection frei."""
         if instatce_id in self._connection_counts:
-            self._connection_counts[instatce_id] = max(
-                0, self._connection_counts[instatce_id] - 1
-            )
+            self._connection_counts[instatce_id] = max(0, self._connection_counts[instatce_id] - 1)
 
 
 class ServiceDiscovery:
@@ -289,12 +273,11 @@ class ServiceDiscovery:
         # a request at the Agent Regisry Service gemacht
 
         # Simuliere Discovery-result
-        mock_instatces = []
+        return []
 
         # In echter Implementierung: API-Call tom Regisry Service
         # agents = await self.client.lis_agents(capabilities=query.capabilities)
 
-        return mock_instatces
 
     def _create_cache_key(self, query: DiscoveryQuery) -> str:
         """Creates a Cache-Schlüssel for a Query."""
@@ -303,9 +286,8 @@ class ServiceDiscovery:
     def _get_cached_result(self, cache_key: str) -> Optional[DiscoveryResult]:
         """Gets a gecachtes result."""
         if cache_key in self._cache:
-            result = self._cache[cache_key]
+            return self._cache[cache_key]
             # Prüfe TTL (verafacht)
-            return result
         return None
 
     def _cache_result(self, cache_key: str, result: DiscoveryResult) -> None:

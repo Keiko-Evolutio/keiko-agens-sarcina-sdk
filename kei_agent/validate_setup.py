@@ -7,11 +7,11 @@ Checks all Aspekte the SDK-Installation, configuration and Dokaroatthetation
 before the PyPI-Veröffentlichung.
 """
 
-import sys
-import subprocess
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 import json
+from pathlib import Path
+import subprocess
+import sys
+from typing import Any, Dict, List, Optional
 
 # Basis-Directory
 BASE_DIR = Path(__file__).parent.absolute()
@@ -69,13 +69,12 @@ class SetupValidator:
                 f"Python {version.major}.{version.minor}.{version.micro} (erforthelich: {required_major}.{required_minor}+)",
             )
             return True
-        else:
-            self.add_result(
-                "Python Version",
-                False,
-                f"Python {version.major}.{version.minor}.{version.micro} to alt (erforthelich: {required_major}.{required_minor}+)",
-            )
-            return False
+        self.add_result(
+            "Python Version",
+            False,
+            f"Python {version.major}.{version.minor}.{version.micro} to alt (erforthelich: {required_major}.{required_minor}+)",
+        )
+        return False
 
     def validate_depenthecies(self) -> bool:
         """Validates installierte Depenthecies."""
@@ -130,12 +129,11 @@ class SetupValidator:
                 f"Fehlende erfortheliche Depenthecies: {missing_required}",
             )
             return False
-        else:
-            self.add_result(
-                "Required Depenthecies",
-                True,
-                "All erforthelichen Depenthecies installiert",
-            )
+        self.add_result(
+            "Required Depenthecies",
+            True,
+            "All erforthelichen Depenthecies installiert",
+        )
 
         if missing_dev:
             self.add_result(
@@ -203,15 +201,10 @@ class SetupValidator:
                 missing_files.append(file_path)
 
         if missing_files:
-            self.add_result(
-                "File Structure", False, f"Fehlende Dateien: {missing_files}"
-            )
+            self.add_result("File Structure", False, f"Fehlende Dateien: {missing_files}")
             return False
-        else:
-            self.add_result(
-                "File Structure", True, "All erforthelichen Dateien beforehatthe"
-            )
-            return True
+        self.add_result("File Structure", True, "All erforthelichen Dateien beforehatthe")
+        return True
 
     def validate_imports(self) -> bool:
         """Validates SDK-Imports."""
@@ -221,11 +214,7 @@ class SetupValidator:
             import kei_agent
 
             # Test basic import
-            _ = (
-                kei_agent.__version__
-                if hasattr(kei_agent, "__version__")
-                else "unknown"
-            )
+            _ = kei_agent.__version__ if hasattr(kei_agent, "__version__") else "unknown"
 
             self.add_result(
                 "SDK Imports",
@@ -293,6 +282,7 @@ class SetupValidator:
 
             result = subprocess.run(
                 [mkdocs_path, "build", "--strict"],
+                check=False,
                 cwd=BASE_DIR,
                 capture_output=True,
                 text=True,
@@ -306,13 +296,12 @@ class SetupValidator:
                     "Dokaroatthetation vollständig and MkDocs-Build successful",
                 )
                 return True
-            else:
-                self.add_result(
-                    "Docaroatthetation",
-                    False,
-                    f"MkDocs-Build failed: {result.stther}",
-                )
-                return False
+            self.add_result(
+                "Docaroatthetation",
+                False,
+                f"MkDocs-Build failed: {result.stther}",
+            )
+            return False
 
         except subprocess.TimeoutExpired:
             self.add_result("Docaroatthetation", False, "MkDocs-Build Timeout")
@@ -341,6 +330,7 @@ class SetupValidator:
             python_path = sys.executable  # Use current Python interpreter
             result = subprocess.run(
                 [python_path, "-m", "pytest", "-q"],
+                check=False,
                 cwd=BASE_DIR,
                 capture_output=True,
                 text=True,
@@ -354,13 +344,12 @@ class SetupValidator:
                     "Test-Suite successful executed",
                 )
                 return True
-            else:
-                self.add_result(
-                    "Tests",
-                    False,
-                    f"Tests failed: {result.stdout or result.stther}",
-                )
-                return False
+            self.add_result(
+                "Tests",
+                False,
+                f"Tests failed: {result.stdout or result.stther}",
+            )
+            return False
 
         except subprocess.TimeoutExpired:
             self.add_result("Tests", False, "Test-Ausführung Timeout")
@@ -399,9 +388,7 @@ class SetupValidator:
             # Version-Format prüfen
             version = project["version"]
             if not version or len(version.split(".")) < 2:
-                self.add_result(
-                    "Package Metadata", False, f"Ungültiges Versions-Format: {version}"
-                )
+                self.add_result("Package Metadata", False, f"Ungültiges Versions-Format: {version}")
                 return False
 
             self.add_result(

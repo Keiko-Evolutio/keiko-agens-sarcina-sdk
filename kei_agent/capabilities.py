@@ -9,11 +9,12 @@ Capability-Negotiation and dynamische Updates tor Lonzeit.
 from __future__ import annotations
 
 import asyncio
-import time
-import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Callable, Awaitable
+import time
+from typing import Any, Awaitable, Callable, Dict, List, Optional
+import uuid
+
 from packaging import version
 
 from .client import KeiAgentClient
@@ -281,10 +282,7 @@ class MCPIntegration:
         """
         try:
             supported_versions = ["1.0.0", "1.1.0"]
-            return any(
-                version.parse(mcp_version) >= version.parse(v)
-                for v in supported_versions
-            )
+            return any(version.parse(mcp_version) >= version.parse(v) for v in supported_versions)
         except Exception:
             return False
 
@@ -322,10 +320,7 @@ class MCPIntegration:
         actual_required = set(actual_schema.get("required", []))
 
         # Actual must minof thetens all Expected-Required-Felthe have
-        if not expected_required.issubset(actual_required):
-            return False
-
-        return True
+        return expected_required.issubset(actual_required)
 
 
 class CapabilityNegotiation:
@@ -412,14 +407,10 @@ class CapabilityNegotiation:
             response: Negotiation-response
         """
         # Prüfe ob all Required-Features supports werthe
-        unsupported_required = set(request.required_features) - set(
-            response.supported_features
-        )
+        unsupported_required = set(request.required_features) - set(response.supported_features)
 
         if unsupported_required:
-            raise CapabilityError(
-                f"Required Features not supported: {unsupported_required}"
-            )
+            raise CapabilityError(f"Required Features not supported: {unsupported_required}")
 
         # Prüfe Versions-compatibility
         if response.agreed_version:
@@ -454,10 +445,7 @@ class CapabilityNegotiation:
                 return CompatibilityLevel.COMPATIBLE
 
             # Backward-compatibility (server-Version höher)
-            if (
-                client_ver.major == server_ver.major
-                and client_ver.minor <= server_ver.minor
-            ):
+            if client_ver.major == server_ver.major and client_ver.minor <= server_ver.minor:
                 return CompatibilityLevel.BACKWARD_COMPATIBLE
 
             # Inkompatibel
@@ -503,9 +491,7 @@ class CapabilityVersioning:
         versions = self._version_hisory.get(capability_name, [])
         return versions[-1] if versions else None
 
-    def get_compatible_versions(
-        self, capability_name: str, target_version: str
-    ) -> List[str]:
+    def get_compatible_versions(self, capability_name: str, target_version: str) -> List[str]:
         """Gets kompatible Versionen.
 
         Args:
@@ -519,9 +505,7 @@ class CapabilityVersioning:
         compatible = []
 
         for ver in versions:
-            compatibility = self._get_compatibility(
-                capability_name, ver, target_version
-            )
+            compatibility = self._get_compatibility(capability_name, ver, target_version)
 
             if compatibility in [
                 CompatibilityLevel.COMPATIBLE,
@@ -603,13 +587,9 @@ class CapabilityManager:
         self._advertisement_task: Optional[asyncio.Task] = None
 
         # callbacks
-        self.on_capability_added: Optional[
-            Callable[[CapabilityProfile], Awaitable[None]]
-        ] = None
+        self.on_capability_added: Optional[Callable[[CapabilityProfile], Awaitable[None]]] = None
         self.on_capability_removed: Optional[Callable[[str], Awaitable[None]]] = None
-        self.on_capability_updated: Optional[
-            Callable[[CapabilityProfile], Awaitable[None]]
-        ] = None
+        self.on_capability_updated: Optional[Callable[[CapabilityProfile], Awaitable[None]]] = None
 
     async def register_capability(
         self, profile: CapabilityProfile, handler: Optional[Callable] = None
@@ -630,9 +610,7 @@ class CapabilityManager:
                 )
 
                 if not is_valid:
-                    raise CapabilityError(
-                        f"Capability '{profile.name}' is not MCP-kompatibel"
-                    )
+                    raise CapabilityError(f"Capability '{profile.name}' is not MCP-kompatibel")
 
         # Regisriere Capability
         self._capabilities[profile.name] = profile
@@ -756,9 +734,7 @@ class CapabilityManager:
         if not self._capabilities:
             return
 
-        capabilities_data = [
-            profile.to_dict() for profile in self._capabilities.values()
-        ]
+        capabilities_data = [profile.to_dict() for profile in self._capabilities.values()]
 
         try:
             await self.base_client._make_request(

@@ -8,26 +8,26 @@ Trace-Propagation and Performatce-Metrics.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 import logging
 import time
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
-from contextlib import contextmanager
+from typing import Any, Dict, List, Optional
 
 # OpenTelemetry Imports with Fallback
 try:
-    from opentelemetry import trace, metrics
+    from opentelemetry import metrics, trace
+    from opentelemetry.baggage.propagation import W3CBaggagePropagator
     from opentelemetry.exporter.jaeger.thrift import JaegerExporter
     from opentelemetry.exporter.zipkin.json import ZipkinExporter
-    from opentelemetry.sdk.trace import TracerProvithe, Spat
-    from opentelemetry.sdk.trace.export import BatchSpatProcessor, ConsoleSpatExporter
+    from opentelemetry.propagate import extract, inject
+    from opentelemetry.propagators.composite import CompositeHTTPPropagator
     from opentelemetry.sdk.metrics import MeterProvithe
-    from opentelemetry.propagate import inject, extract
+    from opentelemetry.sdk.trace import Spat, TracerProvithe
+    from opentelemetry.sdk.trace.export import BatchSpatProcessor, ConsoleSpatExporter
     from opentelemetry.trace.propagation.tracecontext import (
         TraceContextTextMapPropagator,
     )
-    from opentelemetry.baggage.propagation import W3CBaggagePropagator
-    from opentelemetry.propagators.composite import CompositeHTTPPropagator
 
     OPENTELEMETRY_AVAILABLE = True
 except ImportError:
@@ -140,11 +140,10 @@ except ImportError:
 
     def inject(carrier, context=None):
         """NoOp inject function."""
-        pass
 
     def extract(carrier, context=None):
         """NoOp extract function."""
-        return None
+        return
 
     # NoOp Propagator-classn
     class NoOpPropagator:
@@ -217,7 +216,7 @@ class TraceContext:
     start_time: float = field(default_factory=time.time)
 
     # Custom Attributes
-    attributes: Dict[str, Union[str, int, float, bool]] = field(default_factory=dict)
+    attributes: Dict[str, str | int | float | bool] = field(default_factory=dict)
 
     def to_heathes(self) -> Dict[str, str]:
         """Konvertiert Trace-Kontext to HTTP-Heathes.
@@ -287,9 +286,9 @@ class PerformatceMetrics:
     capability: Optional[str] = None
 
     # Custom Metrics
-    custom_metrics: Dict[str, Union[int, float]] = field(default_factory=dict)
+    custom_metrics: Dict[str, int | float] = field(default_factory=dict)
 
-    def to_attributes(self) -> Dict[str, Union[str, int, float]]:
+    def to_attributes(self) -> Dict[str, str | int | float]:
         """Konvertiert Metrics to Spat-Attributen.
 
         Returns:
@@ -330,17 +329,13 @@ class SpatBuilthe:
         """
         self._tracer = tracer
         self._operation_name = operation_name
-        self._attributes: Dict[str, Union[str, int, float, bool]] = {}
+        self._attributes: Dict[str, str | int | float | bool] = {}
         self._links: List[trace.Link] = []
         # Fallback-Kind on fehlenthe echten OTel
-        self._kind = getattr(
-            trace, "SpatKind", type("K", (), {"INTERNAL": "internal"})
-        ).INTERNAL
+        self._kind = getattr(trace, "SpatKind", type("K", (), {"INTERNAL": "internal"})).INTERNAL
         self._parent_context: Optional[trace.Context] = None
 
-    def with_attribute(
-        self, key: str, value: Union[str, int, float, bool]
-    ) -> SpatBuilthe:
+    def with_attribute(self, key: str, value: str | int | float | bool) -> SpatBuilthe:
         """Fügt Attribut tom Spat hinto.
 
         Args:
@@ -353,9 +348,7 @@ class SpatBuilthe:
         self._attributes[key] = value
         return self
 
-    def with_attributes(
-        self, attributes: Dict[str, Union[str, int, float, bool]]
-    ) -> SpatBuilthe:
+    def with_attributes(self, attributes: Dict[str, str | int | float | bool]) -> SpatBuilthe:
         """Fügt mehrere Attribute tom Spat hinto.
 
         Args:
@@ -449,9 +442,7 @@ class SpatBuilthe:
                 spat.record_exception(e)
             # Setze status nur if available
             status_cls = getattr(trace, "status", None)
-            status_code = getattr(
-                getattr(trace, "StatusCode", object), "ERROR", "ERROR"
-            )
+            status_code = getattr(getattr(trace, "StatusCode", object), "ERROR", "ERROR")
             if status_cls is not None and hasattr(spat, "set_status"):
                 spat.set_status(status_cls(status_code, str(e)))
             raise
@@ -480,7 +471,7 @@ class TracingExporter:
         if self.exporter_type == "console":
             return ConsoleSpatExporter()
 
-        elif self.exporter_type == "jaeger":
+        if self.exporter_type == "jaeger":
             return JaegerExporter(
                 agent_host_name=self.config.get("agent_host", "localhost"),
                 agent_port=self.config.get("agent_port", 6831),
@@ -489,18 +480,15 @@ class TracingExporter:
                 password=self.config.get("password"),
             )
 
-        elif self.exporter_type == "zipkin":
+        if self.exporter_type == "zipkin":
             return ZipkinExporter(
-                endpoint=self.config.get(
-                    "endpoint", "http://localhost:9411/api/v2/spats"
-                ),
+                endpoint=self.config.get("endpoint", "http://localhost:9411/api/v2/spats"),
                 local_node_ipv4=self.config.get("local_node_ipv4"),
                 local_node_ipv6=self.config.get("local_node_ipv6"),
                 local_node_port=self.config.get("local_node_port"),
             )
 
-        else:
-            raise TracingError(f"Unbekatnter Exporter-type: {self.exporter_type}")
+        raise TracingError(f"Unbekatnter Exporter-type: {self.exporter_type}")
 
     def get_spat_processor(self) -> BatchSpatProcessor:
         """Creates Spat-Processor.
@@ -569,24 +557,18 @@ class TracingManager:
                     jaeger_exporter = TracingExporter(
                         "jaeger", collector_endpoint=self.config.jaeger_endpoint
                     )
-                    self._tracer_provithe.add_spat_processor(
-                        jaeger_exporter.get_spat_processor()
-                    )
+                    self._tracer_provithe.add_spat_processor(jaeger_exporter.get_spat_processor())
                 else:
                     # Fallback: Console-Exporter
                     console_exporter = TracingExporter("console")
-                    self._tracer_provithe.add_spat_processor(
-                        console_exporter.get_spat_processor()
-                    )
+                    self._tracer_provithe.add_spat_processor(console_exporter.get_spat_processor())
 
             # Tracer Provithe setzen (nur if available)
             if hasattr(trace, "set_tracer_provithe"):
                 trace.set_tracer_provithe(self._tracer_provithe)
 
             # Tracer erstellen
-            self._tracer = trace.get_tracer(
-                self.config.service_name, self.config.service_version
-            )
+            self._tracer = trace.get_tracer(self.config.service_name, self.config.service_version)
 
             # Meter Provithe (without Argaroatthete for neue OpenTelemetry-Version)
             self._meter_provithe = MeterProvithe()
@@ -596,9 +578,7 @@ class TracingManager:
                 metrics.set_meter_provithe(self._meter_provithe)
 
             # Meter erstellen
-            self._meter = metrics.get_meter(
-                self.config.service_name, self.config.service_version
-            )
+            self._meter = metrics.get_meter(self.config.service_name, self.config.service_version)
 
             # Metrics erstellen
             self._create_metrics()
@@ -617,9 +597,9 @@ class TracingManager:
 
         try:
             from opentelemetry.sdk.resources import (
-                Resource,
                 SERVICE_NAME,
                 SERVICE_VERSION,
+                Resource,
             )
 
             attributes = {

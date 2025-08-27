@@ -15,14 +15,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-
 
 # Initialisiert Konstanten für Standardwerte
 DEFAULT_PACKAGE_DIR = "kei_agent"
@@ -87,9 +86,7 @@ def _check_lxml_available() -> bool:
         return False
 
 
-def run_mypy_and_generate_report(
-    package_dir: Path, report_dir: Path, project_root: Path
-) -> None:
+def run_mypy_and_generate_report(package_dir: Path, report_dir: Path, project_root: Path) -> None:
     """\
     Führt mypy aus und erzeugt einen Text-Report unter `report_dir`.
     Falls lxml nicht verfügbar ist, wird ein alternativer Ansatz verwendet.
@@ -142,9 +139,7 @@ def run_mypy_and_generate_report(
         _create_mock_report(package_dir, report_dir, project_root)
 
 
-def _create_mock_report(
-    package_dir: Path, report_dir: Path, project_root: Path
-) -> None:
+def _create_mock_report(package_dir: Path, report_dir: Path, project_root: Path) -> None:
     """Erstellt einen Mock-Report wenn lxml nicht verfügbar ist."""
     # Führe MyPy ohne --txt-report aus, um zu prüfen ob es funktioniert
     config_file = project_root / "mypy.ini"
@@ -292,9 +287,7 @@ def parse_txt_report_index(
                     # Extract percentage from "X.XX% imprecise"
                     if imprecision_str.endswith("% imprecise"):
                         try:
-                            percentage_str = imprecision_str.replace(
-                                "% imprecise", ""
-                            ).strip()
+                            percentage_str = imprecision_str.replace("% imprecise", "").strip()
                             imprecision = float(percentage_str)
                             # Convert imprecision to precision (coverage)
                             coverage = 100.0 - imprecision
@@ -321,9 +314,7 @@ def parse_txt_report_index(
     if modules:
         total_annotated = sum(m["annotated_lines"] for m in modules)
         total_lines = sum(m["total_lines"] for m in modules)
-        total_percent = (
-            (total_annotated / total_lines * 100.0) if total_lines > 0 else 0.0
-        )
+        total_percent = (total_annotated / total_lines * 100.0) if total_lines > 0 else 0.0
     else:
         # Fallback: try to find any percentage in the file
         percent_match = re.search(r"(\d+\.?\d*)%", content)
@@ -332,9 +323,7 @@ def parse_txt_report_index(
             total_annotated = 1000  # Dummy values
             total_lines = 1000
         else:
-            raise RuntimeError(
-                "Konnte die Gesamtabdeckung nicht aus dem mypy-Report extrahieren."
-            )
+            raise RuntimeError("Konnte die Gesamtabdeckung nicht aus dem mypy-Report extrahieren.")
 
     return total_annotated, total_lines, total_percent, modules
 

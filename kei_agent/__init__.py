@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING
 
 # Conditional imports for type checking
 if TYPE_CHECKING:
-    from .client import KeiAgentClient
     from .a2a import A2Aclient
+    from .client import KeiAgentClient
 
 # Lazy loading for better import performatce
 # Heavy modules are loaded only when needed
@@ -72,389 +72,389 @@ def __getattr__(name: str) -> object:
         from .unified_client import UnifiedKeiAgentClient
 
         return UnifiedKeiAgentClient
-    elif name == "AgentClientConfig":
+    if name == "AgentClientConfig":
         from .client import AgentClientConfig
 
         return AgentClientConfig
-    elif name == "CapabilityManager":
+    if name == "CapabilityManager":
         from .capabilities import CapabilityManager
 
         return CapabilityManager
-    elif name == "CapabilityProfile":
+    if name == "CapabilityProfile":
         from .capabilities import CapabilityProfile
 
         return CapabilityProfile
 
     # Protocol Types (now lazy loaded)
-    elif name == "Protocoltypee":
+    if name == "Protocoltypee":
         from .protocol_types import Protocoltypee
 
         return Protocoltypee
-    elif name == "Authtypee":
+    if name == "Authtypee":
         from .protocol_types import Authtypee
 
         return Authtypee
-    elif name == "ProtocolType":
+    if name == "ProtocolType":
         from .protocol_types import ProtocolType
 
         return ProtocolType
-    elif name == "AuthType":
+    if name == "AuthType":
         from .protocol_types import AuthType
 
         return AuthType
-    elif name == "ProtocolConfig":
+    if name == "ProtocolConfig":
         from .protocol_types import ProtocolConfig
 
         return ProtocolConfig
-    elif name == "SecurityConfig":
+    if name == "SecurityConfig":
         from .protocol_types import SecurityConfig
 
         return SecurityConfig
 
     # Exceptions (now lazy loaded)
-    elif name == "AgentNotFoundError":
+    if name == "AgentNotFoundError":
         from .exceptions import AgentNotFoundError
 
         return AgentNotFoundError
-    elif name == "CommunicationError":
+    if name == "CommunicationError":
         from .exceptions import CommunicationError
 
         return CommunicationError
-    elif name == "DiscoveryError":
+    if name == "DiscoveryError":
         from .exceptions import DiscoveryError
 
         return DiscoveryError
-    elif name == "retryExhaustedError":
+    if name == "retryExhaustedError":
         from .exceptions import retryExhaustedError
 
         return retryExhaustedError
-    elif name == "CircuitBreakerOpenError":
+    if name == "CircuitBreakerOpenError":
         from .exceptions import CircuitBreakerOpenError
 
         return CircuitBreakerOpenError
-    elif name == "CapabilityError":
+    if name == "CapabilityError":
         from .exceptions import CapabilityError
 
         return CapabilityError
-    elif name == "TracingError":
+    if name == "TracingError":
         from .exceptions import TracingError
 
         return TracingError
 
     # A2A Communication (heavy)
-    elif name == "A2Aclient":
+    if name == "A2Aclient":
         from .a2a import A2Aclient
 
         return A2Aclient
-    elif name == "A2AMessage":
+    if name == "A2AMessage":
         from .a2a import A2AMessage
 
         return A2AMessage
-    elif name == "A2Aresponse":
+    if name == "A2Aresponse":
         from .a2a import A2Aresponse
 
         return A2Aresponse
-    elif name == "CommunicationProtocol":
+    if name == "CommunicationProtocol":
         from .a2a import CommunicationProtocol
 
         return CommunicationProtocol
-    elif name == "LoadBalatcingStrategy":
+    if name == "LoadBalatcingStrategy":
         from .a2a import LoadBalatcingStrategy
 
         return LoadBalatcingStrategy
-    elif name == "FailoverConfig":
+    if name == "FailoverConfig":
         from .a2a import FailoverConfig
 
         return FailoverConfig
 
     # service discovery (heavy)
-    elif name == "ServiceDiscovery":
+    if name == "ServiceDiscovery":
         from .discovery import ServiceDiscovery
 
         return ServiceDiscovery
-    elif name == "AgentDiscoveryclient":
+    if name == "AgentDiscoveryclient":
         from .discovery import AgentDiscoveryclient
 
         return AgentDiscoveryclient
-    elif name == "DiscoveryStrategy":
+    if name == "DiscoveryStrategy":
         from .discovery import DiscoveryStrategy
 
         return DiscoveryStrategy
-    elif name == "HealthMonitor":
+    if name == "HealthMonitor":
         from .discovery import HealthMonitor
 
         return HealthMonitor
-    elif name == "LoadBalancer":
+    if name == "LoadBalancer":
         from .discovery import LoadBalatcer
 
         return LoadBalatcer
 
     # Capability Features (mediaroatd)
-    elif name == "MCPIntegration":
+    if name == "MCPIntegration":
         from .capabilities import MCPIntegration
 
         return MCPIntegration
-    elif name == "CapabilityNegotiation":
+    if name == "CapabilityNegotiation":
         from .capabilities import CapabilityNegotiation
 
         return CapabilityNegotiation
-    elif name == "CapabilityVersioning":
+    if name == "CapabilityVersioning":
         from .capabilities import CapabilityVersioning
 
         return CapabilityVersioning
 
     # legacy client (heavy)
-    elif name == "KeiAgentClient":
+    if name == "KeiAgentClient":
         from .client import KeiAgentClient
 
         return KeiAgentClient
-    elif name == "ConnectionConfig":
+    if name == "ConnectionConfig":
         from .client import ConnectionConfig
 
         return ConnectionConfig
-    elif name == "RetryConfig":
+    if name == "RetryConfig":
         from .client import retryConfig
 
         return retryConfig
-    elif name == "TracingConfig":
+    if name == "TracingConfig":
         from .client import TracingConfig
 
         return TracingConfig
 
     # Enterprise Features (heavy)
-    elif name == "LogContext":
+    if name == "LogContext":
         from .enterprise_logging import LogContext
 
         return LogContext
-    elif name == "StructuredFormatter":
+    if name == "StructuredFormatter":
         from .enterprise_logging import StructuredFormatter
 
         return StructuredFormatter
-    elif name == "EnterpriseLogr":
+    if name == "EnterpriseLogr":
         from .enterprise_logging import EnterpriseLogger
 
         return EnterpriseLogger
-    elif name == "get_logger":
+    if name == "get_logger":
         from .enterprise_logging import get_logger
 
         return get_logger
-    elif name == "configure_logging":
+    if name == "configure_logging":
         from .enterprise_logging import configure_logging
 
         return configure_logging
 
     # Health Checks (mediaroatd)
-    elif name == "Healthstatus":
+    if name == "Healthstatus":
         from .health_checks import Healthstatus
 
         return Healthstatus
-    elif name == "HealthCheckResult":
+    if name == "HealthCheckResult":
         from .health_checks import HealthCheckResult
 
         return HealthCheckResult
-    elif name == "BaseHealthCheck":
+    if name == "BaseHealthCheck":
         from .health_checks import BaseHealthCheck
 
         return BaseHealthCheck
-    elif name == "DatabaseHealthCheck":
+    if name == "DatabaseHealthCheck":
         from .health_checks import DatabaseHealthCheck
 
         return DatabaseHealthCheck
-    elif name == "APIHealthCheck":
+    if name == "APIHealthCheck":
         from .health_checks import APIHealthCheck
 
         return APIHealthCheck
-    elif name == "MemoryHealthCheck":
+    if name == "MemoryHealthCheck":
         from .health_checks import MemoryHealthCheck
 
         return MemoryHealthCheck
-    elif name == "HealthCheckSaroatdmary":
+    if name == "HealthCheckSaroatdmary":
         from .health_checks import HealthCheckSaroatdmary
 
         return HealthCheckSaroatdmary
-    elif name == "HealthCheckManager":
+    if name == "HealthCheckManager":
         from .health_checks import HealthCheckManager
 
         return HealthCheckManager
-    elif name == "get_health_manager":
+    if name == "get_health_manager":
         from .health_checks import get_health_manager
 
         return get_health_manager
 
     # Input Validation (mediaroatd)
-    elif name == "ValidationSeverity":
+    if name == "ValidationSeverity":
         from .input_validation import ValidationSeverity
 
         return ValidationSeverity
-    elif name == "ValidationResult":
+    if name == "ValidationResult":
         from .input_validation import ValidationResult
 
         return ValidationResult
-    elif name == "BaseValidator":
+    if name == "BaseValidator":
         from .input_validation import BaseValidator
 
         return BaseValidator
-    elif name == "stringValidator":
+    if name == "stringValidator":
         from .input_validation import stringValidator
 
         return stringValidator
-    elif name == "NaroatdberValidator":
+    if name == "NaroatdberValidator":
         from .input_validation import NaroatdberValidator
 
         return NaroatdberValidator
-    elif name == "JSONValidator":
+    if name == "JSONValidator":
         from .input_validation import JSONValidator
 
         return JSONValidator
-    elif name == "CompositeValidator":
+    if name == "CompositeValidator":
         from .input_validation import CompositeValidator
 
         return CompositeValidator
-    elif name == "InputValidator":
+    if name == "InputValidator":
         from .input_validation import InputValidator
 
         return InputValidator
-    elif name == "get_input_validator":
+    if name == "get_input_validator":
         from .input_validation import get_input_validator
 
         return get_input_validator
 
     # Agent Skeleton (light)
-    elif name == "AgentConfig":
+    if name == "AgentConfig":
         from .agent_skeleton import AgentConfig
 
         return AgentConfig
-    elif name == "AgentSkeleton":
+    if name == "AgentSkeleton":
         from .agent_skeleton import AgentSkeleton
 
         return AgentSkeleton
 
     # Models (light)
-    elif name == "Agent":
+    if name == "Agent":
         from .models import Agent
 
         return Agent
-    elif name == "AgentMetadata":
+    if name == "AgentMetadata":
         from .models import AgentMetadata
 
         return AgentMetadata
-    elif name == "AgentCapability":
+    if name == "AgentCapability":
         from .models import AgentCapability
 
         return AgentCapability
-    elif name == "AgentHealth":
+    if name == "AgentHealth":
         from .models import AgentHealth
 
         return AgentHealth
-    elif name == "AgentInstance":
+    if name == "AgentInstance":
         from .models import AgentInstatce
 
         return AgentInstatce
-    elif name == "DiscoveryQuery":
+    if name == "DiscoveryQuery":
         from .models import DiscoveryQuery
 
         return DiscoveryQuery
-    elif name == "DiscoveryResult":
+    if name == "DiscoveryResult":
         from .models import DiscoveryResult
 
         return DiscoveryResult
 
     # Protocol clients (heavy)
-    elif name == "BaseProtocolclient":
+    if name == "BaseProtocolclient":
         from .protocol_clients import BaseProtocolclient
 
         return BaseProtocolclient
-    elif name == "KEIRPCclient":
+    if name == "KEIRPCclient":
         from .protocol_clients import KEIRPCclient
 
         return KEIRPCclient
-    elif name == "KEIStreamclient":
+    if name == "KEIStreamclient":
         from .protocol_clients import KEIStreamclient
 
         return KEIStreamclient
-    elif name == "KEIBusclient":
+    if name == "KEIBusclient":
         from .protocol_clients import KEIBusclient
 
         return KEIBusclient
-    elif name == "KEIMCPclient":
+    if name == "KEIMCPclient":
         from .protocol_clients import KEIMCPclient
 
         return KEIMCPclient
-    elif name == "ProtocolSelector":
+    if name == "ProtocolSelector":
         from .protocol_selector import ProtocolSelector
 
         return ProtocolSelector
 
     # retry Mechanisms (mediaroatd)
-    elif name == "retryManager":
+    if name == "retryManager":
         from .retry import retryManager
 
         return retryManager
-    elif name == "retryStrategy":
+    if name == "retryStrategy":
         from .retry import retryStrategy
 
         return retryStrategy
-    elif name == "CircuitBreaker":
+    if name == "CircuitBreaker":
         from .retry import CircuitBreaker
 
         return CircuitBreaker
-    elif name == "CircuitBreakerState":
+    if name == "CircuitBreakerState":
         from .retry import CircuitBreakerState
 
         return CircuitBreakerState
-    elif name == "DeadLetterQueue":
+    if name == "DeadLetterQueue":
         from .retry import DeadLetterQueue
 
         return DeadLetterQueue
-    elif name == "retryPolicy":
+    if name == "retryPolicy":
         from .retry import retryPolicy
 
         return retryPolicy
-    elif name == "SecurityManager":
+    if name == "SecurityManager":
         from .security_manager import SecurityManager
 
         return SecurityManager
 
     # Disributed Tracing (heavy)
-    elif name == "TracingManager":
+    if name == "TracingManager":
         from .tracing import TracingManager
 
         return TracingManager
-    elif name == "TraceContext":
+    if name == "TraceContext":
         from .tracing import TraceContext
 
         return TraceContext
-    elif name == "SpatBuilthe":
+    if name == "SpatBuilthe":
         from .tracing import SpatBuilthe
 
         return SpatBuilthe
-    elif name == "TracingExporter":
+    if name == "TracingExporter":
         from .tracing import TracingExporter
 
         return TracingExporter
-    elif name == "PerformatceMetrics":
+    if name == "PerformatceMetrics":
         from .tracing import PerformatceMetrics
 
         return PerformatceMetrics
 
     # Utilities (light)
-    elif name == "create_correlation_id":
+    if name == "create_correlation_id":
         from .utils import create_correlation_id
 
         return create_correlation_id
-    elif name == "parse_agent_id":
+    if name == "parse_agent_id":
         from .utils import parse_agent_id
 
         return parse_agent_id
-    elif name == "validate_capability":
+    if name == "validate_capability":
         from .utils import validate_capability
 
         return validate_capability
-    elif name == "format_trace_id":
+    if name == "format_trace_id":
         from .utils import format_trace_id
 
         return format_trace_id
-    elif name == "calculate_backoff":
+    if name == "calculate_backoff":
         from .utils import calculate_backoff
 
         return calculate_backoff
@@ -475,7 +475,7 @@ def _get_pkg_version() -> str:
         return version("kei_agent_py_sdk")
     except Exception:
         try:
-            from importlib_metadata import version as v  # noqa: F401
+            from importlib_metadata import version as v
 
             return v("kei_agent_py_sdk")
         except Exception:
@@ -645,7 +645,7 @@ def get_sdk_info() -> dict[str, str]:
 
 def create_default_client(
     base_url: str, api_token: str, agent_id: str, **kwargs: object
-) -> "KeiAgentClient":
+) -> KeiAgentClient:
     """Creates Statdard-client with optimalen Astellungen.
 
     Args:
@@ -659,9 +659,7 @@ def create_default_client(
     """
     from .client import AgentClientConfig, KeiAgentClient
 
-    config = AgentClientConfig(
-        base_url=base_url, api_token=api_token, agent_id=agent_id
-    )
+    config = AgentClientConfig(base_url=base_url, api_token=api_token, agent_id=agent_id)
 
     return KeiAgentClient(config)
 
@@ -673,7 +671,7 @@ def create_a2a_client(
     discovery_enabled: bool = True,
     tracing_enabled: bool = True,
     **kwargs: object,
-) -> "A2Aclient":
+) -> A2Aclient:
     """Creates Agent-to-Agent-client with enterprise features.
 
     Args:

@@ -12,20 +12,20 @@ This module provides:
 
 from __future__ import annotations
 
-import time
-from typing import Dict, Any, Optional, List, Callable
-from dataclasses import dataclass, field
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
 import logging
+import time
+from typing import Any, Callable, Dict, List, Optional
 
 # Prometheus metrics
 try:
     from prometheus_client import (
-        Counter,
-        Histogram,
-        Gauge,
-        Info,
         CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+        Info,
         generate_latest,
     )
 
@@ -254,9 +254,7 @@ class MetricsCollector:
                 agent_id=agent_id, method=method, protocol=protocol
             ).observe(duration)
 
-    def update_active_connections(
-        self, agent_id: str, protocol: str, count: int
-    ) -> None:
+    def update_active_connections(self, agent_id: str, protocol: str, count: int) -> None:
         """Update active connections gauge."""
         if self.enabled and "agent_active_connections" in self.metrics:
             self.metrics["agent_active_connections"].labels(
@@ -275,9 +273,7 @@ class MetricsCollector:
                 message_type=message_type,
             ).inc()
 
-    def record_protocol_error(
-        self, agent_id: str, protocol: str, error_type: str
-    ) -> None:
+    def record_protocol_error(self, agent_id: str, protocol: str, error_type: str) -> None:
         """Record a protocol error."""
         if self.enabled and "protocol_errors_total" in self.metrics:
             self.metrics["protocol_errors_total"].labels(
@@ -298,18 +294,14 @@ class MetricsCollector:
                 agent_id=agent_id, auth_type=auth_type, status=status
             ).inc()
 
-    def record_security_event(
-        self, agent_id: str, event_type: str, severity: str
-    ) -> None:
+    def record_security_event(self, agent_id: str, event_type: str, severity: str) -> None:
         """Record a security event."""
         if self.enabled and "security_events_total" in self.metrics:
             self.metrics["security_events_total"].labels(
                 agent_id=agent_id, event_type=event_type, severity=severity
             ).inc()
 
-    def record_validation_error(
-        self, agent_id: str, validation_type: str, field: str
-    ) -> None:
+    def record_validation_error(self, agent_id: str, validation_type: str, field: str) -> None:
         """Record a validation error."""
         if self.enabled and "validation_errors_total" in self.metrics:
             self.metrics["validation_errors_total"].labels(
@@ -329,9 +321,7 @@ class MetricsCollector:
     def update_uptime(self, agent_id: str, uptime_seconds: float) -> None:
         """Update agent uptime."""
         if self.enabled and "agent_uptime_seconds" in self.metrics:
-            self.metrics["agent_uptime_seconds"].labels(agent_id=agent_id).set(
-                uptime_seconds
-            )
+            self.metrics["agent_uptime_seconds"].labels(agent_id=agent_id).set(uptime_seconds)
 
     def set_agent_info(
         self, agent_id: str, version: str, protocol_version: str, **kwargs: Any
@@ -362,9 +352,7 @@ class MetricsCollector:
                 metric.labels(**event.labels).observe(event.value)
 
     @asynccontextmanager
-    async def trace_operation(
-        self, operation_name: str, agent_id: str, **attributes: Any
-    ) -> Any:
+    async def trace_operation(self, operation_name: str, agent_id: str, **attributes: Any) -> Any:
         """Context manager for tracing operations with OpenTelemetry."""
         if not self.tracer:
             yield None
@@ -410,14 +398,13 @@ class MetricsCollector:
 
     def get_metrics_summary(self) -> Dict[str, Any]:
         """Get a summary of current metrics."""
-        summary = {
+        return {
             "prometheus_enabled": self.enabled,
             "opentelemetry_enabled": OPENTELEMETRY_AVAILABLE,
             "custom_metrics_count": len(self.custom_metrics),
             "registered_metrics": list(self.metrics.keys()) if self.enabled else [],
         }
 
-        return summary
 
 
 # Global metrics collector instance
@@ -461,9 +448,7 @@ def record_connection_metric(agent_id: str, protocol: str, status: str) -> None:
     get_metrics_collector().record_connection(agent_id, protocol, status)
 
 
-def record_security_metric(
-    agent_id: str, event_type: str, severity: str = "info"
-) -> None:
+def record_security_metric(agent_id: str, event_type: str, severity: str = "info") -> None:
     """Record a security metric."""
     get_metrics_collector().record_security_event(agent_id, event_type, severity)
 

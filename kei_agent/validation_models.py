@@ -8,11 +8,11 @@ with proper error handling, sanitization, and security validation.
 
 from __future__ import annotations
 
-import urllib.parse
-from typing import Optional, Dict, Any
 from pathlib import Path
+from typing import Any, Dict, Optional
+import urllib.parse
 
-from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.networks import HttpUrl
 
 from .exceptions import ValidationError
@@ -76,9 +76,7 @@ class SecurityConfigValidation(BaseValidationModel):
     rbac_enabled: bool = Field(True, description="Enable RBAC")
     audit_enabled: bool = Field(True, description="Enable audit logging")
     token_refresh_enabled: bool = Field(True, description="Enable token refresh")
-    token_cache_ttl: int = Field(
-        3600, ge=60, le=86400, description="Token cache TTL in seconds"
-    )
+    token_cache_ttl: int = Field(3600, ge=60, le=86400, description="Token cache TTL in seconds")
 
     @field_validator("api_token")
     @classmethod
@@ -124,9 +122,7 @@ class SecurityConfigValidation(BaseValidationModel):
             "fake",
         ]
         if any(pattern in v.lower() for pattern in placeholder_patterns):
-            raise ValidationError(
-                "OIDC client secret appears to be a placeholder value"
-            )
+            raise ValidationError("OIDC client secret appears to be a placeholder value")
 
         return v
 
@@ -171,9 +167,7 @@ class SecurityConfigValidation(BaseValidationModel):
                 missing_fields.append("oidc_client_secret")
 
             if missing_fields:
-                raise ValidationError(
-                    f"OIDC authentication requires: {', '.join(missing_fields)}"
-                )
+                raise ValidationError(f"OIDC authentication requires: {', '.join(missing_fields)}")
 
         elif auth_type == "mtls":
             required_fields = []
@@ -183,20 +177,14 @@ class SecurityConfigValidation(BaseValidationModel):
                 required_fields.append("mtls_key_path")
 
             if required_fields:
-                raise ValidationError(
-                    f"mTLS authentication requires: {', '.join(required_fields)}"
-                )
+                raise ValidationError(f"mTLS authentication requires: {', '.join(required_fields)}")
 
         # Validate pinned fingerprint format if provided (for any auth type)
         pinned = getattr(self, "tls_pinned_sha256", None)
         if pinned is not None:
             normalized = pinned.replace(":", "").lower()
-            if len(normalized) != 64 or not all(
-                c in "0123456789abcdef" for c in normalized
-            ):
-                raise ValidationError(
-                    "Invalid tls_pinned_sha256 format; expected 64 hex chars"
-                )
+            if len(normalized) != 64 or not all(c in "0123456789abcdef" for c in normalized):
+                raise ValidationError("Invalid tls_pinned_sha256 format; expected 64 hex chars")
 
         return self
 
@@ -235,9 +223,7 @@ class AgentClientConfigValidation(BaseValidationModel):
     # Timeout and retry settings
     timeout: float = Field(30.0, gt=0, le=300, description="Request timeout in seconds")
     max_retries: int = Field(3, ge=0, le=10, description="Maximum number of retries")
-    retry_delay: float = Field(
-        1.0, ge=0, le=60, description="Delay between retries in seconds"
-    )
+    retry_delay: float = Field(1.0, ge=0, le=60, description="Delay between retries in seconds")
 
     @field_validator("base_url")
     @classmethod
@@ -288,12 +274,8 @@ class ProtocolConfigValidation(BaseValidationModel):
     mcp_enabled: bool = Field(True, description="Enable MCP protocol")
 
     # Protocol selection
-    auto_protocol_selection: bool = Field(
-        True, description="Enable automatic protocol selection"
-    )
-    protocol_fallback_enabled: bool = Field(
-        True, description="Enable protocol fallback"
-    )
+    auto_protocol_selection: bool = Field(True, description="Enable automatic protocol selection")
+    protocol_fallback_enabled: bool = Field(True, description="Enable protocol fallback")
     preferred_protocol: Optional[str] = Field(
         None, pattern=r"^(rpc|stream|bus|mcp)$", description="Preferred protocol"
     )
@@ -325,11 +307,11 @@ class ProtocolConfigValidation(BaseValidationModel):
         if self.preferred_protocol:
             if self.preferred_protocol == "rpc" and not self.rpc_enabled:
                 raise ValidationError("Preferred protocol 'rpc' is not enabled")
-            elif self.preferred_protocol == "stream" and not self.stream_enabled:
+            if self.preferred_protocol == "stream" and not self.stream_enabled:
                 raise ValidationError("Preferred protocol 'stream' is not enabled")
-            elif self.preferred_protocol == "bus" and not self.bus_enabled:
+            if self.preferred_protocol == "bus" and not self.bus_enabled:
                 raise ValidationError("Preferred protocol 'bus' is not enabled")
-            elif self.preferred_protocol == "mcp" and not self.mcp_enabled:
+            if self.preferred_protocol == "mcp" and not self.mcp_enabled:
                 raise ValidationError("Preferred protocol 'mcp' is not enabled")
 
         return self
@@ -345,9 +327,7 @@ class InputSanitizer:
             raise ValidationError("Value must be a string")
 
         # Remove null bytes and control characters
-        sanitized = "".join(
-            char for char in value if ord(char) >= 32 or char in "\t\n\r"
-        )
+        sanitized = "".join(char for char in value if ord(char) >= 32 or char in "\t\n\r")
 
         # Limit length
         if len(sanitized) > max_length:
@@ -384,9 +364,7 @@ class InputSanitizer:
         return sanitized
 
 
-def validate_configuration(
-    config_dict: Dict[str, Any], config_type: str
-) -> Dict[str, Any]:
+def validate_configuration(config_dict: Dict[str, Any], config_type: str) -> Dict[str, Any]:
     """Validate configuration dictionary using appropriate model.
 
     Args:

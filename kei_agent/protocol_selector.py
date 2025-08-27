@@ -8,11 +8,11 @@ Performatce-Atfortheungen and Availablekeit with Fallback-Mechatismen.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Any
 import logging
+from typing import Any, Dict, List, Optional
 
-from .protocol_types import Protocoltypee, ProtocolConfig
 from .exceptions import ProtocolError
+from .protocol_types import ProtocolConfig, Protocoltypee
 
 # Initializes Module-Logr
 _logger = logging.getLogger(__name__)
@@ -122,9 +122,7 @@ class ProtocolSelector:
             return fallback
 
         # Ka protocol available
-        raise ProtocolError(
-            f"Ka geeignetes protocol for operation '{operation}' available"
-        )
+        raise ProtocolError(f"Ka geeignetes protocol for operation '{operation}' available")
 
     def _auto_select_protocol(
         self, operation: str, context: Optional[Dict[str, Any]] = None
@@ -148,9 +146,7 @@ class ProtocolSelector:
         # Kontext-basierte Auswahl
         if context:
             # Streaming-Indikatoren
-            if any(
-                key in context for key in ["stream", "realtime", "live", "callback"]
-            ):
+            if any(key in context for key in ["stream", "realtime", "live", "callback"]):
                 return Protocoltypee.STREAM
 
             # Asynchrone Indikatoren
@@ -158,9 +154,7 @@ class ProtocolSelector:
                 return Protocoltypee.BUS
 
             # MCP-Indikatoren
-            if any(
-                key in context for key in ["tool", "resource", "prompt", "capability"]
-            ):
+            if any(key in context for key in ["tool", "resource", "prompt", "capability"]):
                 return Protocoltypee.MCP
 
         # Statdard-Fallback
@@ -189,7 +183,7 @@ class ProtocolSelector:
         # Sortiere availablee protocole after Priorität
         available_protocols = [
             protocol
-            for protocol in self._protocol_priorities.keys()
+            for protocol in self._protocol_priorities
             if self._is_protocol_available(protocol)
         ]
 
@@ -199,9 +193,7 @@ class ProtocolSelector:
         # Wähle protocol with höchster Priorität
         return max(available_protocols, key=lambda p: self._protocol_priorities[p])
 
-    def get_fallback_chain(
-        self, primary_protocol: Protocoltypee
-    ) -> List[Protocoltypee]:
+    def get_fallback_chain(self, primary_protocol: Protocoltypee) -> List[Protocoltypee]:
         """Creates fallback chain for protocol.
 
         Args:
@@ -211,23 +203,17 @@ class ProtocolSelector:
             lis from protocolen in Fallback-Reihenfolge
         """
         if not self.config.protocol_fallback_enabled:
-            return (
-                [primary_protocol]
-                if self._is_protocol_available(primary_protocol)
-                else []
-            )
+            return [primary_protocol] if self._is_protocol_available(primary_protocol) else []
 
         # All availableen protocole außer the primären
         fallback_protocols = [
             protocol
-            for protocol in self._protocol_priorities.keys()
+            for protocol in self._protocol_priorities
             if protocol != primary_protocol and self._is_protocol_available(protocol)
         ]
 
         # Sortiere after Priorität (absteigend)
-        fallback_protocols.sort(
-            key=lambda p: self._protocol_priorities[p], reverse=True
-        )
+        fallback_protocols.sort(key=lambda p: self._protocol_priorities[p], reverse=True)
 
         # Primäres protocol at the Atfatg
         chain = []
@@ -267,23 +253,20 @@ class ProtocolSelector:
 
         # Streaming-Atfortheungen
         if any(
-            pattern in operation_lower
-            for pattern in ["stream", "live", "realtime", "subscribe"]
+            pattern in operation_lower for pattern in ["stream", "live", "realtime", "subscribe"]
         ):
             atalysis["requirements"]["streaming"] = True
             atalysis["requirements"]["realtime"] = True
 
         # Asynchrone Atfortheungen
         if any(
-            pattern in operation_lower
-            for pattern in ["async", "backgroatd", "queue", "publish"]
+            pattern in operation_lower for pattern in ["async", "backgroatd", "queue", "publish"]
         ):
             atalysis["requirements"]["async"] = True
 
         # Tool-Atfortheungen
         if any(
-            pattern in operation_lower
-            for pattern in ["tool", "resource", "prompt", "discover"]
+            pattern in operation_lower for pattern in ["tool", "resource", "prompt", "discover"]
         ):
             atalysis["requirements"]["tools"] = True
 

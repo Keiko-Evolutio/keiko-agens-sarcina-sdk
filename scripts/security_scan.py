@@ -9,9 +9,9 @@ Runs comprehensive security checks including:
 """
 
 import argparse
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 from typing import List
 
 
@@ -19,16 +19,10 @@ def run_command(cmd: List[str], description: str, timeout: int = 60) -> bool:
     """Run a command and return success status."""
     print(f"🔍 {description}...")
     try:
-        result = subprocess.run(
-            cmd, check=True, capture_output=True, text=True, timeout=timeout
-        )
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=timeout)
         print(f"✅ {description} passed")
         if result.stdout:
-            print(
-                result.stdout[:500] + "..."
-                if len(result.stdout) > 500
-                else result.stdout
-            )
+            print(result.stdout[:500] + "..." if len(result.stdout) > 500 else result.stdout)
         return True
     except subprocess.TimeoutExpired:
         print(f"⏰ {description} timed out after {timeout} seconds")
@@ -36,13 +30,9 @@ def run_command(cmd: List[str], description: str, timeout: int = 60) -> bool:
     except subprocess.CalledProcessError as e:
         print(f"❌ {description} failed")
         if e.stdout:
-            print(
-                "STDOUT:", e.stdout[:500] + "..." if len(e.stdout) > 500 else e.stdout
-            )
+            print("STDOUT:", e.stdout[:500] + "..." if len(e.stdout) > 500 else e.stdout)
         if e.stderr:
-            print(
-                "STDERR:", e.stderr[:500] + "..." if len(e.stderr) > 500 else e.stderr
-            )
+            print("STDERR:", e.stderr[:500] + "..." if len(e.stderr) > 500 else e.stderr)
         return False
 
 
@@ -65,9 +55,7 @@ def main():
     # Skip Safety scan in CI due to authentication requirements
     # Use pip-audit instead which covers the same vulnerability databases
     print("🔍 Safety vulnerability scan...")
-    print(
-        "⚠️ Skipping Safety scan in CI (requires authentication) - using pip-audit instead"
-    )
+    print("⚠️ Skipping Safety scan in CI (requires authentication) - using pip-audit instead")
 
     # Run pip-audit with vulnerability filtering
     # Note: We ignore known vulnerabilities that have no fix or are out of scope
@@ -83,9 +71,7 @@ def main():
 
     print("🔍 pip-audit dependency scan...")
     try:
-        subprocess.run(
-            audit_cmd, check=True, capture_output=True, text=True, timeout=120
-        )
+        subprocess.run(audit_cmd, check=True, capture_output=True, text=True, timeout=120)
         print("✅ pip-audit dependency scan passed")
         audit_success = True
     except subprocess.CalledProcessError as e:
@@ -144,18 +130,14 @@ def main():
 
     print("🔍 Bandit static analysis...")
     try:
-        subprocess.run(
-            bandit_cmd, check=True, capture_output=True, text=True, timeout=60
-        )
+        subprocess.run(bandit_cmd, check=True, capture_output=True, text=True, timeout=60)
         print("✅ Bandit static analysis passed")
         bandit_success = True
     except subprocess.CalledProcessError as e:
         # Bandit returns non-zero when issues are found
         # Check if it's just low-severity issues or real problems
         if e.returncode == 1:
-            print(
-                "⚠️ Bandit found some issues but continuing (check report for details)"
-            )
+            print("⚠️ Bandit found some issues but continuing (check report for details)")
             bandit_success = True  # Don't fail CI for low-severity issues
         else:
             print("❌ Bandit static analysis failed")

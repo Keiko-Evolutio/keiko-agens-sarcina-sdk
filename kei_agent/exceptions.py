@@ -6,15 +6,14 @@ Definiert all SDK-specificn Ausnahmen for bessere errorbehatdlung.
 """
 
 from __future__ import annotations
+
 from typing import Any, Optional
 
 
 class KeiSDKError(Exception):
     """Basis-Ausnahme for all KEI-SDK-error."""
 
-    def __init__(
-        self, message: str, error_code: Optional[str] = None, **kwargs: Any
-    ) -> None:
+    def __init__(self, message: str, error_code: Optional[str] = None, **kwargs: Any) -> None:
         super().__init__(message)
         self.message = message
         self.error_code = error_code
@@ -37,18 +36,14 @@ class AgentNotFoundError(KeiSDKError):
 
     def __init__(self, agent_id: str, **kwargs: Any) -> None:
         message = f"Agent not gefatthe: {agent_id}"
-        super().__init__(
-            message, error_code="AGENT_NOT_FOUND", agent_id=agent_id, **kwargs
-        )
+        super().__init__(message, error_code="AGENT_NOT_FOUND", agent_id=agent_id, **kwargs)
         self.agent_id = agent_id
 
 
 class CommunicationError(KeiSDKError):
     """Ausnahme for Kommunikationsfehler between Agents."""
 
-    def __init__(
-        self, message: str, status_code: Optional[int] = None, **kwargs: Any
-    ) -> None:
+    def __init__(self, message: str, status_code: Optional[int] = None, **kwargs: Any) -> None:
         super().__init__(message, error_code="COMMUNICATION_ERROR", **kwargs)
         self.status_code = status_code
 
@@ -60,16 +55,14 @@ class DiscoveryError(KeiSDKError):
         super().__init__(message, error_code="DISCOVERY_ERROR", **kwargs)
 
 
-class retryExhaustedError(KeiSDKError):
+class RetryExhaustedError(KeiSDKError):
     """Ausnahme if all retry-Versuche erschöpft are."""
 
     def __init__(
         self, attempts: int, last_error: Optional[Exception] = None, **kwargs: Any
     ) -> None:
         message = f"retry-Versuche erschöpft after {attempts} Versuchen"
-        super().__init__(
-            message, error_code="RETRY_EXHAUSTED", attempts=attempts, **kwargs
-        )
+        super().__init__(message, error_code="RETRY_EXHAUSTED", attempts=attempts, **kwargs)
         self.attempts = attempts
         self.last_error = last_error
 
@@ -91,12 +84,8 @@ class CircuitBreakerOpenError(KeiSDKError):
 class CapabilityError(KeiSDKError):
     """Ausnahme for Capability-bezogene error."""
 
-    def __init__(
-        self, message: str, capability: Optional[str] = None, **kwargs: Any
-    ) -> None:
-        super().__init__(
-            message, error_code="CAPABILITY_ERROR", capability=capability, **kwargs
-        )
+    def __init__(self, message: str, capability: Optional[str] = None, **kwargs: Any) -> None:
+        super().__init__(message, error_code="CAPABILITY_ERROR", capability=capability, **kwargs)
         self.capability = capability
 
 
@@ -110,12 +99,8 @@ class TracingError(KeiSDKError):
 class ConfigurationError(KeiSDKError):
     """Ausnahme for configurationsfehler."""
 
-    def __init__(
-        self, message: str, config_key: Optional[str] = None, **kwargs: Any
-    ) -> None:
-        super().__init__(
-            message, error_code="CONFIGURATION_ERROR", config_key=config_key, **kwargs
-        )
+    def __init__(self, message: str, config_key: Optional[str] = None, **kwargs: Any) -> None:
+        super().__init__(message, error_code="CONFIGURATION_ERROR", config_key=config_key, **kwargs)
         self.config_key = config_key
 
 
@@ -148,21 +133,15 @@ class TimeoutError(KeiSDKError):
 class ProtocolError(KeiSDKError):
     """Ausnahme for protocol-specific error."""
 
-    def __init__(
-        self, message: str, protocol: Optional[str] = None, **kwargs: Any
-    ) -> None:
-        super().__init__(
-            message, error_code="PROTOCOL_ERROR", protocol=protocol, **kwargs
-        )
+    def __init__(self, message: str, protocol: Optional[str] = None, **kwargs: Any) -> None:
+        super().__init__(message, error_code="PROTOCOL_ERROR", protocol=protocol, **kwargs)
         self.protocol = protocol
 
 
 class SecurityError(KeiSDKError):
     """Ausnahme for securitys-bezogene error."""
 
-    def __init__(
-        self, message: str, security_context: Optional[str] = None, **kwargs: Any
-    ) -> None:
+    def __init__(self, message: str, security_context: Optional[str] = None, **kwargs: Any) -> None:
         super().__init__(
             message,
             error_code="SECURITY_ERROR",

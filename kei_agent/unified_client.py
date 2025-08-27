@@ -8,28 +8,28 @@ code quality, complete type hints, and enterprise features.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Callable, Awaitable
+import asyncio
 import logging
 import time
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
-from .client import AgentClientConfig, KeiAgentClient
-from .protocol_types import Protocoltypee, ProtocolConfig, SecurityConfig, Authtypee
-import asyncio
-from .security_manager import SecurityManager as _BaseSecurityManager
-from .protocol_clients import KEIRPCclient, KEIStreamclient, KEIBusclient, KEIMCPclient
-from .protocol_selector import ProtocolSelector
-from .exceptions import KeiSDKError, ProtocolError
-from .tracing import TracingManager
-from .retry import retryManager
 from .capabilities import CapabilityManager
+from .client import AgentClientConfig, KeiAgentClient
 from .discovery import ServiceDiscovery
-from .utils import create_correlation_id
+from .error_aggregation import ErrorCategory, ErrorSeverity, record_error
+from .exceptions import KeiSDKError, ProtocolError
 from .metrics import (
     get_metrics_collector,
-    record_request_metric,
     record_connection_metric,
+    record_request_metric,
 )
-from .error_aggregation import record_error, ErrorCategory, ErrorSeverity
+from .protocol_clients import KEIBusclient, KEIMCPclient, KEIRPCclient, KEIStreamclient
+from .protocol_selector import ProtocolSelector
+from .protocol_types import Authtypee, ProtocolConfig, Protocoltypee, SecurityConfig
+from .retry import retryManager
+from .security_manager import SecurityManager as _BaseSecurityManager
+from .tracing import TracingManager
+from .utils import create_correlation_id
 
 # Initialize module logger
 _logger = logging.getLogger(__name__)
@@ -245,11 +245,7 @@ class UnifiedKeiAgentClient:
     async def _initialize_enterprise_features(self) -> None:
         """Initializes enterprise features."""
         # Tracing manager
-        if (
-            hasattr(self.config, "tracing")
-            and self.config.tracing
-            and self.tracing is None
-        ):
+        if hasattr(self.config, "tracing") and self.config.tracing and self.tracing is None:
             self.tracing = TracingManager(self.config.tracing)
             # TracingManager has no async initialize method; immediately available
             # compatibility API for Tests: start_spat provide
@@ -274,7 +270,7 @@ class UnifiedKeiAgentClient:
                 def _start_spat(name):
                     return _SpatProxy(self.tracing.trace_operation(name))
 
-                setattr(self.tracing, "start_spat", _start_spat)
+                self.tracing.start_spat = _start_spat
 
         # Retry manager
         if hasattr(self.config, "retry") and self.config.retry:
@@ -486,9 +482,7 @@ class UnifiedKeiAgentClient:
                     spat.set_attribute("protocol", selected_protocol)
                     spat.set_attribute("correlation_id", correlation_id)
 
-                    result = await self._execute_with_protocol(
-                        selected_protocol, operation, data
-                    )
+                    result = await self._execute_with_protocol(selected_protocol, operation, data)
 
                     # Record successful request metrics
                     duration = time.time() - start_time
@@ -502,9 +496,7 @@ class UnifiedKeiAgentClient:
 
                     return result
             else:
-                result = await self._execute_with_protocol(
-                    selected_protocol, operation, data
-                )
+                result = await self._execute_with_protocol(selected_protocol, operation, data)
 
                 # Record successful request metrics
                 duration = time.time() - start_time
@@ -571,14 +563,13 @@ class UnifiedKeiAgentClient:
         try:
             if protocol == Protocoltypee.RPC:
                 return await self._execute_rpc_operation(operation, data)
-            elif protocol == Protocoltypee.STREAM:
+            if protocol == Protocoltypee.STREAM:
                 return await self._execute_stream_operation(operation, data)
-            elif protocol == Protocoltypee.BUS:
+            if protocol == Protocoltypee.BUS:
                 return await self._execute_bus_operation(operation, data)
-            elif protocol == Protocoltypee.MCP:
+            if protocol == Protocoltypee.MCP:
                 return await self._execute_mcp_operation(operation, data)
-            else:
-                raise ProtocolError(f"Unknown protocol: {protocol}")
+            raise ProtocolError(f"Unknown protocol: {protocol}")
 
         except ProtocolError as e:
             # try fallback if enabled
@@ -589,9 +580,7 @@ class UnifiedKeiAgentClient:
                         _logger.warning(
                             f"Fallback from {protocol} to {fallback_protocol} for operation '{operation}'"
                         )
-                        return await self._execute_with_protocol(
-                            fallback_protocol, operation, data
-                        )
+                        return await self._execute_with_protocol(fallback_protocol, operation, data)
                     except Exception as e:
                         _logger.warning(
                             f"Fallback failed with {fallback_protocol}: {e}",
@@ -602,9 +591,7 @@ class UnifiedKeiAgentClient:
             # No fallback successful
             raise e
 
-    async def _execute_rpc_operation(
-        self, operation: str, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _execute_rpc_operation(self, operation: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Executes RPC operation.
 
         integrates retry mechanisms and circuit breaker per operation.
@@ -618,15 +605,14 @@ class UnifiedKeiAgentClient:
             async with self._rpc_client as client:
                 if operation == "plat":
                     return await client.plat(data["objective"], data.get("context"))
-                elif operation == "act":
+                if operation == "act":
                     return await client.act(data["action"], data.get("parameters"))
-                elif operation == "observe":
+                if operation == "observe":
                     return await client.observe(data["type"], data.get("data"))
-                elif operation == "explain":
+                if operation == "explain":
                     return await client.explain(data["query"], data.get("context"))
-                else:
-                    # generic RPC fallback on low-level call
-                    return await client._rpc_call(operation, data)
+                # generic RPC fallback on low-level call
+                return await client._rpc_call(operation, data)
 
         cb_name = f"rpc.{operation}"
         return await rm.execute_with_retry(_call, circuit_breaker_name=cb_name)
@@ -649,10 +635,10 @@ class UnifiedKeiAgentClient:
                 stream_id = data.get("stream_id") or data.get("topic")
                 await self._stream_client.subscribe(stream_id, data["callback"])
                 return {"status": "subscribed", "stream_id": stream_id}
-            elif operation == "publish":
+            if operation == "publish":
                 await self._stream_client.publish(data["topic"], data["data"])
                 return {"status": "published", "topic": data["topic"]}
-            elif operation == "send":
+            if operation == "send":
                 # Optional: frame_type/payload
                 stream_id = data["stream_id"]
                 frame_type = data.get("frame_type", "data")
@@ -663,15 +649,12 @@ class UnifiedKeiAgentClient:
                     raise ProtocolError("stream client supports send_frame not")
                 await send_fn(stream_id, frame_type, payload)
                 return {"status": "sent", "stream_id": stream_id}
-            else:
-                raise ProtocolError(f"Unbekatnte stream operation: {operation}")
+            raise ProtocolError(f"Unbekatnte stream operation: {operation}")
 
         cb_name = f"stream.{operation}"
         return await rm.execute_with_retry(_call, circuit_breaker_name=cb_name)
 
-    async def _execute_bus_operation(
-        self, operation: str, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _execute_bus_operation(self, operation: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Executes Bus operation.
 
         Supports publish/subscribe sowie rpc_invoke with retry.
@@ -690,9 +673,9 @@ class UnifiedKeiAgentClient:
                         "payload": data.get("payload", {}),
                     }
                     return await client.publish(envelope)
-                elif operation == "subscribe":
+                if operation == "subscribe":
                     return await client.subscribe(data["topic"], data["agent_id"])
-                elif operation == "rpc_invoke":
+                if operation == "rpc_invoke":
                     # Optional path only if implemented
                     if hasattr(client, "rpc_invoke"):
                         return await client.rpc_invoke(
@@ -702,16 +685,13 @@ class UnifiedKeiAgentClient:
                             data.get("timeout", 30.0),
                         )
                     raise ProtocolError("bus client supports rpc_invoke not")
-                else:
-                    # generic publish fallback
-                    return await client.publish({"operation": operation, **data})
+                # generic publish fallback
+                return await client.publish({"operation": operation, **data})
 
         cb_name = f"bus.{operation}"
         return await rm.execute_with_retry(_call, circuit_breaker_name=cb_name)
 
-    async def _execute_mcp_operation(
-        self, operation: str, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _execute_mcp_operation(self, operation: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Executes MCP operation.
 
         Supports discover_tools / use_tool sowie invoke_tool (compatibility) with retry.
@@ -726,19 +706,16 @@ class UnifiedKeiAgentClient:
                 if operation == "discover_tools":
                     tools = await client.discover_tools(data.get("category"))
                     return {"tools": tools}
-                elif operation == "use_tool":
+                if operation == "use_tool":
                     return await client.use_tool(data["tool_name"], data["parameters"])
-                elif operation == "invoke_tool":
+                if operation == "invoke_tool":
                     # Tests use possibly invoke_tool instead of use_tool
                     if hasattr(client, "invoke_tool"):
                         return await client.invoke_tool(
                             data["tool_name"], data.get("parameters", {})
                         )
-                    return await client.use_tool(
-                        data["tool_name"], data.get("parameters", {})
-                    )
-                else:
-                    raise ProtocolError(f"Unbekatnte MCP operation: {operation}")
+                    return await client.use_tool(data["tool_name"], data.get("parameters", {}))
+                raise ProtocolError(f"Unbekatnte MCP operation: {operation}")
 
         cb_name = f"mcp.{operation}"
         return await rm.execute_with_retry(_call, circuit_breaker_name=cb_name)
@@ -973,37 +950,23 @@ class UnifiedKeiAgentClient:
         error_message = str(error).lower()
 
         # Authentication errors
-        if any(
-            term in error_message
-            for term in ["auth", "token", "credential", "unauthorized"]
-        ):
+        if any(term in error_message for term in ["auth", "token", "credential", "unauthorized"]):
             return ErrorCategory.AUTHENTICATION
 
         # Network errors
-        if any(
-            term in error_message
-            for term in ["connection", "network", "timeout", "dns"]
-        ):
+        if any(term in error_message for term in ["connection", "network", "timeout", "dns"]):
             return ErrorCategory.NETWORK
 
         # Validation errors
-        if any(
-            term in error_message
-            for term in ["validation", "invalid", "malformed", "schema"]
-        ):
+        if any(term in error_message for term in ["validation", "invalid", "malformed", "schema"]):
             return ErrorCategory.VALIDATION
 
         # Security errors
-        if any(
-            term in error_message for term in ["security", "forbidden", "access denied"]
-        ):
+        if any(term in error_message for term in ["security", "forbidden", "access denied"]):
             return ErrorCategory.SECURITY
 
         # Protocol errors
-        if any(
-            term in error_message
-            for term in ["protocol", "rpc", "stream", "bus", "mcp"]
-        ):
+        if any(term in error_message for term in ["protocol", "rpc", "stream", "bus", "mcp"]):
             return ErrorCategory.PROTOCOL
 
         # Configuration errors
@@ -1024,17 +987,11 @@ class UnifiedKeiAgentClient:
         error_message = str(error).lower()
 
         # Critical errors
-        if any(
-            term in error_message
-            for term in ["critical", "fatal", "security", "unauthorized"]
-        ):
+        if any(term in error_message for term in ["critical", "fatal", "security", "unauthorized"]):
             return ErrorSeverity.CRITICAL
 
         # High severity errors
-        if any(
-            term in error_message
-            for term in ["connection", "timeout", "failed", "error"]
-        ):
+        if any(term in error_message for term in ["connection", "timeout", "failed", "error"]):
             return ErrorSeverity.HIGH
 
         # Medium severity errors

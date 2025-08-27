@@ -6,9 +6,9 @@ wie automatische Generierung von Inhalten, Makros und andere Dokumentations-Feat
 zu ermöglichen.
 """
 
-import re
 from pathlib import Path
-from typing import Dict, Any
+import re
+from typing import Any, Dict
 
 
 def on_config(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -29,7 +29,6 @@ def on_pre_build(config: Dict[str, Any]) -> None:
     Args:
         config: MkDocs-Konfiguration
     """
-    pass
 
 
 def on_files(files, config: Dict[str, Any]):
@@ -79,7 +78,7 @@ def on_page_markdown(markdown: str, page, config: Dict[str, Any], files) -> str:
         try:
             pyproject_path = Path(config["docs_dir"]).parent / "pyproject.toml"
             if pyproject_path.exists():
-                with open(pyproject_path, "r", encoding="utf-8") as f:
+                with open(pyproject_path, encoding="utf-8") as f:
                     content = f.read()
                     version_match = re.search(r'version\s*=\s*"([^"]+)"', content)
                     if version_match:
@@ -120,4 +119,3 @@ def on_post_build(config: Dict[str, Any]) -> None:
     Args:
         config: MkDocs-Konfiguration
     """
-    pass

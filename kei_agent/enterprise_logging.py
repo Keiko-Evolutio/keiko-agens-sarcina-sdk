@@ -8,19 +8,17 @@ and enterprise features for Production-Deployments.
 
 from __future__ import annotations
 
+from contextvars import ContextVar
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 import json
 import logging
 import time
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Union
-from contextvars import ContextVar
-from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, Optional
 import uuid
 
 # Context Variables for Request-Tracking
-correlation_id_var: ContextVar[Optional[str]] = ContextVar(
-    "correlation_id", default=None
-)
+correlation_id_var: ContextVar[Optional[str]] = ContextVar("correlation_id", default=None)
 trace_id_var: ContextVar[Optional[str]] = ContextVar("trace_id", default=None)
 user_id_var: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
 
@@ -104,9 +102,7 @@ class StructuredFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Formats LogRecord as JSON."""
         log_data = {
-            "timestamp": datetime.fromtimestamp(
-                record.created, tz=timezone.utc
-            ).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -123,9 +119,7 @@ class StructuredFormatter(logging.Formatter):
             log_data["exception"] = {
                 "type": record.exc_info[0].__name__ if record.exc_info[0] else None,
                 "message": str(record.exc_info[1]) if record.exc_info[1] else None,
-                "traceback": self.formatException(record.exc_info)
-                if record.exc_info
-                else None,
+                "traceback": self.formatException(record.exc_info) if record.exc_info else None,
             }
         if self.include_context:
             context = {
@@ -211,7 +205,7 @@ class EnterpriseLogger:
     def __init__(
         self,
         name: str,
-        level: Union[str, int] = logging.INFO,
+        level: str | int = logging.INFO,
         enable_structured: bool = True,
         enable_console: bool = True,
         enable_file: bool = False,
@@ -237,13 +231,11 @@ class EnterpriseLogger:
 
         # Structured Formatter
         if enable_structured:
-            formatter: Union[StructuredFormatter, logging.Formatter] = (
-                StructuredFormatter(extra_fields=extra_fields)
+            formatter: StructuredFormatter | logging.Formatter = StructuredFormatter(
+                extra_fields=extra_fields
             )
         else:
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
         # Redaction filter
         redactor = RedactingFilter()
@@ -454,7 +446,7 @@ def get_logger(name: str = "kei_agent") -> EnterpriseLogger:
 
 
 def configure_logging(
-    level: Union[str, int] = logging.INFO,
+    level: str | int = logging.INFO,
     enable_structured: bool = True,
     enable_file: bool = False,
     file_path: Optional[str] = None,
@@ -488,13 +480,13 @@ def configure_logging(
 
 
 __all__ = [
-    "LogContext",
-    "StructuredFormatter",
-    "RedactingFilter",
     "EnterpriseLogger",
-    "get_logger",
+    "LogContext",
+    "RedactingFilter",
+    "StructuredFormatter",
     "configure_logging",
     "correlation_id_var",
+    "get_logger",
     "trace_id_var",
     "user_id_var",
 ]

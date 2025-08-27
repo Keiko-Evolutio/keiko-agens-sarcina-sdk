@@ -11,25 +11,25 @@ This module provides:
 """
 
 import json
-import time
-from typing import Dict, Any, Optional
-from pathlib import Path
 import logging
+from pathlib import Path
+import time
+from typing import Any, Dict, Optional
 
 try:
-    from aiohttp import web, WSMsgType
+    from aiohttp import WSMsgType, web
     from aiohttp.web import Request, Response, WebSocketResponse
 
     AIOHTTP_AVAILABLE = True
 except ImportError:
     AIOHTTP_AVAILABLE = False
 
-from .metrics import get_metrics_collector, MetricsCollector
-from .dashboard_generators import (
-    generate_security_dashboard_html,
-    generate_business_dashboard_html,
-)
 from .config_api import get_config_api
+from .dashboard_generators import (
+    generate_business_dashboard_html,
+    generate_security_dashboard_html,
+)
+from .metrics import MetricsCollector, get_metrics_collector
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +96,7 @@ class MetricsServer:
         self.config_api.create_routes(app)
 
         # Static files for dashboard
-        app.router.add_static(
-            "/static/", path=Path(__file__).parent / "static", name="static"
-        )
+        app.router.add_static("/static/", path=Path(__file__).parent / "static", name="static")
 
         return app
 
@@ -142,10 +140,7 @@ class MetricsServer:
 
         if ready:
             return web.json_response({"status": "ready", "timestamp": time.time()})
-        else:
-            return web.json_response(
-                {"status": "not_ready", "timestamp": time.time()}, status=503
-            )
+        return web.json_response({"status": "not_ready", "timestamp": time.time()}, status=503)
 
     async def liveness_handler(self, request: Request) -> Response:
         """Handle liveness probe endpoint."""
@@ -197,9 +192,7 @@ class MetricsServer:
             return web.json_response(summary)
         except Exception as e:
             logger.error(f"Error generating metrics summary: {e}")
-            return web.json_response(
-                {"error": f"Failed to generate summary: {e}"}, status=500
-            )
+            return web.json_response({"error": f"Failed to generate summary: {e}"}, status=500)
 
     async def health_status_handler(self, request: Request) -> Response:
         """Handle health status API endpoint."""
@@ -211,9 +204,7 @@ class MetricsServer:
 
             # Calculate health score based on error rates
             recent_errors = error_stats.get("recent_errors", 0)
-            error_rate_1min = error_stats.get("error_rates", {}).get(
-                "per_minute_1min", 0
-            )
+            error_rate_1min = error_stats.get("error_rates", {}).get("per_minute_1min", 0)
 
             if error_rate_1min > 10:
                 health_status = "critical"
@@ -283,7 +274,7 @@ class MetricsServer:
     async def security_events_handler(self, request: Request) -> Response:
         """Handle security events API endpoint."""
         try:
-            from .error_aggregation import get_error_aggregator, ErrorCategory
+            from .error_aggregation import ErrorCategory, get_error_aggregator
 
             error_aggregator = get_error_aggregator()
             recent_errors = error_aggregator._get_recent_errors(minutes=60)
@@ -292,17 +283,12 @@ class MetricsServer:
             security_events = [
                 error
                 for error in recent_errors
-                if error.category
-                in [ErrorCategory.SECURITY, ErrorCategory.AUTHENTICATION]
+                if error.category in [ErrorCategory.SECURITY, ErrorCategory.AUTHENTICATION]
             ]
 
             # Categorize security events
             auth_failures = len(
-                [
-                    e
-                    for e in security_events
-                    if e.category == ErrorCategory.AUTHENTICATION
-                ]
+                [e for e in security_events if e.category == ErrorCategory.AUTHENTICATION]
             )
             security_violations = len(
                 [e for e in security_events if e.category == ErrorCategory.SECURITY]
@@ -383,9 +369,7 @@ class MetricsServer:
             # Send initial metrics
             summary = self.metrics_collector.get_metrics_summary()
             await ws.send_str(
-                json.dumps(
-                    {"type": "initial", "data": summary, "timestamp": time.time()}
-                )
+                json.dumps({"type": "initial", "data": summary, "timestamp": time.time()})
             )
 
             # Keep connection alive and send periodic updates
@@ -419,9 +403,7 @@ class MetricsServer:
         if not self.websocket_connections:
             return
 
-        message = json.dumps(
-            {"type": "update", "data": metrics_data, "timestamp": time.time()}
-        )
+        message = json.dumps({"type": "update", "data": metrics_data, "timestamp": time.time()})
 
         # Send to all connected clients
         disconnected = set()
@@ -1172,9 +1154,7 @@ def get_metrics_server(host: str = "127.0.0.1", port: int = 8090) -> MetricsServ
     return _metrics_server
 
 
-async def start_metrics_server(
-    host: str = "127.0.0.1", port: int = 8090
-) -> MetricsServer:
+async def start_metrics_server(host: str = "127.0.0.1", port: int = 8090) -> MetricsServer:
     """Start the metrics server."""
     server = get_metrics_server(host, port)
     await server.start()

@@ -9,16 +9,16 @@ This module provides a comprehensive caching system with:
 - Thread-safe operations with async support
 """
 
+from abc import ABC, abstractmethod
 import asyncio
+from dataclasses import dataclass, field
+from enum import Enum
 import hashlib
 import json
 import logging
-import time
 import threading
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Dict, List, Optional, Callable
+import time
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -139,39 +139,32 @@ class CacheInterface(ABC):
     @abstractmethod
     async def get(self, key: str) -> Optional[Any]:
         """Get value from cache."""
-        pass
 
     @abstractmethod
     async def set(
-        self, key: str, value: Any, ttl: Optional[float] = None, tags: List[str] = None
+        self, key: str, value: Any, ttl: Optional[float] = None, tags: Optional[List[str]] = None
     ) -> bool:
         """Set value in cache."""
-        pass
 
     @abstractmethod
     async def delete(self, key: str) -> bool:
         """Delete value from cache."""
-        pass
 
     @abstractmethod
     async def exists(self, key: str) -> bool:
         """Check if key exists in cache."""
-        pass
 
     @abstractmethod
     async def clear(self) -> bool:
         """Clear all cache entries."""
-        pass
 
     @abstractmethod
     async def get_stats(self) -> CacheStats:
         """Get cache statistics."""
-        pass
 
     @abstractmethod
     async def invalidate_by_tags(self, tags: List[str]) -> int:
         """Invalidate cache entries by tags."""
-        pass
 
 
 class CircuitBreaker:
@@ -250,9 +243,7 @@ class CacheKeyGenerator:
                 if isinstance(v, (str, int, float, bool)):
                     key_parts.append(f"{k}:{v}")
                 else:
-                    key_parts.append(
-                        f"{k}:{json.dumps(v, sort_keys=True, default=str)}"
-                    )
+                    key_parts.append(f"{k}:{json.dumps(v, sort_keys=True, default=str)}")
 
         # Join and hash for consistent length
         key_string = "|".join(key_parts)
@@ -363,9 +354,7 @@ class CacheMetrics:
 
         # Update average
         if self.access_times:
-            self.stats.avg_access_time_ms = sum(self.access_times) / len(
-                self.access_times
-            )
+            self.stats.avg_access_time_ms = sum(self.access_times) / len(self.access_times)
 
     def get_stats(self) -> CacheStats:
         """Get current statistics."""

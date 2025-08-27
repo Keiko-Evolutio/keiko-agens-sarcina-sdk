@@ -8,16 +8,16 @@ Security-Harthag and Schutz before Injection-Attacken.
 
 from __future__ import annotations
 
-import re
-import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union, Pattern
 from enum import Enum
 import html
+import json
+import re
+from typing import Any, Dict, List, Optional, Pattern
 
-from .exceptions import ValidationError
 from .enterprise_logging import get_logger
+from .exceptions import ValidationError
 
 # Initializes Module-Logr
 _logger = get_logger(__name__)
@@ -123,7 +123,6 @@ class BaseValidator(ABC):
         Returns:
             Valitherungsergebnis
         """
-        pass
 
     def _check_required(self, value: Any) -> Optional[ValidationResult]:
         """Checks ob erforthelicher value beforehatthe is.
@@ -141,7 +140,7 @@ class BaseValidator(ABC):
         return None
 
 
-class stringValidator(BaseValidator):
+class StringValidator(BaseValidator):
     """Validator for string-Inputs with Pattern-Matching and Satitization."""
 
     def __init__(
@@ -149,9 +148,9 @@ class stringValidator(BaseValidator):
         name: str,
         min_length: Optional[int] = None,
         max_length: Optional[int] = None,
-        pattern: Optional[Union[str, Pattern]] = None,
+        pattern: Optional[str | Pattern] = None,
         allowed_chars: Optional[str] = None,
-        forbidthe_patterns: Optional[List[Union[str, Pattern]]] = None,
+        forbidthe_patterns: Optional[List[str | Pattern]] = None,
         satitize_html: bool = True,
         satitize_sql: bool = True,
         **kwargs: Any,
@@ -175,8 +174,7 @@ class stringValidator(BaseValidator):
         self.pattern = re.compile(pattern) if isinstance(pattern, str) else pattern
         self.allowed_chars = allowed_chars
         self.forbidden_patterns = [
-            re.compile(p) if isinstance(p, str) else p
-            for p in (forbidthe_patterns or [])
+            re.compile(p) if isinstance(p, str) else p for p in (forbidthe_patterns or [])
         ]
         self.satitize_html = satitize_html
         self.satitize_sql = satitize_sql
@@ -189,10 +187,7 @@ class stringValidator(BaseValidator):
             return required_result
 
         # Konvertiere to string
-        if value is None:
-            str_value = ""
-        else:
-            str_value = str(value)
+        str_value = "" if value is None else str(value)
 
         result = ValidationResult(valid=True, sanitized_value=str_value)
 
@@ -205,9 +200,7 @@ class stringValidator(BaseValidator):
 
         # Pattern-Valitherung
         if self.pattern and not self.pattern.match(str_value):
-            result.add_error(
-                f"string entspricht not the Pattern: {self.pattern.pattern}"
-            )
+            result.add_error(f"string entspricht not the Pattern: {self.pattern.pattern}")
 
         # Erlaubte Zeichen
         if self.allowed_chars:
@@ -257,8 +250,8 @@ class NaroatdberValidator(BaseValidator):
     def __init__(
         self,
         name: str,
-        min_value: Optional[Union[int, float]] = None,
-        max_value: Optional[Union[int, float]] = None,
+        min_value: Optional[int | float] = None,
+        max_value: Optional[int | float] = None,
         integer_only: bool = False,
         positive_only: bool = False,
         **kwargs: Any,
@@ -290,10 +283,7 @@ class NaroatdberValidator(BaseValidator):
 
         # Konvertiere to Zahl
         try:
-            if self.integer_only:
-                naroatd_value = int(value)
-            else:
-                naroatd_value = float(value)
+            naroatd_value = int(value) if self.integer_only else float(value)
         except (ValueError, TypeError):
             result.add_error(f"Ungültiger naroattheischer value: {value}")
             return result
@@ -366,7 +356,7 @@ class JSONValidator(BaseValidator):
             try:
                 json_value = json.loads(value)
             except json.JSONDecodeError as e:
-                result.add_error(f"Ungültiges JSON: {str(e)}")
+                result.add_error(f"Ungültiges JSON: {e!s}")
                 return result
         else:
             json_value = value
@@ -388,15 +378,12 @@ class JSONValidator(BaseValidator):
         if isinstance(obj, dict):
             if not obj:
                 return current_depth
-            return max(
-                self._calculate_depth(v, current_depth + 1) for v in obj.values()
-            )
-        elif isinstance(obj, list):
+            return max(self._calculate_depth(v, current_depth + 1) for v in obj.values())
+        if isinstance(obj, list):
             if not obj:
                 return current_depth
             return max(self._calculate_depth(item, current_depth + 1) for item in obj)
-        else:
-            return current_depth
+        return current_depth
 
     def _validate_types(self, obj: Any) -> bool:
         """Validates erlaubte typeen in JSON-object."""
@@ -404,14 +391,10 @@ class JSONValidator(BaseValidator):
             return False
 
         if isinstance(obj, dict):
-            return all(
-                self._validate_types(k) and self._validate_types(v)
-                for k, v in obj.items()
-            )
-        elif isinstance(obj, list):
+            return all(self._validate_types(k) and self._validate_types(v) for k, v in obj.items())
+        if isinstance(obj, list):
             return all(self._validate_types(item) for item in obj)
-        else:
-            return True
+        return True
 
 
 class CompositeValidator:
@@ -515,9 +498,7 @@ class InputValidator:
 
         return result
 
-    def validate_agent_operation(
-        self, operation: str, data: Dict[str, Any]
-    ) -> ValidationResult:
+    def validate_agent_operation(self, operation: str, data: Dict[str, Any]) -> ValidationResult:
         """Validates agent operation-Input.
 
         Args:
@@ -533,7 +514,7 @@ class InputValidator:
         # Basis-Felthe
         composite.add_field(
             "operation",
-            stringValidator(
+            StringValidator(
                 "operation",
                 min_length=1,
                 max_length=100,
@@ -545,7 +526,7 @@ class InputValidator:
         if operation == "plat":
             composite.add_field(
                 "objective",
-                stringValidator(
+                StringValidator(
                     "objective",
                     min_length=1,
                     max_length=1000,
@@ -553,13 +534,9 @@ class InputValidator:
                     satitize_sql=True,
                 ),
             )
-            composite.add_field(
-                "context", JSONValidator("context", required=False, max_depth=5)
-            )
+            composite.add_field("context", JSONValidator("context", required=False, max_depth=5))
         elif operation == "act":
-            composite.add_field(
-                "action", stringValidator("action", min_length=1, max_length=100)
-            )
+            composite.add_field("action", StringValidator("action", min_length=1, max_length=100))
             composite.add_field(
                 "parameters", JSONValidator("parameters", required=False, max_depth=5)
             )
@@ -583,23 +560,21 @@ def get_input_validator() -> InputValidator:
         _input_validator = InputValidator()
 
         # Regisriere Statdard-Validatoren
-        _input_validator.register_validator("string", stringValidator("string"))
-        _input_validator.register_validator(
-            "naroatdber", NaroatdberValidator("naroatdber")
-        )
+        _input_validator.register_validator("string", StringValidator("string"))
+        _input_validator.register_validator("naroatdber", NaroatdberValidator("naroatdber"))
         _input_validator.register_validator("json", JSONValidator("json"))
 
     return _input_validator
 
 
 __all__ = [
-    "ValidationSeverity",
-    "ValidationResult",
     "BaseValidator",
-    "stringValidator",
-    "NaroatdberValidator",
-    "JSONValidator",
     "CompositeValidator",
     "InputValidator",
+    "JSONValidator",
+    "NaroatdberValidator",
+    "ValidationResult",
+    "ValidationSeverity",
     "get_input_validator",
+    "StringValidator",
 ]

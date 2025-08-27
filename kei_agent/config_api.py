@@ -11,19 +11,19 @@ This module provides:
 """
 
 import json
-import time
-from typing import Dict, Any, Optional
 import logging
+import time
+from typing import Any, Dict, Optional
 
 try:
-    from aiohttp import web, WSMsgType
+    from aiohttp import WSMsgType, web
     from aiohttp.web import Request, Response, WebSocketResponse
 
     AIOHTTP_AVAILABLE = True
 except ImportError:
     AIOHTTP_AVAILABLE = False
 
-from .config_manager import get_config_manager, ConfigManager
+from .config_manager import ConfigManager, get_config_manager
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +31,7 @@ logger = logging.getLogger(__name__)
 class ConfigAPI:
     """REST API for configuration management."""
 
-    def __init__(
-        self, config_manager: Optional[ConfigManager] = None, require_auth: bool = True
-    ):
+    def __init__(self, config_manager: Optional[ConfigManager] = None, require_auth: bool = True):
         """Initialize configuration API.
 
         Args:
@@ -80,9 +78,7 @@ class ConfigAPI:
         try:
             config = self.config_manager.get_config()
 
-            return web.json_response(
-                {"success": True, "config": config, "timestamp": time.time()}
-            )
+            return web.json_response({"success": True, "config": config, "timestamp": time.time()})
 
         except Exception as e:
             logger.error(f"Error getting configuration: {e}")
@@ -132,11 +128,10 @@ class ConfigAPI:
                         "timestamp": time.time(),
                     }
                 )
-            else:
-                return web.json_response(
-                    {"success": False, "error": "Configuration validation failed"},
-                    status=400,
-                )
+            return web.json_response(
+                {"success": False, "error": "Configuration validation failed"},
+                status=400,
+            )
 
         except Exception as e:
             logger.error(f"Error updating configuration: {e}")
@@ -181,11 +176,10 @@ class ConfigAPI:
                         "timestamp": time.time(),
                     }
                 )
-            else:
-                return web.json_response(
-                    {"success": False, "error": "Configuration validation failed"},
-                    status=400,
-                )
+            return web.json_response(
+                {"success": False, "error": "Configuration validation failed"},
+                status=400,
+            )
 
         except Exception as e:
             logger.error(f"Error updating configuration value: {e}")
@@ -235,11 +229,7 @@ class ConfigAPI:
                 )
 
             # Parse request body
-            data = (
-                await request.json()
-                if request.content_type == "application/json"
-                else {}
-            )
+            data = await request.json() if request.content_type == "application/json" else {}
             change_id = data.get("change_id")
 
             # Perform rollback
@@ -253,10 +243,7 @@ class ConfigAPI:
                         "timestamp": time.time(),
                     }
                 )
-            else:
-                return web.json_response(
-                    {"success": False, "error": "Rollback failed"}, status=400
-                )
+            return web.json_response({"success": False, "error": "Rollback failed"}, status=400)
 
         except Exception as e:
             logger.error(f"Error rolling back configuration: {e}")
@@ -287,12 +274,9 @@ class ConfigAPI:
             validation_info = {
                 "required_fields": self.config_manager.validator.required_fields,
                 "field_types": {
-                    k: v.__name__
-                    for k, v in self.config_manager.validator.field_types.items()
+                    k: v.__name__ for k, v in self.config_manager.validator.field_types.items()
                 },
-                "validation_rules_count": len(
-                    self.config_manager.validator.validation_rules
-                ),
+                "validation_rules_count": len(self.config_manager.validator.validation_rules),
             }
 
             return web.json_response(
@@ -315,9 +299,7 @@ class ConfigAPI:
 
             is_valid = self.config_manager.validator.validate(config)
 
-            return web.json_response(
-                {"success": True, "valid": is_valid, "timestamp": time.time()}
-            )
+            return web.json_response({"success": True, "valid": is_valid, "timestamp": time.time()})
 
         except Exception as e:
             logger.error(f"Error validating configuration: {e}")
