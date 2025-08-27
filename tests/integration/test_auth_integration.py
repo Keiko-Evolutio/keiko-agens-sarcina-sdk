@@ -89,7 +89,7 @@ class TestBearerAuthIntegration:
             auth_type=Authtypee.BEARER,
             api_token=integration_test_base.credentials["api_token"],
             token_refresh_enabled=True,
-            token_cache_ttl=1  # 1 second for testing
+            token_cache_ttl=60  # 60 seconds minimum for validation
         )
 
         security_manager = SecurityManager(security_config)
@@ -178,7 +178,7 @@ class TestOIDCAuthIntegration:
             oidc_client_id=integration_test_base.credentials["oidc_client_id"],
             oidc_client_secret=integration_test_base.credentials["oidc_client_secret"],
             token_refresh_enabled=True,
-            token_cache_ttl=1  # 1 second for testing
+            token_cache_ttl=60  # 60 seconds minimum for validation
         )
 
         security_manager = SecurityManager(security_config)

@@ -461,5 +461,106 @@ class SecurityManager:
         # Stub implementation for backward compatibility
         return None
 
+    async def _discover_oidc_endpoints(self) -> Dict[str, str]:
+        """Discovers OIDC endpoints from the issuer's discovery document.
+
+        Returns:
+            Dictionary containing OIDC endpoints
+
+        Raises:
+            SecurityError: On discovery errors
+        """
+        if not self.config.oidc_issuer:
+            raise SecurityError("OIDC issuer not configured")
+
+        discovery_url = f"{self.config.oidc_issuer}/.well-known/openid_configuration"
+
+        timeout = httpx.Timeout(10.0, connect=5.0)
+        verify = bool(getattr(self.config, "tls_verify", True))
+
+        try:
+            async with self._client_factory(timeout=timeout, verify=verify) as client:
+                response = await client.get(discovery_url)
+                response.raise_for_status()
+
+                # Support both sync and async JSON methods
+                import inspect
+
+                json_result = response.json()
+                if inspect.iscoroutine(json_result):
+                    json_result = await json_result
+
+                return {
+                    "token_endpoint": json_result.get("token_endpoint"),
+                    "authorization_endpoint": json_result.get("authorization_endpoint"),
+                    "userinfo_endpoint": json_result.get("userinfo_endpoint"),
+                    "jwks_uri": json_result.get("jwks_uri"),
+                }
+        except Exception as e:
+            raise SecurityError(f"Failed to discover OIDC endpoints: {e}") from e
+
+    async def _create_ssl_context(self) -> Optional[Any]:
+        """Creates SSL context for mTLS authentication.
+
+        Returns:
+            SSL context for mTLS
+
+        Raises:
+            SecurityError: On SSL context creation errors
+        """
+        if self.config.auth_type != Authtypee.MTLS:
+            return None
+
+        try:
+            import ssl
+
+            context = ssl.create_default_context()
+
+            if self.config.mtls_cert_path and self.config.mtls_key_path:
+                context.load_cert_chain(
+                    certfile=self.config.mtls_cert_path, keyfile=self.config.mtls_key_path
+                )
+
+            if self.config.mtls_ca_path:
+                context.load_verify_locations(cafile=self.config.mtls_ca_path)
+
+            return context
+
+        except Exception as e:
+            raise SecurityError(f"Failed to create SSL context: {e}") from e
+
+    async def _validate_mtls_certificates(self) -> None:
+        """Validates mTLS certificates exist and are valid.
+
+        Raises:
+            SecurityError: On certificate validation errors
+        """
+        if self.config.auth_type != Authtypee.MTLS:
+            return
+
+        import os
+
+        if not self.config.mtls_cert_path:
+            raise SecurityError("mTLS certificate path not configured")
+
+        if not self.config.mtls_key_path:
+            raise SecurityError("mTLS key path not configured")
+
+        if not os.path.exists(self.config.mtls_cert_path):
+            raise SecurityError("Certificate file not found")
+
+        if not os.path.exists(self.config.mtls_key_path):
+            raise SecurityError("Key file not found")
+
+        # Additional validation could be added here (expiry check, etc.)
+
+    async def _get_mtls_ssl_context(self) -> Optional[Any]:
+        """Gets SSL context for mTLS connections.
+
+        Returns:
+            SSL context for mTLS
+        """
+        return await self._create_ssl_context()
+
 
 __all__ = ["SecurityManager"]

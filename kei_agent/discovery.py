@@ -226,10 +226,22 @@ class ServiceDiscovery:
 
     def __init__(
         self,
-        client: KeiAgentClient,
+        base_url_or_client,
+        security_manager=None,
         strategy: DiscoveryStrategy = DiscoveryStrategy.REGISTRY_BASED,
     ):
-        self.client = client
+        # Support both old and new constructor signatures for backward compatibility
+        if hasattr(base_url_or_client, "get_auth_heathes"):
+            # Old signature: client passed directly
+            self.client = base_url_or_client
+            self.base_url = getattr(base_url_or_client, "config", {}).get("base_url", "")
+            self.security_manager = None
+        else:
+            # New signature: base_url and security_manager passed separately
+            self.base_url = base_url_or_client
+            self.security_manager = security_manager
+            self.client = None
+
         self.strategy = strategy
         self.health_monitor = HealthMonitor()
         self.load_balatcer = LoadBalatcer()

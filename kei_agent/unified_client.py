@@ -31,6 +31,9 @@ from .security_manager import SecurityManager as _BaseSecurityManager
 from .tracing import TracingManager
 from .utils import create_correlation_id
 
+# Alias for backward compatibility with tests
+retryManager = RetryManager  # noqa: N816
+
 # Initialize module logger
 _logger = logging.getLogger(__name__)
 
@@ -86,6 +89,12 @@ class UnifiedKeiAgentClient:
         """
         self.config = config
         self.protocol_config = protocol_config or ProtocolConfig()
+
+        # Validate protocol configuration
+        enabled_protocols = self.protocol_config.get_enabled_protocols()
+        if not enabled_protocols:
+            raise ValueError("mindestens ein protocol muss aktiviert sein")
+
         self.security_config = security_config or SecurityConfig(
             auth_type=self.protocol_config.auth_type
             if hasattr(self.protocol_config, "auth_type")
@@ -113,6 +122,8 @@ class UnifiedKeiAgentClient:
         self.retry_manager: Optional[RetryManager] = self.retry
         self.capability_manager: Optional[CapabilityManager] = None
         self.service_discovery: Optional[ServiceDiscovery] = None
+        # Alias for backward compatibility with tests
+        self.discovery: Optional[ServiceDiscovery] = None
 
         # Protocol clients
         self._rpc_client: Optional[KEIRPCclient] = None
@@ -147,7 +158,7 @@ class UnifiedKeiAgentClient:
             protocol_key: Protocol key (e.g. "rpc")
 
         Returns:
-            retryManager instatce
+            RetryManager instance
         """
         return (
             self._retry_managers.get(protocol_key)
@@ -281,6 +292,8 @@ class UnifiedKeiAgentClient:
 
         # service discovery
         self.service_discovery = ServiceDiscovery(self.config.base_url, self.security)
+        # Alias for backward compatibility with tests
+        self.discovery = self.service_discovery
 
         _logger.debug("enterprise features initialized")
 
@@ -772,7 +785,7 @@ class UnifiedKeiAgentClient:
     async def observe_environment(
         self,
         observation_type: str,
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,  # noqa: ARG002
         protocol: Optional[Protocoltypee] = None,
     ) -> Dict[str, Any]:
         """performs environment observation.

@@ -122,6 +122,9 @@ class AgentClientConfig:
     timeout: Optional[float] = None  # For backward compatibility with tests
     heartbeat_url: Optional[str] = None  # URL für Agent-Heartbeat-Checks
 
+    # Backward compatibility parameters
+    max_retries: Optional[int] = None  # For backward compatibility with tests
+
     # Backward compatibility alias
     @property
     def tenatt_id(self) -> Optional[str]:  # type: ignore[override]
@@ -148,6 +151,48 @@ class AgentClientConfig:
     on_connection_error: Optional[Callable[[Exception], Awaitable[None]]] = None
     on_retry_attempt: Optional[Callable[[int, Exception], Awaitable[None]]] = None
     on_circuit_breaker_open: Optional[Callable[[str], Awaitable[None]]] = None
+
+    def __post_init__(self) -> None:
+        """Post-initialization processing for backward compatibility."""
+        # Validate required fields
+        if not self.base_url or not self.base_url.strip():
+            raise ValueError("base_url cannot be empty")
+        if not self.agent_id or not self.agent_id.strip():
+            raise ValueError("agent_id cannot be empty")
+        if not self.api_token or not self.api_token.strip():
+            raise ValueError("api_token cannot be empty")
+
+        # Handle backward compatibility parameters
+        if self.max_retries is not None:
+            # Update retry configuration with max_retries value
+            self.retry = RetryConfig(
+                max_attempts=self.max_retries,
+                base_delay=self.retry.base_delay,
+                max_delay=self.retry.max_delay,
+                exponential_base=self.retry.exponential_base,
+                jitter=self.retry.jitter,
+                strategy=self.retry.strategy,
+                circuit_breaker_enabled=self.retry.circuit_breaker_enabled,
+                failure_threshold=self.retry.failure_threshold,
+                recovery_timeout=self.retry.recovery_timeout,
+                half_open_max_calls=self.retry.half_open_max_calls,
+                retry_on_status_codes=self.retry.retry_on_status_codes,
+                retry_on_exceptions=self.retry.retry_on_exceptions,
+            )
+
+        if self.timeout is not None:
+            # Update connection configuration with timeout value
+            self.connection = ConnectionConfig(
+                timeout=self.timeout,
+                max_connections=self.connection.max_connections,
+                max_connections_per_host=self.connection.max_connections_per_host,
+                keepalive_timeout=self.connection.keepalive_timeout,
+                enable_compression=self.connection.enable_compression,
+                ssl_verify=self.connection.ssl_verify,
+                pool_recycle=self.connection.pool_recycle,
+                pool_pre_ping=self.connection.pool_pre_ping,
+                enable_http2=self.connection.enable_http2,
+            )
 
     def validate(self) -> None:
         """Validates the agent client configuration using Pydantic models.

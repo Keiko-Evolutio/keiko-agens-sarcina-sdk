@@ -23,7 +23,7 @@ from kei_agent import UnifiedKeiAgentClient, AgentClientConfig
 from kei_agent.protocol_types import SecurityConfig, AuthType
 from kei_agent.exceptions import (
     CommunicationError, SecurityError, ProtocolError,
-    CircuitBreakerOpenError, retryExhaustedError
+    CircuitBreakerOpenError, RetryExhaustedError
 )
 from . import (
     skip_if_no_integration_env, IntegrationTestBase,
