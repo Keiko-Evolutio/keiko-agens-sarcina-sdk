@@ -93,7 +93,7 @@ class UnifiedKeiAgentClient:
         # Validate protocol configuration
         enabled_protocols = self.protocol_config.get_enabled_protocols()
         if not enabled_protocols:
-            raise ValueError("mindestens ein protocol muss aktiviert sein")
+            raise ValueError("at least one protocol must be enabled")
 
         self.security_config = security_config or SecurityConfig(
             auth_type=self.protocol_config.auth_type

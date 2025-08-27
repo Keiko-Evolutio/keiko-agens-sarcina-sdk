@@ -314,7 +314,7 @@ class TestConfigurationValidation:
             agent_id ="test-agent"
         )
 
-        with pytest.raises(ValueError, match="minof thetens a protocol"):
+        with pytest.raises(ValueError, match="at least one protocol must be enabled"):
             UnifiedKeiAgentClient(
                 config=basic_config,
                 protocol_config =config

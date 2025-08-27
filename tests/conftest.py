@@ -23,13 +23,14 @@ TEST_ENV_VARS = {
     "INTEGRATION_TEST_TIMEOUT": "30",
     "INTEGRATION_TEST_RETRIES": "3",
     "USE_MOCK_SERVICES": "true",
+    "MOCK_NETWORK_CALLS": "true",
     "ENABLE_CHAOS_TESTING": "false",
     "ENABLE_PERFORMANCE_TESTING": "false",
-    # Test service endpoints
-    "TEST_API_BASE_URL": "https://api.ci.example.com",
-    "TEST_AUTH_SERVER_URL": "https://auth.ci.example.com",
-    "TEST_WS_ENDPOINT": "wss://ws.ci.example.com",
-    "TEST_MESSAGE_BUS_URL": "https://bus.ci.example.com",
+    # Test service endpoints (using localhost for CI/CD compatibility)
+    "TEST_API_BASE_URL": "http://localhost:8000",
+    "TEST_AUTH_SERVER_URL": "http://localhost:8080",
+    "TEST_WS_ENDPOINT": "ws://localhost:8001",
+    "TEST_MESSAGE_BUS_URL": "http://localhost:8002",
 }
 
 
