@@ -178,31 +178,343 @@ class DatabaseHealthCheck(BaseHealthCheck):
             return HealthCheckResult(
                 name=self.name,
                 status=Healthstatus.UNKNOWN,
-                message="Ka databatkverbindung configures",
+                message="Keine Datenbankverbindung konfiguriert",
             )
 
         try:
-            # TODO: Implementiere echte databatkverbindung
-            # Hier würde a echte DB-connection getestet werthe
-            await asyncio.sleep(0.1)  # Simuliere DB-Query
+            # Implementiere echte Datenbankverbindung basierend auf Connection String
+            result = await self._test_database_connection()
 
             return HealthCheckResult(
                 name=self.name,
-                status=Healthstatus.HEALTHY,
-                message="databatkverbindung successful",
-                details={
-                    "query": self.query,
-                    "connection_pool_size": 10,  # Onspiel-Metrik
-                    "active_connections": 3,
-                },
+                status=result["status"],
+                message=result["message"],
+                details=result["details"],
             )
         except Exception as e:
             return HealthCheckResult(
                 name=self.name,
                 status=Healthstatus.UNHEALTHY,
-                message=f"databatkverbindung failed: {e!s}",
+                message=f"Datenbankverbindung fehlgeschlagen: {e!s}",
                 error=str(e),
             )
+
+    async def _test_database_connection(self) -> Dict[str, Any]:
+        """Testet echte Datenbankverbindung basierend auf Connection String.
+
+        Returns:
+            Dictionary mit Status, Message und Details der Verbindung
+        """
+        if not self.connection_string:
+            return {
+                "status": Healthstatus.UNKNOWN,
+                "message": "Keine Datenbankverbindung konfiguriert",
+                "details": {},
+            }
+
+        # Erkenne Datenbanktyp aus Connection String
+        db_type = self._detect_database_type(self.connection_string)
+
+        try:
+            if db_type == "postgresql":
+                return await self._test_postgresql_connection()
+            if db_type == "mysql":
+                return await self._test_mysql_connection()
+            if db_type == "sqlite":
+                return await self._test_sqlite_connection()
+            # Fallback: Generischer Test
+            return await self._test_generic_connection()
+
+        except ImportError as e:
+            return {
+                "status": Healthstatus.DEGRADED,
+                "message": f"Datenbank-Driver nicht installiert: {e!s}",
+                "details": {
+                    "database_type": db_type,
+                    "required_package": self._get_required_package(db_type),
+                    "install_command": f"pip install {self._get_required_package(db_type)}",
+                },
+            }
+        except Exception as e:
+            return {
+                "status": Healthstatus.UNHEALTHY,
+                "message": f"Datenbankverbindung fehlgeschlagen: {e!s}",
+                "details": {"database_type": db_type, "error": str(e)},
+            }
+
+    def _detect_database_type(self, connection_string: str) -> str:
+        """Erkennt Datenbanktyp aus Connection String.
+
+        Args:
+            connection_string: Datenbank-Connection String
+
+        Returns:
+            Erkannter Datenbanktyp
+        """
+        connection_string = connection_string.lower()
+
+        if connection_string.startswith(("postgresql://", "postgres://")):
+            return "postgresql"
+        if connection_string.startswith("mysql://"):
+            return "mysql"
+        if connection_string.startswith("sqlite://") or connection_string.endswith(".db"):
+            return "sqlite"
+        return "unknown"
+
+    def _get_required_package(self, db_type: str) -> str:
+        """Gibt erforderliches Package für Datenbanktyp zurück.
+
+        Args:
+            db_type: Datenbanktyp
+
+        Returns:
+            Name des erforderlichen Python-Packages
+        """
+        packages = {"postgresql": "asyncpg", "mysql": "aiomysql", "sqlite": "aiosqlite"}
+        return packages.get(db_type, "unknown")
+
+    async def _test_postgresql_connection(self) -> Dict[str, Any]:
+        """Testet PostgreSQL-Verbindung.
+
+        Returns:
+            Dictionary mit Testergebnis
+        """
+        import asyncpg
+
+        start_time = time.time()
+
+        try:
+            # Verbindung herstellen
+            conn = await asyncpg.connect(self.connection_string)
+
+            # Test-Query ausführen
+            result = await conn.fetchval(self.query)
+
+            # Verbindungsstatistiken abrufen
+            server_version = conn.get_server_version()
+
+            await conn.close()
+
+            response_time = (time.time() - start_time) * 1000
+
+            return {
+                "status": Healthstatus.HEALTHY,
+                "message": "PostgreSQL-Verbindung erfolgreich",
+                "details": {
+                    "query": self.query,
+                    "query_result": result,
+                    "response_time_ms": response_time,
+                    "server_version": f"{server_version.major}.{server_version.minor}.{server_version.micro}",
+                    "database_type": "postgresql",
+                },
+            }
+
+        except Exception as e:
+            response_time = (time.time() - start_time) * 1000
+            return {
+                "status": Healthstatus.UNHEALTHY,
+                "message": f"PostgreSQL-Verbindung fehlgeschlagen: {e!s}",
+                "details": {
+                    "query": self.query,
+                    "response_time_ms": response_time,
+                    "database_type": "postgresql",
+                    "error": str(e),
+                },
+            }
+
+    async def _test_mysql_connection(self) -> Dict[str, Any]:
+        """Testet MySQL-Verbindung.
+
+        Returns:
+            Dictionary mit Testergebnis
+        """
+        import aiomysql
+
+        start_time = time.time()
+
+        try:
+            # Connection String parsen
+            # Format: mysql://user:password@host:port/database
+            import urllib.parse
+
+            parsed = urllib.parse.urlparse(self.connection_string)
+
+            # Verbindung herstellen
+            conn = await aiomysql.connect(
+                host=parsed.hostname,
+                port=parsed.port or 3306,
+                user=parsed.username,
+                password=parsed.password,
+                db=parsed.path.lstrip("/") if parsed.path else None,
+            )
+
+            # Test-Query ausführen
+            cursor = await conn.cursor()
+            await cursor.execute(self.query)
+            result = await cursor.fetchone()
+            await cursor.close()
+
+            # Server-Info abrufen
+            cursor = await conn.cursor()
+            await cursor.execute("SELECT VERSION()")
+            server_version = await cursor.fetchone()
+            await cursor.close()
+
+            conn.close()
+
+            response_time = (time.time() - start_time) * 1000
+
+            return {
+                "status": Healthstatus.HEALTHY,
+                "message": "MySQL-Verbindung erfolgreich",
+                "details": {
+                    "query": self.query,
+                    "query_result": result[0] if result else None,
+                    "response_time_ms": response_time,
+                    "server_version": server_version[0] if server_version else "unknown",
+                    "database_type": "mysql",
+                },
+            }
+
+        except Exception as e:
+            response_time = (time.time() - start_time) * 1000
+            return {
+                "status": Healthstatus.UNHEALTHY,
+                "message": f"MySQL-Verbindung fehlgeschlagen: {e!s}",
+                "details": {
+                    "query": self.query,
+                    "response_time_ms": response_time,
+                    "database_type": "mysql",
+                    "error": str(e),
+                },
+            }
+
+    async def _test_sqlite_connection(self) -> Dict[str, Any]:
+        """Testet SQLite-Verbindung.
+
+        Returns:
+            Dictionary mit Testergebnis
+        """
+        import aiosqlite
+
+        start_time = time.time()
+
+        try:
+            # SQLite-Datei aus Connection String extrahieren
+            db_path = self.connection_string.replace("sqlite://", "").replace("sqlite:///", "")
+
+            # Verbindung herstellen
+            async with aiosqlite.connect(db_path) as conn:
+                # Test-Query ausführen
+                cursor = await conn.execute(self.query)
+                result = await cursor.fetchone()
+                await cursor.close()
+
+                # SQLite-Version abrufen
+                cursor = await conn.execute("SELECT sqlite_version()")
+                version_result = await cursor.fetchone()
+                await cursor.close()
+
+            response_time = (time.time() - start_time) * 1000
+
+            return {
+                "status": Healthstatus.HEALTHY,
+                "message": "SQLite-Verbindung erfolgreich",
+                "details": {
+                    "query": self.query,
+                    "query_result": result[0] if result else None,
+                    "response_time_ms": response_time,
+                    "sqlite_version": version_result[0] if version_result else "unknown",
+                    "database_type": "sqlite",
+                    "database_path": db_path,
+                },
+            }
+
+        except Exception as e:
+            response_time = (time.time() - start_time) * 1000
+            return {
+                "status": Healthstatus.UNHEALTHY,
+                "message": f"SQLite-Verbindung fehlgeschlagen: {e!s}",
+                "details": {
+                    "query": self.query,
+                    "response_time_ms": response_time,
+                    "database_type": "sqlite",
+                    "error": str(e),
+                },
+            }
+
+    async def _test_generic_connection(self) -> Dict[str, Any]:
+        """Generischer Datenbankverbindungstest für unbekannte Typen.
+
+        Returns:
+            Dictionary mit Testergebnis
+        """
+        start_time = time.time()
+
+        try:
+            # Versuche verschiedene Standard-Bibliotheken
+            connection_tested = False
+
+            # Versuche SQLAlchemy (falls verfügbar)
+            try:
+                from sqlalchemy.ext.asyncio import create_async_engine
+
+                engine = create_async_engine(self.connection_string)
+
+                async with engine.begin() as conn:
+                    result = await conn.execute(self.query)
+                    query_result = result.scalar()
+
+                await engine.dispose()
+                connection_tested = True
+
+                response_time = (time.time() - start_time) * 1000
+
+                return {
+                    "status": Healthstatus.HEALTHY,
+                    "message": "Datenbankverbindung erfolgreich (SQLAlchemy)",
+                    "details": {
+                        "query": self.query,
+                        "query_result": query_result,
+                        "response_time_ms": response_time,
+                        "database_type": "generic_sqlalchemy",
+                        "connection_method": "sqlalchemy",
+                    },
+                }
+
+            except ImportError:
+                pass
+
+            # Falls SQLAlchemy nicht verfügbar, Fallback auf Simulation mit Warnung
+            if not connection_tested:
+                await asyncio.sleep(0.1)  # Simuliere Verbindungszeit
+
+                response_time = (time.time() - start_time) * 1000
+
+                return {
+                    "status": Healthstatus.DEGRADED,
+                    "message": "Datenbankverbindung simuliert - kein passender Driver gefunden",
+                    "details": {
+                        "query": self.query,
+                        "response_time_ms": response_time,
+                        "database_type": "simulated",
+                        "connection_method": "simulation",
+                        "warning": "Installiere entsprechende Datenbank-Driver für echte Tests",
+                    },
+                }
+
+        except Exception as e:
+            response_time = (time.time() - start_time) * 1000
+            return {
+                "status": Healthstatus.UNHEALTHY,
+                "message": f"Generischer Datenbanktest fehlgeschlagen: {e!s}",
+                "details": {
+                    "query": self.query,
+                    "response_time_ms": response_time,
+                    "database_type": "generic",
+                    "error": str(e),
+                },
+            }
 
 
 class APIHealthCheck(BaseHealthCheck):

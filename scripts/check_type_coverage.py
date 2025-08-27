@@ -267,7 +267,11 @@ def parse_txt_report_index(
         # Format: | Module | X.XX% imprecise | YYY LOC |
         for line in lines:
             stripped_line = line.strip()
-            if stripped_line.startswith("|") and "% imprecise" in stripped_line and "LOC" in stripped_line:
+            if (
+                stripped_line.startswith("|")
+                and "% imprecise" in stripped_line
+                and "LOC" in stripped_line
+            ):
                 # Split by | and clean up
                 parts = [part.strip() for part in stripped_line.split("|")]
                 if len(parts) >= 4:
