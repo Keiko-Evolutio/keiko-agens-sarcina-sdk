@@ -361,3 +361,9 @@ build-report-*.json
 
 # Logs and temporary files
 build-report*.json
+
+# Claude AI Assistant
+.claude/
+/CLAUDE.md
+/.mcp.json
+
